@@ -5,7 +5,34 @@
 import { useEffect, useRef, useState } from "react";
 import { analyze, CoachAction, CoachResult, fileToDataURL } from "@/lib/analyze";
 import { useApp, currentMealTime } from "@/lib/store";
-import { ChatMessage, MealTime } from "@/lib/types";
+import { ChatMessage, MealTime, todayISO } from "@/lib/types";
+
+// El chat se guarda por día para que no se pierda al cambiar de pestaña.
+const CHAT_KEY = "ahivoy:chat";
+
+function loadChat(greeting: ChatMessage): ChatMessage[] {
+  if (typeof window === "undefined") return [greeting];
+  try {
+    const raw = localStorage.getItem(CHAT_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw) as { date: string; messages: ChatMessage[] };
+      if (saved.date === todayISO() && saved.messages?.length) return saved.messages;
+    }
+  } catch {
+    // chat corrupto: empezamos de cero
+  }
+  return [greeting];
+}
+
+function saveChat(messages: ChatMessage[]) {
+  try {
+    // Sin imágenes (pesan mucho): se reemplazan por un marcador.
+    const light = messages.map((m) => (m.image ? { ...m, image: "" , text: (m.text || "(foto)") } : m));
+    localStorage.setItem(CHAT_KEY, JSON.stringify({ date: todayISO(), messages: light.slice(-40) }));
+  } catch {
+    // sin espacio: no pasa nada
+  }
+}
 
 const QUICK_PROMPTS = [
   { text: "Registrar sin foto", send: "Agrega a mi almuerzo: pollo con arroz y ensalada" },
@@ -33,12 +60,12 @@ export default function Coach() {
   } = app;
 
   const firstName = profile.name ? profile.name.split(" ")[0] : "";
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
+  const [messages, setMessages] = useState<ChatMessage[]>(() =>
+    loadChat({
       role: "coach",
       text: `¡Hola${firstName ? " " + firstName : ""}! 👋 Soy tu Coach IA. Conozco tus macros, tu meta y tu rutina de hoy. Pregúntame qué comer, pídeme que revise el menú de un restaurante o cuéntame cómo te sientes.`,
-    },
-  ]);
+    })
+  );
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -50,10 +77,38 @@ export default function Coach() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, typing]);
 
+  useEffect(() => {
+    if (messages.length > 1) saveChat(messages);
+  }, [messages]);
+
+  // Busca una comida de hoy por descripción (exacta o aproximada)
+  const findMeal = (desc: string) => {
+    const q = desc.trim().toLowerCase();
+    return (
+      app.meals.find((m) => m.desc.toLowerCase() === q) ??
+      app.meals.find((m) => m.desc.toLowerCase().includes(q) || q.includes(m.desc.toLowerCase()))
+    );
+  };
+
   const applyActions = async (actions: CoachAction[]) => {
     for (const a of actions) {
       try {
         if (a.type === "add_water" && a.ml) await app.addWater(a.ml);
+        else if (a.type === "remove_water" && a.ml) await app.addWater(-a.ml);
+        else if (a.type === "delete_meal" && a.desc) {
+          const meal = findMeal(a.desc);
+          if (meal) await app.deleteMeal(meal.id);
+        } else if (a.type === "update_meal" && a.desc) {
+          const meal = findMeal(a.desc);
+          if (meal)
+            await app.updateMeal({
+              ...meal,
+              kcal: a.kcal ?? meal.kcal,
+              p: a.p ?? meal.p,
+              c: a.c ?? meal.c,
+              f: a.f ?? meal.f,
+            });
+        }
         else if (a.type === "set_weight" && a.lb) await app.setWeight(a.lb);
         else if (a.type === "set_goal_weight" && a.lb) await app.setWeightGoal(a.lb);
         else if (a.type === "set_meta_kcal" && a.kcal) await app.saveProfile({ ...profile, metaKcal: a.kcal });
@@ -114,6 +169,14 @@ export default function Coach() {
           dia_rutina: workout?.day ?? "Push",
           sueno_min: sleep?.minutes ?? null,
         },
+        comidas_hoy: app.meals.map((m) => ({
+          desc: m.desc,
+          time: m.time,
+          kcal: m.kcal,
+          p: m.p,
+          c: m.c,
+          f: m.f,
+        })),
         peso_actual_lb: profile.weight,
         rutina: routine,
         hora_local: new Date().toTimeString().slice(0, 5),

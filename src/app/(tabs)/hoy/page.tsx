@@ -120,6 +120,11 @@ export default function Hoy() {
     if (ml > 0) app.addWater(ml);
   };
 
+  const removeWaterNow = () => {
+    const ml = Number(waterStep) || 0;
+    if (ml > 0 && water > 0) app.addWater(-ml);
+  };
+
   return (
     <div style={{ boxSizing: "border-box", padding: "24px 20px 24px" }}>
       {/* Encabezado */}
@@ -269,7 +274,7 @@ export default function Hoy() {
             />
             <div style={{ fontSize: 11, color: "rgba(244,243,238,.4)", fontWeight: 600 }}>ml</div>
             <div
-              onClick={addWaterNow}
+              onClick={removeWaterNow}
               style={{
                 width: 30,
                 height: 30,
@@ -280,7 +285,25 @@ export default function Hoy() {
                 justifyContent: "center",
                 fontSize: 16,
                 fontWeight: 700,
-                color: "rgba(244,243,238,.7)",
+                color: "rgba(244,243,238,.5)",
+                cursor: "pointer",
+              }}
+            >
+              −
+            </div>
+            <div
+              onClick={addWaterNow}
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: "50%",
+                background: "rgba(199,242,122,.15)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 16,
+                fontWeight: 700,
+                color: "#c7f27a",
                 cursor: "pointer",
               }}
             >

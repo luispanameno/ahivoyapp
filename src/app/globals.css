@@ -18,6 +18,19 @@ body {
   font-family: var(--font-jakarta), "Plus Jakarta Sans", sans-serif;
   margin: 0;
   -webkit-tap-highlight-color: transparent;
+  /* Evita que Chrome Android seleccione texto al tocar botones
+     y muestre "Tocar para buscar" (resultados de Google). */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  /* Sin zoom por doble toque */
+  touch-action: manipulation;
+}
+
+input,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .font-sora {

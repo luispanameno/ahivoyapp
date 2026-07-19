@@ -15,7 +15,8 @@ const MEAL_TIMES: MealTime[] = ["Desayuno", "Almuerzo", "Cena", "Snack"];
 export default function Escanear() {
   const router = useRouter();
   const { addMeal, showToast } = useApp();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState<Step>("capture");
   const [photo, setPhoto] = useState<string | null>(null);
@@ -85,7 +86,7 @@ export default function Escanear() {
           ‹ Volver
         </div>
         <div style={{ position: "absolute", top: 24, left: 0, right: 0, textAlign: "center", fontSize: 12, fontWeight: 600, color: "rgba(244,243,238,.7)" }}>
-          Encuadra tu plato o elige una foto
+          Toma una foto o elige de tu galería
         </div>
         {error && (
           <div
@@ -109,7 +110,7 @@ export default function Escanear() {
           </div>
         )}
         <div
-          onClick={() => inputRef.current?.click()}
+          onClick={() => galleryRef.current?.click()}
           style={{
             position: "absolute",
             left: 32,
@@ -127,14 +128,16 @@ export default function Escanear() {
           }}
         >
           {!photo && (
-            <div style={{ fontSize: 13, color: "rgba(244,243,238,.5)", fontWeight: 600, textAlign: "center", padding: "0 24px" }}>
-              Toca aquí o el botón para tomar
-              <br />o elegir la foto de tu plato 📸
+            <div style={{ fontSize: 13, color: "rgba(244,243,238,.5)", fontWeight: 600, textAlign: "center", padding: "0 24px", lineHeight: 1.6 }}>
+              🖼️ Toca aquí para elegir una foto
+              <br />
+              de tu galería
             </div>
           )}
         </div>
+        {/* Botón blanco = cámara directa */}
         <div
-          onClick={() => inputRef.current?.click()}
+          onClick={() => cameraRef.current?.click()}
           style={{
             position: "absolute",
             bottom: 56,
@@ -146,13 +149,43 @@ export default function Escanear() {
             background: "#f4f3ee",
             border: "4px solid rgba(244,243,238,.4)",
             cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 26,
           }}
-        />
+        >
+          📷
+        </div>
+        <div
+          style={{
+            position: "absolute",
+            bottom: 30,
+            left: 0,
+            right: 0,
+            textAlign: "center",
+            fontSize: 10.5,
+            fontWeight: 600,
+            color: "rgba(244,243,238,.45)",
+          }}
+        >
+          Botón = cámara · recuadro = galería
+        </div>
         <input
-          ref={inputRef}
+          ref={cameraRef}
           type="file"
           accept="image/*"
           capture="environment"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            handleFile(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
+        <input
+          ref={galleryRef}
+          type="file"
+          accept="image/*"
           style={{ display: "none" }}
           onChange={(e) => {
             handleFile(e.target.files?.[0]);

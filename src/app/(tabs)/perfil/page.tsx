@@ -6,8 +6,8 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import ImageDrop from "@/components/ImageDrop";
+import AvatarEditor from "@/components/AvatarEditor";
 import { analyze, fileToDataURL } from "@/lib/analyze";
-import { resizeToAvatar } from "@/lib/image";
 import { useApp } from "@/lib/store";
 import { WeightEntry } from "@/lib/types";
 
@@ -63,6 +63,7 @@ export default function Perfil() {
 
   const [range, setRange] = useState<"days" | "weeks">("days");
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const [editorSrc, setEditorSrc] = useState<string | null>(null);
   const [healthShot, setHealthShot] = useState<string | null>(null);
   const [healthBusy, setHealthBusy] = useState(false);
   const [healthError, setHealthError] = useState<string | null>(null);
@@ -190,10 +191,24 @@ export default function Perfil() {
 
   return (
     <div style={{ boxSizing: "border-box", padding: "24px 20px 0" }}>
+      {editorSrc && (
+        <AvatarEditor
+          src={editorSrc}
+          onCancel={() => setEditorSrc(null)}
+          onSave={async (url) => {
+            await saveProfile({ ...profile, photo: url });
+            setEditorSrc(null);
+            showToast("Foto de perfil actualizada");
+          }}
+        />
+      )}
       {/* Cabecera */}
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <div
-          onClick={() => photoInputRef.current?.click()}
+          onClick={() => {
+            if (profile.photo) setEditorSrc(profile.photo);
+            else photoInputRef.current?.click();
+          }}
           style={{
             width: 64,
             height: 64,
@@ -252,10 +267,7 @@ export default function Perfil() {
               e.target.value = "";
               if (!file) return;
               try {
-                const raw = await fileToDataURL(file);
-                const small = await resizeToAvatar(raw);
-                await saveProfile({ ...profile, photo: small });
-                showToast("Foto de perfil actualizada");
+                setEditorSrc(await fileToDataURL(file));
               } catch {
                 showToast("No se pudo cargar esa foto");
               }

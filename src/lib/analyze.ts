@@ -23,12 +23,15 @@ export interface FoodResult {
 export interface CoachAction {
   type:
     | "add_water"
+    | "remove_water"
     | "set_weight"
     | "set_goal_weight"
     | "set_meta_kcal"
     | "log_meal"
     | "log_sleep"
-    | "log_workout";
+    | "log_workout"
+    | "delete_meal"
+    | "update_meal";
   ml?: number;
   lb?: number;
   kcal?: number;
