@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #121416;
+  --card: #1b1e21;
+  --card2: #232527;
+  --text: #f4f3ee;
+  --neon: #c7f27a;
+}
+
+html,
+body {
+  background: #121416;
+  color: #f4f3ee;
+}
+
+body {
+  font-family: var(--font-jakarta), "Plus Jakarta Sans", sans-serif;
+  margin: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.font-sora {
+  font-family: var(--font-sora), "Sora", sans-serif;
+}
+
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+input,
+textarea {
+  font-family: inherit;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes ringIn {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
