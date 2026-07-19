@@ -80,10 +80,38 @@ function parseDataUrl(dataUrl: string): { mimeType: string; data: string } | nul
 
 function extractJson(text: string): unknown {
   const clean = text.replace(/```json/gi, "").replace(/```/g, "").trim();
+  try {
+    return JSON.parse(clean);
+  } catch {
+    // El modelo a veces agrega texto extra u otro objeto después del JSON:
+    // extraemos el PRIMER objeto balanceado, respetando strings con llaves.
+  }
   const start = clean.indexOf("{");
-  const end = clean.lastIndexOf("}");
-  if (start === -1 || end === -1) throw new Error("La IA no devolvió JSON");
-  return JSON.parse(clean.slice(start, end + 1));
+  if (start === -1) throw new Error("La IA no devolvió JSON");
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < clean.length; i++) {
+    const ch = clean[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\") {
+      escaped = inString;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+    } else if (!inString) {
+      if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) return JSON.parse(clean.slice(start, i + 1));
+      }
+    }
+  }
+  throw new Error("La IA no devolvió JSON completo");
 }
 
 export async function POST(req: NextRequest) {
