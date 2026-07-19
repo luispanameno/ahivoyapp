@@ -169,13 +169,13 @@ export default function Escanear() {
             color: "rgba(244,243,238,.45)",
           }}
         >
-          Botón = cámara · recuadro = galería
+          El botón te deja tomar foto o elegir de tu galería
         </div>
+        {/* Sin "capture": Android muestra el menú Cámara / Galería / Archivos */}
         <input
           ref={cameraRef}
           type="file"
           accept="image/*"
-          capture="environment"
           style={{ display: "none" }}
           onChange={(e) => {
             handleFile(e.target.files?.[0]);

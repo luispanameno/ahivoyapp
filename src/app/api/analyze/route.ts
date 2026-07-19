@@ -168,7 +168,9 @@ Responde SOLO con JSON válido:
 "actions" va vacío [] si el usuario solo pregunta. Cuando registres/borres/modifiques algo, confírmalo en "reply" con los números.
 En log_meal incluye SIEMPRE los campos desc, kcal, p, c y f con tus estimaciones — NUNCA los omitas. En add_water/remove_water incluye siempre ml.
 En delete_meal y update_meal, "desc" debe coincidir con una descripción de comidas_hoy. Si no hay coincidencia clara, pregunta cuál es en vez de actuar.
-Elige "time" según la hora local del contexto si el usuario no la dice.`;
+Elige "time" según la hora local del contexto si el usuario no la dice.
+
+DÍAS PASADOS: también puedes registrar/borrar/corregir datos de OTROS días. Si el usuario menciona otro día ("ayer", "anoche", "el viernes"), agrega a la acción el campo "fecha":"YYYY-MM-DD" calculado a partir de fecha_hoy y dia_semana del contexto (ej. "ayer" = fecha_hoy menos 1 día). "Anoche dormí 6 horas" o "anoche tomé 500ml" se refieren a AYER si es de madrugada/mañana. Para comidas de otros días usa la descripción que dé el usuario. Sin mención de otro día, NO incluyas "fecha".`;
 
 function parseDataUrl(dataUrl: string): { mimeType: string; data: string } | null {
   const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/);

@@ -104,7 +104,7 @@ export default function Login() {
     >
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 26 }}>
         <div style={{ width: 96, height: 96, borderRadius: 22, overflow: "hidden", filter: "drop-shadow(0 0 20px rgba(90,220,150,.45))" }}>
-          <Image src="/assets/ahivoyapp-logo-crop.png" alt="AHIVOYAPP" width={96} height={96} unoptimized style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <Image src="/assets/ahivoyapp-logo-transparente.png" alt="AHIVOYAPP" width={96} height={96} unoptimized style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         </div>
         <div
           className="font-sora"

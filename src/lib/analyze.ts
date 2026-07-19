@@ -42,6 +42,7 @@ export interface CoachAction {
   p?: number;
   c?: number;
   f?: number;
+  fecha?: string; // YYYY-MM-DD cuando la acción es de otro día
 }
 
 export interface CoachResult {

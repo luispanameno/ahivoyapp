@@ -4,10 +4,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { analyze, CoachAction, CoachResult, fileToDataURL } from "@/lib/analyze";
+import * as db from "@/lib/db";
 import { useApp, currentMealTime } from "@/lib/store";
-import { ChatMessage, MealTime, todayISO } from "@/lib/types";
+import { ChatMessage, MealTime, RoutineDay, todayISO } from "@/lib/types";
 
-// El chat se guarda por día para que no se pierda al cambiar de pestaña.
+// El chat se guarda de forma permanente; solo se borra con el botón "Limpiar".
 const CHAT_KEY = "ahivoy:chat";
 
 function loadChat(greeting: ChatMessage): ChatMessage[] {
@@ -15,8 +16,8 @@ function loadChat(greeting: ChatMessage): ChatMessage[] {
   try {
     const raw = localStorage.getItem(CHAT_KEY);
     if (raw) {
-      const saved = JSON.parse(raw) as { date: string; messages: ChatMessage[] };
-      if (saved.date === todayISO() && saved.messages?.length) return saved.messages;
+      const saved = JSON.parse(raw) as { messages: ChatMessage[] };
+      if (saved.messages?.length) return saved.messages;
     }
   } catch {
     // chat corrupto: empezamos de cero
@@ -27,8 +28,8 @@ function loadChat(greeting: ChatMessage): ChatMessage[] {
 function saveChat(messages: ChatMessage[]) {
   try {
     // Sin imágenes (pesan mucho): se reemplazan por un marcador.
-    const light = messages.map((m) => (m.image ? { ...m, image: "" , text: (m.text || "(foto)") } : m));
-    localStorage.setItem(CHAT_KEY, JSON.stringify({ date: todayISO(), messages: light.slice(-40) }));
+    const light = messages.map((m) => (m.image ? { ...m, image: "", text: m.text || "(foto)" } : m));
+    localStorage.setItem(CHAT_KEY, JSON.stringify({ messages: light.slice(-60) }));
   } catch {
     // sin espacio: no pasa nada
   }
@@ -81,55 +82,104 @@ export default function Coach() {
     if (messages.length > 1) saveChat(messages);
   }, [messages]);
 
-  // Busca una comida de hoy por descripción (exacta o aproximada)
-  const findMeal = (desc: string) => {
+  // Busca una comida por descripción (exacta o aproximada)
+  const matchMeal = (lista: { id: string; desc: string }[], desc: string) => {
     const q = desc.trim().toLowerCase();
     return (
-      app.meals.find((m) => m.desc.toLowerCase() === q) ??
-      app.meals.find((m) => m.desc.toLowerCase().includes(q) || q.includes(m.desc.toLowerCase()))
+      lista.find((m) => m.desc.toLowerCase() === q) ??
+      lista.find((m) => m.desc.toLowerCase().includes(q) || q.includes(m.desc.toLowerCase()))
     );
   };
 
   const applyActions = async (actions: CoachAction[]) => {
+    const today = todayISO();
     for (const a of actions) {
       try {
-        if (a.type === "add_water" && a.ml) await app.addWater(a.ml);
-        else if (a.type === "remove_water" && a.ml) await app.addWater(-a.ml);
-        else if (a.type === "delete_meal" && a.desc) {
-          const meal = findMeal(a.desc);
-          if (meal) await app.deleteMeal(meal.id);
-        } else if (a.type === "update_meal" && a.desc) {
-          const meal = findMeal(a.desc);
-          if (meal)
-            await app.updateMeal({
-              ...meal,
-              kcal: a.kcal ?? meal.kcal,
-              p: a.p ?? meal.p,
-              c: a.c ?? meal.c,
-              f: a.f ?? meal.f,
+        const fecha = a.fecha && /^\d{4}-\d{2}-\d{2}$/.test(a.fecha) && a.fecha !== today ? a.fecha : null;
+
+        if (!fecha) {
+          // ---- Acciones sobre HOY (actualizan la pantalla al instante) ----
+          if (a.type === "add_water" && a.ml) await app.addWater(a.ml);
+          else if (a.type === "remove_water" && a.ml) await app.addWater(-a.ml);
+          else if (a.type === "delete_meal" && a.desc) {
+            const meal = matchMeal(app.meals, a.desc);
+            if (meal) await app.deleteMeal(meal.id);
+          } else if (a.type === "update_meal" && a.desc) {
+            const meal = matchMeal(app.meals, a.desc) as (typeof app.meals)[number] | undefined;
+            if (meal)
+              await app.updateMeal({
+                ...meal,
+                kcal: a.kcal ?? meal.kcal,
+                p: a.p ?? meal.p,
+                c: a.c ?? meal.c,
+                f: a.f ?? meal.f,
+              });
+          } else if (a.type === "set_weight" && a.lb) await app.setWeight(a.lb);
+          else if (a.type === "set_goal_weight" && a.lb) await app.setWeightGoal(a.lb);
+          else if (a.type === "set_meta_kcal" && a.kcal) await app.saveProfile({ ...profile, metaKcal: a.kcal });
+          else if (a.type === "log_sleep" && a.minutos) await app.setSleep({ minutes: a.minutos, phases: sleep?.phases ?? null });
+          else if (a.type === "log_workout")
+            await app.setWorkout({
+              day: workout?.day ?? "Push",
+              done: true,
+              kcal: a.kcal ?? 300,
+              name: a.nombre ?? "Entrenamiento",
+              notes: workout?.notes ?? "",
             });
+          else if (a.type === "log_meal" && a.desc)
+            await app.addMeal({
+              time: (a.time as MealTime) || currentMealTime(),
+              desc: a.desc,
+              kcal: a.kcal ?? 0,
+              p: a.p ?? 0,
+              c: a.c ?? 0,
+              f: a.f ?? 0,
+            });
+        } else {
+          // ---- Acciones sobre OTRO día (directo a la base de datos) ----
+          if ((a.type === "add_water" || a.type === "remove_water") && a.ml) {
+            const actual = await db.waterFor(fecha);
+            const delta = a.type === "add_water" ? a.ml : -a.ml;
+            await db.setWater(fecha, Math.max(0, actual + delta));
+          } else if (a.type === "log_meal" && a.desc) {
+            await db.addMeal({
+              id: crypto.randomUUID(),
+              date: fecha,
+              time: (a.time as MealTime) || "Snack",
+              desc: a.desc,
+              kcal: a.kcal ?? 0,
+              p: a.p ?? 0,
+              c: a.c ?? 0,
+              f: a.f ?? 0,
+            });
+          } else if (a.type === "delete_meal" && a.desc) {
+            const meal = matchMeal(await db.mealsFor(fecha), a.desc);
+            if (meal) await db.deleteMeal(meal.id);
+          } else if (a.type === "update_meal" && a.desc) {
+            const lista = await db.mealsFor(fecha);
+            const meal = matchMeal(lista, a.desc) as (typeof lista)[number] | undefined;
+            if (meal)
+              await db.updateMeal({
+                ...meal,
+                kcal: a.kcal ?? meal.kcal,
+                p: a.p ?? meal.p,
+                c: a.c ?? meal.c,
+                f: a.f ?? meal.f,
+              });
+          } else if (a.type === "log_sleep" && a.minutos) {
+            await db.setSleep(fecha, { minutes: a.minutos, phases: null });
+          } else if (a.type === "log_workout") {
+            await db.setWorkout(fecha, {
+              day: (workout?.day ?? "Push") as RoutineDay,
+              done: true,
+              kcal: a.kcal ?? 300,
+              name: a.nombre ?? "Entrenamiento",
+              notes: "",
+            });
+          } else if (a.type === "set_weight" && a.lb) {
+            await db.addWeight({ date: fecha, lb: a.lb });
+          }
         }
-        else if (a.type === "set_weight" && a.lb) await app.setWeight(a.lb);
-        else if (a.type === "set_goal_weight" && a.lb) await app.setWeightGoal(a.lb);
-        else if (a.type === "set_meta_kcal" && a.kcal) await app.saveProfile({ ...profile, metaKcal: a.kcal });
-        else if (a.type === "log_sleep" && a.minutos) await app.setSleep({ minutes: a.minutos, phases: sleep?.phases ?? null });
-        else if (a.type === "log_workout")
-          await app.setWorkout({
-            day: workout?.day ?? "Push",
-            done: true,
-            kcal: a.kcal ?? 300,
-            name: a.nombre ?? "Entrenamiento",
-            notes: workout?.notes ?? "",
-          });
-        else if (a.type === "log_meal" && a.desc)
-          await app.addMeal({
-            time: (a.time as MealTime) || currentMealTime(),
-            desc: a.desc,
-            kcal: a.kcal ?? 0,
-            p: a.p ?? 0,
-            c: a.c ?? 0,
-            f: a.f ?? 0,
-          });
       } catch {
         // una acción fallida no debe romper el chat
       }
@@ -180,6 +230,8 @@ export default function Coach() {
         peso_actual_lb: profile.weight,
         rutina: routine,
         hora_local: new Date().toTimeString().slice(0, 5),
+        fecha_hoy: todayISO(),
+        dia_semana: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"][new Date().getDay()],
       };
       const res = await analyze<CoachResult>({ mode: "coach", text: clean, image, context });
       setMessages((prev) => [...prev, { role: "coach", text: res.reply }]);
@@ -240,6 +292,33 @@ export default function Coach() {
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#c7f27a", boxShadow: "0 0 6px #c7f27a" }} />
             <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(244,243,238,.55)" }}>Con tus datos de hoy en tiempo real</div>
           </div>
+        </div>
+        <div
+          onClick={() => {
+            const greeting: ChatMessage = {
+              role: "coach",
+              text: `¡Hola${firstName ? " " + firstName : ""}! 👋 Chat limpio. ¿En qué te ayudo?`,
+            };
+            setMessages([greeting]);
+            try {
+              localStorage.removeItem(CHAT_KEY);
+            } catch {
+              // sin acceso a storage: no pasa nada
+            }
+            showToast("Chat limpiado");
+          }}
+          style={{
+            flex: "none",
+            fontSize: 11,
+            fontWeight: 700,
+            color: "rgba(244,243,238,.55)",
+            border: "1px solid rgba(255,255,255,.15)",
+            borderRadius: 100,
+            padding: "6px 12px",
+            cursor: "pointer",
+          }}
+        >
+          🗑 Limpiar
         </div>
       </div>
 

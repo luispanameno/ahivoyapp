@@ -64,6 +64,29 @@ export default function Perfil() {
   const [range, setRange] = useState<"days" | "weeks">("days");
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [editorSrc, setEditorSrc] = useState<string | null>(null);
+
+  // Borrador de datos personales: se guardan solo al tocar "Guardar"
+  const [draft, setDraft] = useState({
+    age: String(profile.age),
+    height: String(profile.height),
+    weight: String(profile.weight),
+    weightGoal: String(profile.weightGoal),
+  });
+  const dirty =
+    Number(draft.age) !== profile.age ||
+    Number(draft.height) !== profile.height ||
+    Number(draft.weight) !== profile.weight ||
+    Number(draft.weightGoal) !== profile.weightGoal;
+
+  const saveDatos = async () => {
+    const age = Number(draft.age) || profile.age;
+    const height = Number(draft.height) || profile.height;
+    const weight = Number(draft.weight) || profile.weight;
+    const weightGoal = Number(draft.weightGoal) || profile.weightGoal;
+    await saveProfile({ ...profile, age, height, weightGoal });
+    if (weight !== profile.weight && weight > 0) await app.setWeight(weight);
+    showToast("Datos guardados ✓");
+  };
   const [healthShot, setHealthShot] = useState<string | null>(null);
   const [healthBusy, setHealthBusy] = useState(false);
   const [healthError, setHealthError] = useState<string | null>(null);
@@ -173,21 +196,6 @@ export default function Perfil() {
     }
   };
 
-  const invite = async () => {
-    const url = window.location.origin;
-    const text = `Te invito a AHIVOYAPP 🥗 crea tu cuenta y lleva tus calorías con IA: ${url}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "AHIVOYAPP", text, url });
-        return;
-      } catch {
-        // usuario canceló
-      }
-    } else {
-      await navigator.clipboard.writeText(text);
-      showToast("Link copiado — pégalo donde quieras");
-    }
-  };
 
   return (
     <div style={{ boxSizing: "border-box", padding: "24px 20px 0" }}>
@@ -299,32 +307,64 @@ export default function Perfil() {
       </div>
 
       {/* Datos personales */}
-      <div style={{ ...sectionTitle, marginTop: 22 }}>DATOS PERSONALES</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 22, marginBottom: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em" }}>DATOS PERSONALES</div>
+        <div
+          onClick={saveDatos}
+          style={{
+            fontSize: 11,
+            fontWeight: 800,
+            padding: "6px 14px",
+            borderRadius: 100,
+            cursor: "pointer",
+            background: dirty ? "#c7f27a" : "rgba(255,255,255,.08)",
+            color: dirty ? "#10240a" : "rgba(244,243,238,.5)",
+            boxShadow: dirty ? "0 0 12px rgba(199,242,122,.5)" : "none",
+          }}
+        >
+          Guardar
+        </div>
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div style={cardStyle}>
           <div style={labelStyle}>EDAD</div>
-          <input type="number" inputMode="numeric" defaultValue={profile.age} onBlur={setNumField("age")} style={numInput} />
+          <input
+            type="number"
+            inputMode="numeric"
+            value={draft.age}
+            onChange={(e) => setDraft({ ...draft, age: e.target.value })}
+            style={numInput}
+          />
         </div>
         <div style={cardStyle}>
           <div style={labelStyle}>ALTURA (cm)</div>
-          <input type="number" inputMode="numeric" defaultValue={profile.height} onBlur={setNumField("height")} style={numInput} />
+          <input
+            type="number"
+            inputMode="numeric"
+            value={draft.height}
+            onChange={(e) => setDraft({ ...draft, height: e.target.value })}
+            style={numInput}
+          />
         </div>
         <div style={cardStyle}>
           <div style={labelStyle}>PESO ACTUAL (lb)</div>
           <input
             type="number"
             inputMode="decimal"
-            defaultValue={profile.weight}
-            onBlur={(e) => {
-              const n = Number(e.target.value);
-              if (!Number.isNaN(n) && n > 0) app.setWeight(n);
-            }}
+            value={draft.weight}
+            onChange={(e) => setDraft({ ...draft, weight: e.target.value })}
             style={numInput}
           />
         </div>
         <div style={cardStyle}>
           <div style={labelStyle}>PESO META (lb)</div>
-          <input type="number" inputMode="decimal" defaultValue={profile.weightGoal} onBlur={setNumField("weightGoal")} style={numInput} />
+          <input
+            type="number"
+            inputMode="decimal"
+            value={draft.weightGoal}
+            onChange={(e) => setDraft({ ...draft, weightGoal: e.target.value })}
+            style={numInput}
+          />
         </div>
       </div>
 
@@ -547,25 +587,21 @@ export default function Perfil() {
         Funciona con cualquier marca (Zepp Life, Renpho, etc.)
       </div>
 
-      {/* Invitar familia */}
-      <div style={{ marginTop: 20, background: "linear-gradient(135deg,#c7f27a,#8fd15a)", borderRadius: 16, padding: 16, color: "#10240a" }}>
-        <div style={{ fontSize: 13, fontWeight: 800 }}>Invita a familia y amigos a usar la app</div>
-        <div style={{ fontSize: 11.5, marginTop: 4, opacity: 0.8, lineHeight: 1.4 }}>
-          Envíales un link para que se creen su propia cuenta dentro de la app — cada quien pone su edad, peso, metas de
-          calorías/macros y su propia rutina, sin afectar la tuya.
-        </div>
-        <div
-          onClick={invite}
-          style={{ marginTop: 10, background: "#10240a", color: "#c7f27a", display: "inline-block", padding: "8px 14px", borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
-        >
-          Compartir link de invitación
-        </div>
-      </div>
-
+      {/* Cerrar sesión */}
       {userEmail && (
         <div
           onClick={signOut}
-          style={{ textAlign: "center", marginTop: 18, fontSize: 12, fontWeight: 700, color: "rgba(244,243,238,.5)", cursor: "pointer" }}
+          style={{
+            marginTop: 24,
+            textAlign: "center",
+            padding: 14,
+            borderRadius: 16,
+            fontWeight: 800,
+            fontSize: 13,
+            cursor: "pointer",
+            color: "oklch(72% 0.18 25)",
+            border: "1px solid oklch(72% 0.18 25 / 0.4)",
+          }}
         >
           Cerrar sesión
         </div>

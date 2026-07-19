@@ -4,10 +4,21 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import { useEffect } from "react";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export default function Welcome() {
   const router = useRouter();
+
+  // Si ya hay sesión, directo al tablero — no se pide login otra vez.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    getSupabase()!
+      .auth.getSession()
+      .then(({ data }) => {
+        if (data.session) router.replace("/hoy");
+      });
+  }, [router]);
 
   const start = () => {
     router.push(isSupabaseConfigured ? "/login" : "/hoy");
@@ -73,7 +84,7 @@ export default function Welcome() {
           }}
         >
           <Image
-            src="/assets/ahivoyapp-logo-crop.png"
+            src="/assets/ahivoyapp-logo-transparente.png"
             alt="AHIVOYAPP"
             width={172}
             height={172}

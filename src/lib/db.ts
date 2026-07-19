@@ -193,6 +193,37 @@ function loadLocal(date: string): AllData {
   };
 }
 
+// ---- Helpers para operar sobre CUALQUIER día (los usa el Coach IA) ----
+
+export async function mealsFor(date: string): Promise<Meal[]> {
+  const sb = getSupabase();
+  const uid = await userId();
+  if (sb && uid) {
+    const { data } = await sb.from("meals").select("*").eq("user_id", uid).eq("fecha", date);
+    return (data ?? []).map((m) => ({
+      id: m.id,
+      date: m.fecha,
+      time: m.tiempo,
+      desc: m.descripcion,
+      kcal: m.kcal,
+      p: m.proteina,
+      c: m.carbos,
+      f: m.grasa,
+    }));
+  }
+  return lsGet<Meal[]>("meals", []).filter((m) => m.date === date);
+}
+
+export async function waterFor(date: string): Promise<number> {
+  const sb = getSupabase();
+  const uid = await userId();
+  if (sb && uid) {
+    const { data } = await sb.from("water_logs").select("ml").eq("user_id", uid).eq("fecha", date).maybeSingle();
+    return data?.ml ?? 0;
+  }
+  return lsGet<Record<string, number>>("water", {})[date] ?? 0;
+}
+
 export async function saveProfile(profile: Profile) {
   const sb = getSupabase();
   const uid = await userId();
