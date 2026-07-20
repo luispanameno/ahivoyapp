@@ -4,6 +4,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Pressable from "@/components/Pressable";
 import { useApp } from "@/lib/store";
 import { Routine, RoutineDay } from "@/lib/types";
 
@@ -118,7 +119,7 @@ export default function RutinaEdit() {
           </div>
         ))}
       </div>
-      <div
+      <Pressable
         onClick={add}
         style={{
           marginTop: 10,
@@ -133,10 +134,10 @@ export default function RutinaEdit() {
         }}
       >
         + Agregar ejercicio
-      </div>
+      </Pressable>
 
       <div style={{ flex: 1 }} />
-      <div
+      <Pressable
         onClick={save}
         style={{
           background: "#c7f27a",
@@ -152,7 +153,7 @@ export default function RutinaEdit() {
         }}
       >
         Guardar rutina
-      </div>
+      </Pressable>
     </div>
   );
 }

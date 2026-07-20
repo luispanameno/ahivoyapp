@@ -4,6 +4,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import Pressable from "@/components/Pressable";
 import { analyze, fileToDataURL, FoodResult } from "@/lib/analyze";
 import { useApp, currentMealTime } from "@/lib/store";
 import { MealTime } from "@/lib/types";
@@ -136,13 +137,13 @@ export default function Escanear() {
           )}
         </div>
         {/* Botón blanco = cámara directa */}
-        <div
+        <Pressable
           onClick={() => cameraRef.current?.click()}
+          tapScale={0.9}
           style={{
             position: "absolute",
             bottom: 56,
-            left: "50%",
-            transform: "translateX(-50%)",
+            left: "calc(50% - 36px)",
             width: 72,
             height: 72,
             borderRadius: "50%",
@@ -153,10 +154,11 @@ export default function Escanear() {
             alignItems: "center",
             justifyContent: "center",
             fontSize: 26,
+            boxSizing: "border-box",
           }}
         >
           📷
-        </div>
+        </Pressable>
         <div
           style={{
             position: "absolute",
@@ -251,7 +253,7 @@ export default function Escanear() {
         />
 
         <div style={{ flex: 1 }} />
-        <div
+        <Pressable
           onClick={() => {
             if (clarifyText.trim() && photo) {
               runAnalysis(photo, clarifyText.trim());
@@ -273,7 +275,7 @@ export default function Escanear() {
           }}
         >
           Continuar
-        </div>
+        </Pressable>
       </div>
     );
   }
@@ -346,7 +348,7 @@ export default function Escanear() {
       </div>
 
       <div style={{ flex: 1 }} />
-      <div
+      <Pressable
         onClick={save}
         style={{
           background: "#c7f27a",
@@ -362,7 +364,7 @@ export default function Escanear() {
         }}
       >
         Agregar al tablero
-      </div>
+      </Pressable>
     </div>
   );
 }

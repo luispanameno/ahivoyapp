@@ -6,6 +6,7 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import ImageUploadZone, { ActionButton, StatusBadge } from "@/components/ImageUploadZone";
+import Pressable from "@/components/Pressable";
 import AvatarEditor from "@/components/AvatarEditor";
 import { analyze, fileToDataURL } from "@/lib/analyze";
 import { useApp } from "@/lib/store";
@@ -369,12 +370,13 @@ export default function Perfil() {
       {/* Datos personales */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 22, marginBottom: 8 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em" }}>DATOS PERSONALES</div>
-        <div
+        <Pressable
           onClick={saveDatos}
+          tapScale={0.9}
           style={{
             fontSize: 11,
             fontWeight: 800,
-            padding: "6px 14px",
+            padding: "8px 16px",
             borderRadius: 100,
             cursor: "pointer",
             background: dirty ? "#c7f27a" : "rgba(255,255,255,.08)",
@@ -383,7 +385,7 @@ export default function Perfil() {
           }}
         >
           Guardar
-        </div>
+        </Pressable>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div style={cardStyle}>
@@ -700,7 +702,7 @@ export default function Perfil() {
 
       {/* Cerrar sesión */}
       {userEmail && (
-        <div
+        <Pressable
           onClick={signOut}
           style={{
             marginTop: 24,
@@ -715,7 +717,7 @@ export default function Perfil() {
           }}
         >
           Cerrar sesión
-        </div>
+        </Pressable>
       )}
 
       <div style={{ textAlign: "center", marginTop: 24 }}>

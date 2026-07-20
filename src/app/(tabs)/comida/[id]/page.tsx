@@ -4,6 +4,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
+import Pressable from "@/components/Pressable";
 import { useApp } from "@/lib/store";
 
 const fieldStyle: React.CSSProperties = {
@@ -77,7 +78,7 @@ export default function EditarComida() {
       </div>
 
       <div style={{ flex: 1 }} />
-      <div
+      <Pressable
         onClick={save}
         style={{
           background: "#c7f27a",
@@ -93,8 +94,8 @@ export default function EditarComida() {
         }}
       >
         Guardar cambios
-      </div>
-      <div
+      </Pressable>
+      <Pressable
         onClick={remove}
         style={{
           textAlign: "center",
@@ -109,7 +110,7 @@ export default function EditarComida() {
         }}
       >
         Eliminar registro
-      </div>
+      </Pressable>
     </div>
   );
 }

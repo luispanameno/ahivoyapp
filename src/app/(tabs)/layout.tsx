@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { AnimatePresence, motion } from "motion/react";
 import { AppProvider, useApp } from "@/lib/store";
 import TabBar from "@/components/TabBar";
 import Toast from "@/components/Toast";
@@ -43,7 +44,18 @@ function Shell({ children }: { children: React.ReactNode }) {
           boxSizing: "border-box",
         }}
       >
-        {children}
+        {/* Transición suave entre pantallas: desvanecimiento sin cortes bruscos */}
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.div
+            key={pathname}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
       </div>
       {!hideNav && <TabBar />}
     </>

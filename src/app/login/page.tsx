@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import Pressable from "@/components/Pressable";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
 const inputStyle: React.CSSProperties = {
@@ -153,7 +154,7 @@ export default function Login() {
       )}
       {info && <div style={{ marginTop: 12, fontSize: 12, fontWeight: 600, color: "#c7f27a" }}>{info}</div>}
 
-      <div
+      <Pressable
         onClick={submit}
         style={{
           background: "linear-gradient(135deg,#a6f06a,#39c9a3)",
@@ -170,7 +171,7 @@ export default function Login() {
         }}
       >
         {busy ? "Un momento…" : mode === "signin" ? "Iniciar sesión" : "Crear cuenta"}
-      </div>
+      </Pressable>
 
       <div
         onClick={() => {

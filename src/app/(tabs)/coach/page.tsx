@@ -3,6 +3,7 @@
 // Coach IA: chat con contexto real del día; foto para analizar; acciones por texto.
 
 import { useEffect, useRef, useState } from "react";
+import Pressable from "@/components/Pressable";
 import { analyze, CoachAction, CoachResult, fileToDataURL } from "@/lib/analyze";
 import * as db from "@/lib/db";
 import { useApp, currentMealTime } from "@/lib/store";
@@ -412,7 +413,7 @@ export default function Coach() {
       {/* Chips rápidos */}
       <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "6px 20px 8px", flex: "none" }}>
         {QUICK_PROMPTS.map((p) => (
-          <div
+          <Pressable
             key={p.text}
             onClick={() => send(p.send)}
             style={{
@@ -429,7 +430,7 @@ export default function Coach() {
             }}
           >
             {p.text}
-          </div>
+          </Pressable>
         ))}
       </div>
 
@@ -543,8 +544,9 @@ export default function Coach() {
             boxSizing: "border-box",
           }}
         />
-        <div
+        <Pressable
           onClick={() => send(input)}
+          tapScale={0.9}
           style={{
             width: 46,
             height: 46,
@@ -559,7 +561,7 @@ export default function Coach() {
           }}
         >
           <div style={{ width: 0, height: 0, borderTop: "7px solid transparent", borderBottom: "7px solid transparent", borderLeft: "12px solid #10240a", marginLeft: 3 }} />
-        </div>
+        </Pressable>
       </div>
     </div>
   );

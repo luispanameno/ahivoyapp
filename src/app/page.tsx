@@ -5,6 +5,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import Pressable from "@/components/Pressable";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export default function Welcome() {
@@ -121,7 +122,7 @@ export default function Welcome() {
         </div>
       </div>
 
-      <div
+      <Pressable
         onClick={start}
         style={{
           background: "linear-gradient(135deg,#a6f06a,#39c9a3)",
@@ -136,7 +137,7 @@ export default function Welcome() {
         }}
       >
         Empezar
-      </div>
+      </Pressable>
       <div
         onClick={start}
         style={{

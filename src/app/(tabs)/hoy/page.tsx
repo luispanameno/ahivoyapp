@@ -4,6 +4,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import Pressable from "@/components/Pressable";
 import { useApp } from "@/lib/store";
 
 const DIAS = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
@@ -273,11 +274,12 @@ export default function Hoy() {
               className="font-sora"
             />
             <div style={{ fontSize: 11, color: "rgba(244,243,238,.4)", fontWeight: 600 }}>ml</div>
-            <div
+            <Pressable
               onClick={removeWaterNow}
+              tapScale={0.9}
               style={{
-                width: 30,
-                height: 30,
+                width: 34,
+                height: 34,
                 borderRadius: "50%",
                 background: "rgba(255,255,255,.08)",
                 display: "flex",
@@ -290,12 +292,13 @@ export default function Hoy() {
               }}
             >
               −
-            </div>
-            <div
+            </Pressable>
+            <Pressable
               onClick={addWaterNow}
+              tapScale={0.9}
               style={{
-                width: 30,
-                height: 30,
+                width: 34,
+                height: 34,
                 borderRadius: "50%",
                 background: "rgba(199,242,122,.15)",
                 display: "flex",
@@ -308,7 +311,7 @@ export default function Hoy() {
               }}
             >
               +
-            </div>
+            </Pressable>
           </div>
         </div>
       </div>

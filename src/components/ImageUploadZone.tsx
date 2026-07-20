@@ -104,7 +104,7 @@ export function ActionButton({
 }) {
   return (
     <motion.div
-      whileTap={{ scale: 0.98 }}
+      whileTap={{ scale: 0.95 }}
       whileHover={{ scale: 1.02 }}
       transition={spring}
       onClick={onClick}
@@ -113,6 +113,11 @@ export function ActionButton({
         color: "#10240a",
         textAlign: "center",
         padding: 13,
+        minHeight: 44,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        boxSizing: "border-box",
         borderRadius: 14,
         fontWeight: 800,
         fontSize: 12.5,
