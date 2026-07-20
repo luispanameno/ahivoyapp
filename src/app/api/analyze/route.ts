@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI, Type } from "@google/genai";
 
-export const maxDuration = 60;
+export const maxDuration = 90;
 
 type Mode = "food" | "scale" | "activity" | "sleep" | "workout" | "coach";
 
@@ -18,21 +18,45 @@ Responde SOLO con JSON válido con esta forma exacta:
 Si el usuario ya aclaró algo, usa esa aclaración y pon "pregunta": null.
 Si la imagen NO es comida, responde {"descripcion":"No parece comida","kcal":0,"proteina":0,"carbos":0,"grasa":0,"gramos":0,"pregunta":null}.`,
 
-  scale: `Lee esta captura de una app de báscula inteligente (Zepp Life, Renpho, Samsung, etc.), en cualquier idioma.
-Responde SOLO con JSON válido:
-{"peso_lb": number (peso en libras; si la captura está en kg, conviértelo: kg*2.2046),
- "score": number|null, "complexion": string|null (ej. "Robusto","Normal"),
- "imc": number|null, "grasa_pct": number|null, "agua_pct": number|null,
- "proteina_pct": number|null, "bmr": number|null (kcal),
- "grasa_visceral": number|null, "musculo_lb": number|null, "masa_osea_lb": number|null}
-Convierte masas a libras si vienen en kg. Usa null para lo que no aparezca.`,
+  scale: `Eres un lector OCR EXHAUSTIVO de apps de báscula inteligente (Zepp Life, Renpho, Samsung Health, Fitdays, etc.), en cualquier idioma. La imagen puede ser una captura de pantalla O una FOTO de la pantalla de otro celular (con reflejos o ángulo): léela igual, con máximo esfuerzo.
 
-  activity: `Lee esta captura de una app de salud/reloj (Samsung Health, Apple Salud, Garmin, etc.), en cualquier idioma.
+INSTRUCCIONES OBLIGATORIAS:
+1. Recorre la imagen COMPLETA fila por fila, de arriba a abajo, incluyendo filas parcialmente visibles o con poco contraste.
+2. Extrae TODOS los campos que aparezcan. Solo usa null si el campo de verdad NO está visible en ninguna parte de la imagen. Dejar en null un valor visible es un ERROR GRAVE.
+3. Busca estos campos con sus sinónimos habituales:
+   - peso_lb: "Peso"/"Weight" (si está en kg → kg×2.2046; en libras déjalo igual)
+   - score: "Puntuación corporal"/"Body score" → ENTERO redondeado
+   - complexion: "Complexión física"/"Body type" (ej. "Robusto", "Normal", "Delgado")
+   - imc: "IMC"/"BMI"
+   - grasa_pct: "Grasa corporal"/"Body fat" (%)
+   - agua_pct: "Nivel de agua"/"Agua corporal"/"Body water" (%)
+   - proteina_pct: "Proteínas"/"Protein" (%)
+   - bmr: "Metabolismo basal"/"BMR" (kcal, entero)
+   - grasa_visceral: "Grasa visceral"/"Visceral fat" (número pequeño, sin unidad)
+   - musculo_lb: "Músculo"/"Masa muscular"/"Muscle" (si está en kg → ×2.2046)
+   - masa_osea_lb: "Masa ósea"/"Bone mass" (si está en kg → ×2.2046)
+4. Los porcentajes van como número (44.5, no "44.5%"). Redondea a 1 decimal; score y bmr a entero.
+5. Ignora textos de la app como "5 elementos no alcanzaron los objetivos", etiquetas de estado ("Alto", "Normal") y la fecha.
+
 Responde SOLO con JSON válido:
-{"pasos": number, "min_activos": number (minutos de actividad), "kcal_activas": number (calorías de actividad/ejercicio),
- "kcal_totales": number (calorías totales quemadas del día; si no aparece, estima kcal_activas + 1600),
- "distancia_km": number (si viene en millas: mi*1.609)}
-Usa 0 para lo que no aparezca (excepto kcal_totales, ver regla).`,
+{"peso_lb": number, "score": number|null, "complexion": string|null, "imc": number|null,
+ "grasa_pct": number|null, "agua_pct": number|null, "proteina_pct": number|null,
+ "bmr": number|null, "grasa_visceral": number|null, "musculo_lb": number|null, "masa_osea_lb": number|null}`,
+
+  activity: `Eres un lector OCR EXHAUSTIVO de apps de salud/reloj (Samsung Health, Apple Salud/Fitness, Garmin, Zepp, Fitbit, etc.), en cualquier idioma. La imagen puede ser captura de pantalla o FOTO de otra pantalla: léela igual.
+
+INSTRUCCIONES OBLIGATORIAS:
+1. Recorre la imagen COMPLETA, incluyendo anillos, tarjetas y filas pequeñas. NO dejes campos en 0 si el valor está visible en cualquier parte.
+2. Campos y sinónimos:
+   - pasos: "Pasos"/"Steps" (ej. "9,188" → 9188)
+   - min_activos: "Tiempo de actividad"/"Minutos activos"/"Exercise minutes" (si aparece en horas: h×60+min)
+   - kcal_activas: "Calorías de actividad"/"Active calories"/"Kcal activas"/"Energía activa"
+   - kcal_totales: "Calorías totales"/"Total quemadas"/"Total burned" — si NO aparece, estima kcal_activas + 1600
+   - distancia_km: "Distancia" (si está en millas → mi×1.609; redondea a 2 decimales)
+3. Números con separador de miles: "1,022" = 1022.
+
+Responde SOLO con JSON válido:
+{"pasos": number, "min_activos": number, "kcal_activas": number, "kcal_totales": number, "distancia_km": number}`,
 
   sleep: `Lee esta captura de sueño de un reloj/app de salud, en cualquier idioma.
 Responde SOLO con JSON válido:
@@ -74,17 +98,31 @@ const SCHEMAS: Record<Mode, object> = {
       musculo_lb: NUM_NULL,
       masa_osea_lb: NUM_NULL,
     },
-    required: ["peso_lb"],
+    // TODOS los campos requeridos (aunque acepten null): con solo peso_lb
+    // requerido, el modelo respondía el mínimo y dejaba el resto vacío.
+    required: [
+      "peso_lb",
+      "score",
+      "complexion",
+      "imc",
+      "grasa_pct",
+      "agua_pct",
+      "proteina_pct",
+      "bmr",
+      "grasa_visceral",
+      "musculo_lb",
+      "masa_osea_lb",
+    ],
   },
   activity: {
     type: Type.OBJECT,
     properties: { pasos: NUM, min_activos: NUM, kcal_activas: NUM, kcal_totales: NUM, distancia_km: NUM },
-    required: ["pasos", "kcal_activas", "kcal_totales"],
+    required: ["pasos", "min_activos", "kcal_activas", "kcal_totales", "distancia_km"],
   },
   sleep: {
     type: Type.OBJECT,
     properties: { minutos: NUM, profundo_pct: NUM_NULL, ligero_pct: NUM_NULL, rem_pct: NUM_NULL, despierto_pct: NUM_NULL },
-    required: ["minutos"],
+    required: ["minutos", "profundo_pct", "ligero_pct", "rem_pct", "despierto_pct"],
   },
   workout: {
     type: Type.OBJECT,
@@ -113,6 +151,8 @@ const SCHEMAS: Record<Mode, object> = {
                 "log_meal",
                 "delete_meal",
                 "update_meal",
+                "set_macros",
+                "set_body_comp",
               ],
             },
             ml: NUM,
@@ -120,6 +160,17 @@ const SCHEMAS: Record<Mode, object> = {
             kcal: NUM,
             minutos: NUM,
             nombre: STR,
+            peso_lb: NUM,
+            score: NUM,
+            complexion: STR,
+            imc: NUM,
+            grasa_pct: NUM,
+            agua_pct: NUM,
+            proteina_pct: NUM,
+            bmr: NUM,
+            grasa_visceral: NUM,
+            musculo_lb: NUM,
+            masa_osea_lb: NUM,
             // OJO: sin enum, los modelos interpretan "time" como hora de
             // reloj y el decodificador entra en bucle.
             time: { type: Type.STRING, enum: ["Desayuno", "Almuerzo", "Cena", "Snack"] },
@@ -163,7 +214,9 @@ Responde SOLO con JSON válido:
    {"type":"log_sleep","minutos":number} |
    {"type":"log_meal","time":"Desayuno"|"Almuerzo"|"Cena"|"Snack","desc":string,"kcal":number,"p":number,"c":number,"f":number} |
    {"type":"delete_meal","desc":string} |
-   {"type":"update_meal","desc":string,"kcal":number,"p":number,"c":number,"f":number}
+   {"type":"update_meal","desc":string,"kcal":number,"p":number,"c":number,"f":number} |
+   {"type":"set_macros","kcal":number,"p":number,"c":number,"f":number} |
+   {"type":"set_body_comp","peso_lb":number,"score":number,"complexion":string,"imc":number,"grasa_pct":number,"agua_pct":number,"proteina_pct":number,"bmr":number,"grasa_visceral":number,"musculo_lb":number,"masa_osea_lb":number}
  ]}
 "actions" va vacío [] si el usuario solo pregunta. Cuando registres/borres/modifiques algo, confírmalo en "reply" con los números.
 En log_meal incluye SIEMPRE los campos desc, kcal, p, c y f con tus estimaciones — NUNCA los omitas. En add_water/remove_water incluye siempre ml.
@@ -172,11 +225,21 @@ Elige "time" según la hora local del contexto si el usuario no la dice.
 
 DÍAS PASADOS: también puedes registrar/borrar/corregir datos de OTROS días. Si el usuario menciona otro día ("ayer", "anoche", "el viernes"), agrega a la acción el campo "fecha":"YYYY-MM-DD" calculado a partir de fecha_hoy y dia_semana del contexto (ej. "ayer" = fecha_hoy menos 1 día). "Anoche dormí 6 horas" o "anoche tomé 500ml" se refieren a AYER si es de madrugada/mañana. Para comidas de otros días usa la descripción que dé el usuario. Sin mención de otro día, NO incluyas "fecha".
 
-META CALÓRICA PERSONALIZADA (cálculo biomédico): el contexto trae "perfil" (edad, altura_cm, peso_lb, peso_meta_lb, sexo). Cuando el usuario pida calcular/revisar su meta, o cuando notes que su meta actual (metas.kcal) no encaja con su perfil, calcula:
+META CALÓRICA PERSONALIZADA (cálculo biomédico): el contexto trae "perfil" (edad, altura_cm, peso_lb, peso_meta_lb, sexo, nivel_actividad). Cuando el usuario pida calcular/revisar su meta, o cuando notes que su meta actual (metas.kcal) no encaja con su perfil, calcula:
 1) BMR con Mifflin-St Jeor: peso_kg = peso_lb × 0.4536; hombre: 10×kg + 6.25×altura_cm − 5×edad + 5; mujer: igual pero − 161.
-2) TDEE = BMR × factor de actividad (1.2 sedentario, 1.35 ligero, 1.5 moderado — usa 1.35 si no sabes más).
+2) TDEE = BMR × factor según nivel_actividad del perfil: sedentario ×1.2, ligero ×1.375, activo ×1.55.
 3) Meta = TDEE − déficit saludable de 400-500 kcal si quiere bajar de peso (peso_meta_lb < peso_lb). NUNCA propongas menos de 1500 kcal (hombre) o 1200 kcal (mujer).
 Muestra el cálculo en corto (BMR → TDEE → meta) y aplica la nueva meta con set_meta_kcal SOLO si el usuario acepta o lo pidió explícitamente.
+
+FOTO DE BÁSCULA EN EL CHAT (flujo OBLIGATORIO): si la imagen que envía el usuario es una captura o foto de una app de báscula (Zepp Life, Renpho, etc. — se reconoce por peso, IMC, grasa corporal, puntuación…):
+1) EXTRAE todos los datos visibles (peso, puntuación entera, complexión, IMC, grasa %, agua %, proteína %, metabolismo basal, grasa visceral, músculo, masa ósea; convierte kg→lb ×2.2046). No dejes campos visibles sin leer.
+2) Emite estas acciones de inmediato: set_weight con el peso, y set_body_comp con TODOS los campos extraídos (los no visibles ponlos en 0 o cadena vacía).
+3) Recalcula: BMR = el "metabolismo basal" de la captura si aparece, si no Mifflin-St Jeor. TDEE = BMR × factor de nivel_actividad. Nueva meta kcal = TDEE − 400-500 (respetando mínimos 1500 H / 1200 M). Macros óptimas para su meta: proteína = 0.8 × peso_meta_lb (en g), grasa = 27% de las kcal ÷ 9 (en g), carbos = kcal restantes ÷ 4 (en g). Redondea a enteros.
+4) NO apliques todavía set_macros. Tu "reply" DEBE terminar EXACTAMENTE con esta frase (rellenando la lista):
+"Veo que has subido una foto en la báscula con estos datos. Te recomiendo cambiar tus niveles de ingesta diaria a esto: 🔥 X kcal · 🥩 Xg proteína · 🍚 Xg carbos · 🥑 Xg grasa. ¿Los deseas cambiar o deseas mantenerlos?"
+5) Si en el SIGUIENTE mensaje el usuario acepta ("sí", "cámbialos", "dale"), emite set_macros con esos números (kcal, p, c, f) y confírmalo. Si los quiere mantener, no cambies nada.
+
+FOTO DE RELOJ/ACTIVIDAD EN EL CHAT: si la imagen es de actividad (pasos, calorías activas), extrae las calorías activas y regístralas con log_workout (nombre "Actividad del reloj") explicando cómo sube su presupuesto del día.
 
 EJERCICIO — MATEMÁTICA ESTRICTA: si el usuario reporta ejercicio:
 - Si dice las calorías exactas (de su reloj), usa ESE número en log_workout.
@@ -295,14 +358,17 @@ export async function POST(req: NextRequest) {
 
   const systemInstruction = mode === "coach" ? COACH_PROMPT : PROMPTS[mode];
 
-  // Cadena de modelos: si uno agota su cuota gratuita (429) o no está
-  // disponible (404), se intenta el siguiente.
+  // Cadena de modelos: si uno agota su cuota gratuita (429), no está
+  // disponible (404) o se cuelga (timeout), se intenta el siguiente.
+  // gemini-3-flash-preview probado: lee capturas completas en ~4s.
+  // (gemini-3.5-flash se cuelga con imágenes; los "lite" dejan campos vacíos.)
   const modelos = process.env.GEMINI_MODEL
     ? [process.env.GEMINI_MODEL]
-    : ["gemini-3.1-flash-lite", "gemini-3-flash-preview", "gemini-3.5-flash"];
+    : ["gemini-3-flash-preview", "gemini-3.5-flash", "gemini-3.1-flash-lite"];
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    // timeout 25s por modelo: un modelo lento/colgado pasa al siguiente
+    const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: 25000 } });
     let lastError: unknown = null;
     for (const model of modelos) {
       try {
@@ -316,7 +382,9 @@ export async function POST(req: NextRequest) {
             // entren en bucles de repetición (array anidado); mejor solo prompt.
             ...(mode === "coach" ? {} : { responseSchema: SCHEMAS[mode] }),
             temperature: 0.4,
-            maxOutputTokens: 1500,
+            // El "pensamiento" interno de Gemini 3 cuenta contra este límite;
+            // el coach necesita margen para no truncar reply+actions.
+            maxOutputTokens: mode === "coach" ? 4000 : 2000,
           },
         });
         const raw = response.text ?? "";
@@ -351,7 +419,13 @@ export async function POST(req: NextRequest) {
           m.includes("404") ||
           m.includes("UNAVAILABLE") ||
           m.includes("503") ||
-          m.includes("high demand");
+          m.includes("high demand") ||
+          m.includes("timeout") ||
+          m.includes("Timeout") ||
+          m.includes("fetch failed") ||
+          m.includes("aborted") ||
+          m.includes("504") ||
+          m.includes("DEADLINE");
         if (!agotado) throw err;
         console.warn(`Modelo ${model} no disponible/agotado; probando siguiente…`);
       }

@@ -10,7 +10,14 @@ import Pressable from "@/components/Pressable";
 import AvatarEditor from "@/components/AvatarEditor";
 import { analyze, fileToDataURL } from "@/lib/analyze";
 import { useApp } from "@/lib/store";
-import { WeightEntry, todayISO } from "@/lib/types";
+import { ACTIVITY_FACTORS, ActivityLevel, WeightEntry, todayISO } from "@/lib/types";
+import InfoModal from "@/components/InfoModal";
+
+const ACTIVITY_OPTIONS: { value: ActivityLevel; label: string; desc: string }[] = [
+  { value: "sedentario", label: "Sedentario", desc: "No haces nada de ejercicio" },
+  { value: "ligero", label: "Ligero", desc: "Por tu trabajo o rutina te mantienes caminando / en movimiento" },
+  { value: "activo", label: "Activo", desc: "Haces ejercicio 3 días a la semana o más" },
+];
 
 interface ScaleResult {
   peso_lb: number;
@@ -51,6 +58,11 @@ const sectionTitle: React.CSSProperties = {
 function mifflinBMR(weightLb: number, heightCm: number, age: number, sex: "M" | "F"): number {
   const kg = weightLb * 0.4536;
   return Math.round(10 * kg + 6.25 * heightCm - 5 * age + (sex === "F" ? -161 : 5));
+}
+
+// Redondeo a 1 decimal para mostrar (evita 55.000000000000014)
+function r1(n: number): number {
+  return Math.round(n * 10) / 10;
 }
 
 function weeklySeries(weights: WeightEntry[]): { labels: string[]; values: number[] } {
@@ -162,7 +174,8 @@ export default function Perfil() {
   };
 
   const bmr = bodyComp?.bmr || mifflinBMR(profile.weight, profile.height, profile.age, profile.sex);
-  const tdee = Math.round(bmr * 1.35);
+  const tdee = Math.round(bmr * ACTIVITY_FACTORS[profile.activityLevel]);
+  const [infoModal, setInfoModal] = useState<"bmr" | "tdee" | null>(null);
 
   // Serie de peso
   const daySeries = {
@@ -459,16 +472,112 @@ export default function Perfil() {
         </div>
       </div>
 
+      {/* Nivel de actividad diaria (para el TDEE) */}
+      <div style={sectionTitle}>NIVEL DE ACTIVIDAD DIARIA</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {ACTIVITY_OPTIONS.map((opt) => {
+          const active = profile.activityLevel === opt.value;
+          return (
+            <Pressable
+              key={opt.value}
+              onClick={() => saveProfile({ ...profile, activityLevel: opt.value })}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                background: active ? "rgba(199,242,122,.12)" : "#1b1e21",
+                border: active ? "1px solid rgba(199,242,122,.45)" : "1px solid rgba(255,255,255,.06)",
+                borderRadius: 14,
+                padding: "12px 14px",
+                cursor: "pointer",
+              }}
+            >
+              <div
+                style={{
+                  width: 16,
+                  height: 16,
+                  flex: "none",
+                  borderRadius: "50%",
+                  border: active ? "5px solid #c7f27a" : "2px solid rgba(244,243,238,.3)",
+                  boxSizing: "border-box",
+                  boxShadow: active ? "0 0 10px rgba(199,242,122,.5)" : "none",
+                }}
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: active ? "#c7f27a" : "#f4f3ee" }}>{opt.label}</div>
+                <div style={{ fontSize: 11, color: "rgba(244,243,238,.5)", marginTop: 2, lineHeight: 1.4 }}>{opt.desc}</div>
+              </div>
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(244,243,238,.35)", flex: "none" }}>
+                ×{ACTIVITY_FACTORS[opt.value]}
+              </div>
+            </Pressable>
+          );
+        })}
+      </div>
+
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
         <div style={{ background: "#1b1e21", borderRadius: 16, padding: 14 }}>
-          <div style={{ fontSize: 11, color: "rgba(244,243,238,.45)", fontWeight: 700 }}>BMR</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ fontSize: 11, color: "rgba(244,243,238,.45)", fontWeight: 700 }}>BMR</div>
+            <Pressable
+              onClick={() => setInfoModal("bmr")}
+              tapScale={0.85}
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: "50%",
+                border: "1.5px solid rgba(244,243,238,.35)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 10,
+                fontWeight: 700,
+                color: "rgba(244,243,238,.5)",
+                cursor: "pointer",
+              }}
+            >
+              ?
+            </Pressable>
+          </div>
           <div className="font-sora" style={{ fontSize: 18, fontWeight: 800, marginTop: 4 }}>{bmr.toLocaleString()} kcal</div>
         </div>
         <div style={{ background: "#1b1e21", borderRadius: 16, padding: 14 }}>
-          <div style={{ fontSize: 11, color: "rgba(244,243,238,.45)", fontWeight: 700 }}>TDEE</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ fontSize: 11, color: "rgba(244,243,238,.45)", fontWeight: 700 }}>TDEE</div>
+            <Pressable
+              onClick={() => setInfoModal("tdee")}
+              tapScale={0.85}
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: "50%",
+                border: "1.5px solid rgba(244,243,238,.35)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 10,
+                fontWeight: 700,
+                color: "rgba(244,243,238,.5)",
+                cursor: "pointer",
+              }}
+            >
+              ?
+            </Pressable>
+          </div>
           <div className="font-sora" style={{ fontSize: 18, fontWeight: 800, marginTop: 4 }}>{tdee.toLocaleString()} kcal</div>
         </div>
       </div>
+
+      <InfoModal open={infoModal === "bmr"} title="¿Qué es el BMR?" onClose={() => setInfoModal(null)}>
+        Es tu <b>Tasa Metabólica Basal</b>: las calorías que tu cuerpo quema <b>en reposo total</b> — solo por respirar,
+        pensar y mantener tus órganos funcionando. Se calcula con tu peso, altura, edad y sexo (o viene directo de tu
+        báscula inteligente). Aunque no te muevas en todo el día, tu cuerpo gasta esto.
+      </InfoModal>
+      <InfoModal open={infoModal === "tdee"} title="¿Qué es el TDEE?" onClose={() => setInfoModal(null)}>
+        Es tu <b>Gasto Energético Total Diario</b>: el BMR multiplicado por tu nivel de actividad (caminar, trabajar,
+        entrenar). Representa todas las calorías que quemas en un día normal. Para <b>bajar de peso</b> hay que comer
+        por debajo del TDEE (déficit); para mantenerte, igual al TDEE.
+      </InfoModal>
 
       {/* Historial de peso */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20, marginBottom: 8 }}>
@@ -590,17 +699,31 @@ export default function Perfil() {
             { label: "Agua", field: "metaWater", suffix: " ml" },
           ] as const
         ).map((m) => (
-          <div key={m.field} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1b1e21", borderRadius: 14, padding: "12px 14px" }}>
-            <span style={{ fontSize: 13, color: "rgba(244,243,238,.6)" }}>{m.label}</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <div
+            key={m.field}
+            style={{
+              display: "flex",
+              flexWrap: "nowrap",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 8,
+              background: "#1b1e21",
+              borderRadius: 14,
+              padding: "12px 14px",
+              minHeight: 44,
+              boxSizing: "border-box",
+            }}
+          >
+            <span style={{ fontSize: 13, color: "rgba(244,243,238,.6)", flex: "none", whiteSpace: "nowrap" }}>{m.label}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 2, flex: 1, justifyContent: "flex-end", minWidth: 0 }}>
               <input
                 type="number"
                 inputMode="numeric"
                 defaultValue={profile[m.field]}
                 onBlur={setNumField(m.field)}
-                style={{ ...numInput, width: 64, textAlign: "right", marginTop: 0, fontSize: 13 }}
+                style={{ ...numInput, width: 56, minWidth: 0, textAlign: "right", marginTop: 0, fontSize: 13, flex: "none" }}
               />
-              <span style={{ fontSize: 13, fontWeight: 700 }}>{m.suffix}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, flex: "none", whiteSpace: "nowrap" }}>{m.suffix}</span>
             </div>
           </div>
         ))}
@@ -668,17 +791,17 @@ export default function Perfil() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12.5 }}>
             {(
               [
-                ["Puntuación", scaleParsed.score != null ? String(scaleParsed.score) : "—"],
-                ["Peso", `${scaleParsed.peso_lb} lb`],
+                ["Puntuación", scaleParsed.score != null ? String(Math.round(scaleParsed.score)) : "—"],
+                ["Peso", `${r1(scaleParsed.peso_lb)} lb`],
                 ["Complexión", scaleParsed.complexion ?? "—"],
-                ["IMC", scaleParsed.imc != null ? String(scaleParsed.imc) : "—"],
-                ["Grasa corporal", scaleParsed.grasa_pct != null ? `${scaleParsed.grasa_pct}%` : "—"],
-                ["Nivel de agua", scaleParsed.agua_pct != null ? `${scaleParsed.agua_pct}%` : "—"],
-                ["Proteína", scaleParsed.proteina_pct != null ? `${scaleParsed.proteina_pct}%` : "—"],
-                ["Metab. basal", scaleParsed.bmr != null ? `${scaleParsed.bmr.toLocaleString()} kcal` : "—"],
-                ["Grasa visceral", scaleParsed.grasa_visceral != null ? String(scaleParsed.grasa_visceral) : "—"],
-                ["Músculo", scaleParsed.musculo_lb != null ? `${scaleParsed.musculo_lb} lb` : "—"],
-                ["Masa ósea", scaleParsed.masa_osea_lb != null ? `${scaleParsed.masa_osea_lb} lb` : "—"],
+                ["IMC", scaleParsed.imc != null ? String(r1(scaleParsed.imc)) : "—"],
+                ["Grasa corporal", scaleParsed.grasa_pct != null ? `${r1(scaleParsed.grasa_pct)}%` : "—"],
+                ["Nivel de agua", scaleParsed.agua_pct != null ? `${r1(scaleParsed.agua_pct)}%` : "—"],
+                ["Proteína", scaleParsed.proteina_pct != null ? `${r1(scaleParsed.proteina_pct)}%` : "—"],
+                ["Metab. basal", scaleParsed.bmr != null ? `${Math.round(scaleParsed.bmr).toLocaleString()} kcal` : "—"],
+                ["Grasa visceral", scaleParsed.grasa_visceral != null ? String(Math.round(scaleParsed.grasa_visceral)) : "—"],
+                ["Músculo", scaleParsed.musculo_lb != null ? `${r1(scaleParsed.musculo_lb)} lb` : "—"],
+                ["Masa ósea", scaleParsed.masa_osea_lb != null ? `${r1(scaleParsed.masa_osea_lb)} lb` : "—"],
               ] as [string, string][]
             ).map(([label, value]) => (
               <div key={label} style={{ display: "flex", justifyContent: "space-between" }}>

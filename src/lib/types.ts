@@ -12,10 +12,20 @@ export interface Meal {
   f: number;
 }
 
+export type ActivityLevel = "sedentario" | "ligero" | "activo";
+
+// Factores para TDEE = BMR × factor
+export const ACTIVITY_FACTORS: Record<ActivityLevel, number> = {
+  sedentario: 1.2,
+  ligero: 1.375,
+  activo: 1.55,
+};
+
 export interface Profile {
   name: string;
   photo: string | null; // data URL de la foto de perfil
   sex: "M" | "F"; // para el cálculo de BMR (Mifflin-St Jeor)
+  activityLevel: ActivityLevel; // nivel de actividad diaria (para el TDEE)
   age: number;
   height: number; // cm
   weight: number; // lb
@@ -92,6 +102,7 @@ export const DEFAULT_PROFILE: Profile = {
   name: "",
   photo: null,
   sex: "M",
+  activityLevel: "ligero",
   age: 25,
   height: 170,
   weight: 180,

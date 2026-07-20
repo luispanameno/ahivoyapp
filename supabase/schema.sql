@@ -112,6 +112,7 @@ create table if not exists public.routines (
 -- Por si la tabla ya existía sin estas columnas:
 alter table public.profiles add column if not exists foto text;
 alter table public.profiles add column if not exists sexo text default 'M';
+alter table public.profiles add column if not exists nivel_actividad text default 'ligero';
 
 -- ============ ROW LEVEL SECURITY ============
 -- Cada usuario SOLO puede ver y tocar sus propios datos.

@@ -31,7 +31,9 @@ export interface CoachAction {
     | "log_sleep"
     | "log_workout"
     | "delete_meal"
-    | "update_meal";
+    | "update_meal"
+    | "set_macros"
+    | "set_body_comp";
   ml?: number;
   lb?: number;
   kcal?: number;
@@ -43,6 +45,18 @@ export interface CoachAction {
   c?: number;
   f?: number;
   fecha?: string; // YYYY-MM-DD cuando la acción es de otro día
+  // set_body_comp (báscula subida al chat)
+  peso_lb?: number;
+  score?: number;
+  complexion?: string;
+  imc?: number;
+  grasa_pct?: number;
+  agua_pct?: number;
+  proteina_pct?: number;
+  bmr?: number;
+  grasa_visceral?: number;
+  musculo_lb?: number;
+  masa_osea_lb?: number;
 }
 
 export interface CoachResult {

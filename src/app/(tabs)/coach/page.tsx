@@ -140,6 +140,31 @@ export default function Coach() {
               c: a.c ?? 0,
               f: a.f ?? 0,
             });
+          else if (a.type === "set_macros" && a.kcal)
+            await app.saveProfile({
+              ...profile,
+              metaKcal: Math.round(a.kcal),
+              metaProtein: Math.round(a.p ?? profile.metaProtein),
+              metaCarbs: Math.round(a.c ?? profile.metaCarbs),
+              metaFat: Math.round(a.f ?? profile.metaFat),
+            });
+          else if (a.type === "set_body_comp")
+            await app.setBodyComp(
+              {
+                score: Math.round(a.score ?? 0),
+                build: a.complexion || "—",
+                bmi: a.imc ?? 0,
+                fatPct: a.grasa_pct ?? 0,
+                waterPct: a.agua_pct ?? 0,
+                proteinPct: a.proteina_pct ?? 0,
+                bmr: Math.round(a.bmr ?? 0),
+                visceralFat: a.grasa_visceral ?? 0,
+                muscle: a.musculo_lb ?? 0,
+                boneMass: a.masa_osea_lb ?? 0,
+                date: today,
+              },
+              a.peso_lb && a.peso_lb > 0 ? a.peso_lb : undefined
+            );
         } else {
           // ---- Acciones sobre OTRO día (directo a la base de datos) ----
           if ((a.type === "add_water" || a.type === "remove_water") && a.ml) {
@@ -210,6 +235,7 @@ export default function Coach() {
           peso_lb: profile.weight,
           peso_meta_lb: profile.weightGoal,
           sexo: profile.sex === "F" ? "mujer" : "hombre",
+          nivel_actividad: profile.activityLevel,
         },
         metas: {
           kcal: profile.metaKcal,
@@ -241,6 +267,12 @@ export default function Coach() {
           p: m.p,
           c: m.c,
           f: m.f,
+        })),
+        // Últimos mensajes para que el coach recuerde qué propuso
+        // (ej. macros pendientes de confirmar tras subir la báscula)
+        historial_chat: messages.slice(-8).map((m) => ({
+          de: m.role === "user" ? "usuario" : "coach",
+          texto: m.text.slice(0, 400),
         })),
         peso_actual_lb: profile.weight,
         rutina: routine,
