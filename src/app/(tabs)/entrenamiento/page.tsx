@@ -4,7 +4,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import ImageDrop from "@/components/ImageDrop";
+import ImageUploadZone, { ActionButton } from "@/components/ImageUploadZone";
 import { analyze } from "@/lib/analyze";
 import { useApp } from "@/lib/store";
 import { RoutineDay } from "@/lib/types";
@@ -118,26 +118,9 @@ export default function Entrenamiento() {
       <div style={{ fontSize: 11, color: "rgba(244,243,238,.5)", marginBottom: 10, lineHeight: 1.4 }}>
         De tu reloj o app (Samsung Health, etc.). La leemos y marcamos la rutina como hecha con las calorías reales.
       </div>
-      <ImageDrop placeholder="Toca para subir la captura de tu entrenamiento" height={130} radius={14} onImage={setShot} />
+      <ImageUploadZone placeholder="Toca para subir la captura de tu entrenamiento" icon="🏋️" height={130} radius={14} onImage={setShot} />
       {error && <div style={{ marginTop: 8, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)" }}>{error}</div>}
-      <div
-        onClick={readCapture}
-        style={{
-          background: "#c7f27a",
-          color: "#10240a",
-          textAlign: "center",
-          padding: 13,
-          borderRadius: 14,
-          fontWeight: 800,
-          fontSize: 13,
-          marginTop: 10,
-          cursor: "pointer",
-          opacity: busy ? 0.6 : 1,
-          boxShadow: "0 0 16px rgba(199,242,122,.45)",
-        }}
-      >
-        {busy ? "Leyendo captura…" : "Leer captura y marcar hecho"}
-      </div>
+      <ActionButton label={busy ? "Leyendo captura…" : "Leer captura y marcar hecho"} onClick={readCapture} busy={busy} />
 
       <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".03em", marginTop: 18, marginBottom: 8 }}>
         NOTAS (OPCIONAL)

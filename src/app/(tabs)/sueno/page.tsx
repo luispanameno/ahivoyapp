@@ -3,7 +3,7 @@
 // Sueño: fases, meta 7–8 h, respaldo por captura del reloj.
 
 import { useState } from "react";
-import ImageDrop from "@/components/ImageDrop";
+import ImageUploadZone, { ActionButton } from "@/components/ImageUploadZone";
 import { analyze } from "@/lib/analyze";
 import { useApp } from "@/lib/store";
 
@@ -89,26 +89,9 @@ export default function Sueno() {
       <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em", marginTop: 18, marginBottom: 8 }}>
         SUBE UNA CAPTURA DE TU RELOJ
       </div>
-      <ImageDrop placeholder="Toca para subir la captura de sueño de tu reloj" height={120} radius={16} onImage={setShot} />
+      <ImageUploadZone placeholder="Toca para subir la captura de sueño de tu reloj" icon="😴" height={120} radius={14} onImage={setShot} />
       {error && <div style={{ marginTop: 8, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)" }}>{error}</div>}
-      <div
-        onClick={readCapture}
-        style={{
-          background: "#c7f27a",
-          color: "#10240a",
-          textAlign: "center",
-          padding: 14,
-          borderRadius: 16,
-          fontWeight: 800,
-          fontSize: 13,
-          marginTop: 12,
-          cursor: "pointer",
-          opacity: busy ? 0.6 : 1,
-          boxShadow: "0 0 20px rgba(199,242,122,.5)",
-        }}
-      >
-        {busy ? "Leyendo captura…" : "Leer captura del reloj"}
-      </div>
+      <ActionButton label={busy ? "Leyendo captura…" : "Leer captura del reloj"} onClick={readCapture} busy={busy} />
     </div>
   );
 }

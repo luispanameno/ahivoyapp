@@ -5,7 +5,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import ImageDrop from "@/components/ImageDrop";
+import ImageUploadZone, { ActionButton, StatusBadge } from "@/components/ImageUploadZone";
 import AvatarEditor from "@/components/AvatarEditor";
 import { analyze, fileToDataURL } from "@/lib/analyze";
 import { useApp } from "@/lib/store";
@@ -564,44 +564,21 @@ export default function Perfil() {
         Sube una captura de las calorías o actividad de tu app de salud (Samsung Health, Apple Salud, Garmin, etc.) y la
         leemos por ti.
       </div>
-      <ImageDrop placeholder="Toca para subir la captura de tu app de salud (kcal, pasos)" height={120} radius={14} onImage={setHealthShot} />
+      <ImageUploadZone
+        placeholder="Toca para subir la captura de tu app de salud (kcal, pasos)"
+        icon="⌚"
+        height={120}
+        radius={14}
+        onImage={setHealthShot}
+      />
       {healthError && <div style={{ marginTop: 8, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)" }}>{healthError}</div>}
-      <div
+      <ActionButton
+        label={healthBusy ? "Leyendo captura…" : "Actualizar actividad desde la captura"}
         onClick={readHealthCapture}
-        style={{
-          background: "#c7f27a",
-          color: "#10240a",
-          textAlign: "center",
-          padding: 13,
-          borderRadius: 14,
-          fontWeight: 800,
-          fontSize: 12.5,
-          marginTop: 10,
-          cursor: "pointer",
-          opacity: healthBusy ? 0.6 : 1,
-          boxShadow: "0 0 16px rgba(199,242,122,.45)",
-        }}
-      >
-        {healthBusy ? "Leyendo captura…" : "Actualizar actividad desde la captura"}
-      </div>
+        busy={healthBusy}
+      />
       {activity?.synced && (
-        <div
-          style={{
-            marginTop: 10,
-            background: "rgba(199,242,122,.1)",
-            border: "1px solid rgba(199,242,122,.3)",
-            borderRadius: 14,
-            padding: "12px 14px",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#c7f27a", boxShadow: "0 0 8px #c7f27a", flex: "none" }} />
-          <div style={{ flex: 1, fontSize: 12, fontWeight: 700, color: "#c7f27a" }}>
-            Actualizado · {activity.steps.toLocaleString()} pasos · {activity.activityKcal} kcal activas hoy
-          </div>
-        </div>
+        <StatusBadge text={`Actualizado · ${activity.steps.toLocaleString()} pasos · ${activity.activityKcal} kcal activas hoy`} />
       )}
 
       {/* Báscula */}

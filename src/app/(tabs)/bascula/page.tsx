@@ -4,7 +4,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import ImageDrop from "@/components/ImageDrop";
+import ImageUploadZone, { ActionButton, StatusBadge } from "@/components/ImageUploadZone";
 import { analyze } from "@/lib/analyze";
 import { useApp } from "@/lib/store";
 import { todayISO } from "@/lib/types";
@@ -97,9 +97,19 @@ export default function Bascula() {
       </div>
 
       <div style={{ marginTop: 16 }}>
-        <ImageDrop placeholder="Toca para subir tu captura de báscula" height={180} radius={18} onImage={(url) => { setShot(url); setParsed(null); }} />
+        <ImageUploadZone
+          placeholder="Toca para subir la captura de tu báscula"
+          icon="⚖️"
+          height={180}
+          radius={14}
+          onImage={(url) => {
+            setShot(url);
+            setParsed(null);
+          }}
+        />
       </div>
       {error && <div style={{ marginTop: 8, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)" }}>{error}</div>}
+      {parsed && <StatusBadge text="Captura leída ✓ · revisa los datos y actualiza tu perfil" />}
 
       {parsed && (
         <div style={{ marginTop: 16, background: "#1b1e21", borderRadius: 16, padding: 14 }}>
@@ -118,24 +128,11 @@ export default function Bascula() {
       )}
 
       <div style={{ flex: 1 }} />
-      <div
+      <ActionButton
+        label={busy ? "Leyendo captura…" : parsed ? "Actualizar mi perfil" : "Leer captura"}
         onClick={parsed ? apply : read}
-        style={{
-          background: "#c7f27a",
-          color: "#10240a",
-          textAlign: "center",
-          padding: 15,
-          borderRadius: 18,
-          fontWeight: 800,
-          fontSize: 13.5,
-          marginTop: 10,
-          cursor: "pointer",
-          opacity: busy ? 0.6 : 1,
-          boxShadow: "0 0 20px rgba(199,242,122,.5)",
-        }}
-      >
-        {busy ? "Leyendo captura…" : parsed ? "Actualizar mi perfil" : "Leer captura"}
-      </div>
+        busy={busy}
+      />
     </div>
   );
 }
