@@ -36,6 +36,8 @@ function saveChat(messages: ChatMessage[]) {
 }
 
 const QUICK_PROMPTS = [
+  { text: "Calcula mi meta ideal", send: "Calcula mi meta diaria de calorías ideal según mi peso, altura, edad y sexo, con un déficit saludable, explícame el cálculo y actualízala" },
+  { text: "Registré ejercicio", send: "Acabo de hacer ejercicio, ¿cómo lo registro para que sume a mi presupuesto?" },
   { text: "Registrar sin foto", send: "Agrega a mi almuerzo: pollo con arroz y ensalada" },
   { text: "¿Qué ceno hoy?", send: "¿Qué me recomiendas cenar hoy?" },
   { text: "Revisa un menú", send: "Voy a un restaurante, ¿qué me recomiendas pedir según mis macros de hoy?" },
@@ -69,6 +71,8 @@ export default function Coach() {
   );
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
+  // Foto elegida pero AÚN no enviada: el usuario puede escribir contexto antes.
+  const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const protLeft = Math.max(0, profile.metaProtein - proteinG);
@@ -189,14 +193,23 @@ export default function Coach() {
 
   const send = async (text: string, image?: string) => {
     const clean = text.trim();
-    if (!clean && !image) return;
-    const userMsg: ChatMessage = { role: "user", text: clean, image };
+    const photo = image ?? pendingPhoto ?? undefined;
+    if (!clean && !photo) return;
+    const userMsg: ChatMessage = { role: "user", text: clean, image: photo };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
+    setPendingPhoto(null);
     setTyping(true);
     try {
       const context = {
         nombre: profile.name,
+        perfil: {
+          edad: profile.age,
+          altura_cm: profile.height,
+          peso_lb: profile.weight,
+          peso_meta_lb: profile.weightGoal,
+          sexo: profile.sex === "F" ? "mujer" : "hombre",
+        },
         metas: {
           kcal: profile.metaKcal,
           proteina_g: profile.metaProtein,
@@ -208,6 +221,7 @@ export default function Coach() {
         hoy: {
           kcal_comidas: kcalEaten,
           kcal_quemadas: burnedKcal,
+          kcal_presupuesto: profile.metaKcal + burnedKcal,
           kcal_libres: kcalRemaining,
           proteina_g: proteinG,
           proteina_faltante_g: protLeft,
@@ -233,7 +247,7 @@ export default function Coach() {
         fecha_hoy: todayISO(),
         dia_semana: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"][new Date().getDay()],
       };
-      const res = await analyze<CoachResult>({ mode: "coach", text: clean, image, context });
+      const res = await analyze<CoachResult>({ mode: "coach", text: clean, image: photo, context });
       setMessages((prev) => [...prev, { role: "coach", text: res.reply }]);
       if (res.actions?.length) await applyActions(res.actions);
     } catch (e) {
@@ -255,13 +269,14 @@ export default function Coach() {
   const onPickPhoto = async (file: File | undefined | null) => {
     if (!file) return;
     const url = await fileToDataURL(file);
-    send(input.trim() || "Analiza esta foto", url);
+    // No se envía todavía: queda en vista previa para que agregues contexto.
+    setPendingPhoto(url);
   };
 
   return (
     <div
       style={{
-        height: "calc(100dvh - 88px)",
+        height: "calc(100dvh - 88px - env(safe-area-inset-top))",
         display: "flex",
         flexDirection: "column",
         boxSizing: "border-box",
@@ -418,6 +433,52 @@ export default function Coach() {
         ))}
       </div>
 
+      {/* Vista previa de foto pendiente */}
+      {pendingPhoto && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            margin: "0 16px 6px",
+            padding: 8,
+            background: "#1b1e21",
+            border: "1px solid rgba(199,242,122,.3)",
+            borderRadius: 14,
+            flex: "none",
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={pendingPhoto}
+            alt="foto pendiente"
+            style={{ width: 52, height: 52, borderRadius: 10, objectFit: "cover", flex: "none" }}
+          />
+          <div style={{ flex: 1, fontSize: 11.5, color: "rgba(244,243,238,.6)", fontWeight: 600, lineHeight: 1.4 }}>
+            Foto lista 📸 — escribe contexto si quieres (ej. &quot;dejé la mitad&quot;) y presiona enviar
+          </div>
+          <div
+            onClick={() => setPendingPhoto(null)}
+            style={{
+              width: 28,
+              height: 28,
+              flex: "none",
+              borderRadius: "50%",
+              background: "rgba(255,255,255,.08)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              color: "rgba(244,243,238,.7)",
+              fontSize: 14,
+              fontWeight: 700,
+            }}
+          >
+            ×
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 16px 10px", flex: "none" }}>
         <label
@@ -468,7 +529,7 @@ export default function Coach() {
               send(input);
             }
           }}
-          placeholder="Pregúntale o sube una foto…"
+          placeholder={pendingPhoto ? "Agrega contexto a tu foto…" : "Pregúntale o sube una foto…"}
           style={{
             flex: 1,
             background: "#1b1e21",

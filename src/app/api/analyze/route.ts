@@ -170,7 +170,18 @@ En log_meal incluye SIEMPRE los campos desc, kcal, p, c y f con tus estimaciones
 En delete_meal y update_meal, "desc" debe coincidir con una descripción de comidas_hoy. Si no hay coincidencia clara, pregunta cuál es en vez de actuar.
 Elige "time" según la hora local del contexto si el usuario no la dice.
 
-DÍAS PASADOS: también puedes registrar/borrar/corregir datos de OTROS días. Si el usuario menciona otro día ("ayer", "anoche", "el viernes"), agrega a la acción el campo "fecha":"YYYY-MM-DD" calculado a partir de fecha_hoy y dia_semana del contexto (ej. "ayer" = fecha_hoy menos 1 día). "Anoche dormí 6 horas" o "anoche tomé 500ml" se refieren a AYER si es de madrugada/mañana. Para comidas de otros días usa la descripción que dé el usuario. Sin mención de otro día, NO incluyas "fecha".`;
+DÍAS PASADOS: también puedes registrar/borrar/corregir datos de OTROS días. Si el usuario menciona otro día ("ayer", "anoche", "el viernes"), agrega a la acción el campo "fecha":"YYYY-MM-DD" calculado a partir de fecha_hoy y dia_semana del contexto (ej. "ayer" = fecha_hoy menos 1 día). "Anoche dormí 6 horas" o "anoche tomé 500ml" se refieren a AYER si es de madrugada/mañana. Para comidas de otros días usa la descripción que dé el usuario. Sin mención de otro día, NO incluyas "fecha".
+
+META CALÓRICA PERSONALIZADA (cálculo biomédico): el contexto trae "perfil" (edad, altura_cm, peso_lb, peso_meta_lb, sexo). Cuando el usuario pida calcular/revisar su meta, o cuando notes que su meta actual (metas.kcal) no encaja con su perfil, calcula:
+1) BMR con Mifflin-St Jeor: peso_kg = peso_lb × 0.4536; hombre: 10×kg + 6.25×altura_cm − 5×edad + 5; mujer: igual pero − 161.
+2) TDEE = BMR × factor de actividad (1.2 sedentario, 1.35 ligero, 1.5 moderado — usa 1.35 si no sabes más).
+3) Meta = TDEE − déficit saludable de 400-500 kcal si quiere bajar de peso (peso_meta_lb < peso_lb). NUNCA propongas menos de 1500 kcal (hombre) o 1200 kcal (mujer).
+Muestra el cálculo en corto (BMR → TDEE → meta) y aplica la nueva meta con set_meta_kcal SOLO si el usuario acepta o lo pidió explícitamente.
+
+EJERCICIO — MATEMÁTICA ESTRICTA: si el usuario reporta ejercicio:
+- Si dice las calorías exactas (de su reloj), usa ESE número en log_workout.
+- Si no, estímalas con METs: kcal = MET × peso_kg × horas. METs de referencia: caminar 3.5 · caminar rápido 4.5 · correr suave 8 · correr fuerte 11 · bici 7 · pesas 5 · fútbol 8 · natación 7 · baile 5 · limpieza intensa 3.5. (peso_kg = peso_lb × 0.4536). Redondea a enteros.
+- Registra con log_workout (kcal y nombre) y en "reply" explica amigablemente el efecto en su presupuesto: "quemaste ~X kcal → tu presupuesto de hoy sube de kcal_presupuesto a kcal_presupuesto+X". OJO: hoy.kcal_quemadas ya refleja lo contado (reloj o entrenamiento previo, se toma el MAYOR de los dos, no se suman); si ya hay quemadas mayores registradas por el reloj, aclara que ya estaban contadas y el presupuesto no cambia.`;
 
 function parseDataUrl(dataUrl: string): { mimeType: string; data: string } | null {
   const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/);

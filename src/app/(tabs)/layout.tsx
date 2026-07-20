@@ -34,7 +34,17 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Toast />
-      <div style={{ minHeight: "100dvh", paddingBottom: hideNav ? 0 : 88, boxSizing: "border-box" }}>{children}</div>
+      <div
+        style={{
+          minHeight: "100dvh",
+          // Respeta el notch / Dynamic Island de iPhone y la barra inferior
+          paddingTop: "env(safe-area-inset-top)",
+          paddingBottom: hideNav ? 0 : 88,
+          boxSizing: "border-box",
+        }}
+      >
+        {children}
+      </div>
       {!hideNav && <TabBar />}
     </>
   );

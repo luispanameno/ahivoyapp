@@ -81,11 +81,11 @@ export default function Escanear() {
         />
         <div
           onClick={() => router.push("/hoy")}
-          style={{ position: "absolute", top: 24, left: 20, zIndex: 2, fontSize: 13, fontWeight: 700, color: "rgba(244,243,238,.7)", cursor: "pointer" }}
+          style={{ position: "absolute", top: "calc(24px + env(safe-area-inset-top))", left: 20, zIndex: 2, fontSize: 13, fontWeight: 700, color: "rgba(244,243,238,.7)", cursor: "pointer" }}
         >
           ‹ Volver
         </div>
-        <div style={{ position: "absolute", top: 24, left: 0, right: 0, textAlign: "center", fontSize: 12, fontWeight: 600, color: "rgba(244,243,238,.7)" }}>
+        <div style={{ position: "absolute", top: "calc(24px + env(safe-area-inset-top))", left: 0, right: 0, textAlign: "center", fontSize: 12, fontWeight: 600, color: "rgba(244,243,238,.7)" }}>
           Toma una foto o elige de tu galería
         </div>
         {error && (

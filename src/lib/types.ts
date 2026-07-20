@@ -15,6 +15,7 @@ export interface Meal {
 export interface Profile {
   name: string;
   photo: string | null; // data URL de la foto de perfil
+  sex: "M" | "F"; // para el cálculo de BMR (Mifflin-St Jeor)
   age: number;
   height: number; // cm
   weight: number; // lb
@@ -90,6 +91,7 @@ export interface ChatMessage {
 export const DEFAULT_PROFILE: Profile = {
   name: "",
   photo: null,
+  sex: "M",
   age: 25,
   height: 170,
   weight: 180,

@@ -32,7 +32,7 @@ export default function Welcome() {
         display: "flex",
         flexDirection: "column",
         boxSizing: "border-box",
-        padding: "0 28px 40px",
+        padding: "env(safe-area-inset-top) 28px 40px",
         overflow: "hidden",
         background:
           "radial-gradient(130% 70% at 50% 22%, #12341f 0%, #0c1a12 48%, #060a08 100%)",

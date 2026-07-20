@@ -93,6 +93,7 @@ export async function loadAll(date: string): Promise<AllData> {
     ? {
         name: p.nombre ?? "",
         photo: p.foto ?? null,
+        sex: p.sexo === "F" ? "F" : "M",
         age: p.edad ?? DEFAULT_PROFILE.age,
         height: p.altura ?? DEFAULT_PROFILE.height,
         weight: Number(p.peso ?? DEFAULT_PROFILE.weight),
@@ -232,6 +233,7 @@ export async function saveProfile(profile: Profile) {
       id: uid,
       nombre: profile.name,
       foto: profile.photo,
+      sexo: profile.sex,
       edad: profile.age,
       altura: profile.height,
       peso: profile.weight,

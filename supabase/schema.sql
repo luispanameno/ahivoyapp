@@ -109,8 +109,9 @@ create table if not exists public.routines (
   unique (user_id, dia)
 );
 
--- Por si la tabla ya existía sin la columna de foto:
+-- Por si la tabla ya existía sin estas columnas:
 alter table public.profiles add column if not exists foto text;
+alter table public.profiles add column if not exists sexo text default 'M';
 
 -- ============ ROW LEVEL SECURITY ============
 -- Cada usuario SOLO puede ver y tocar sus propios datos.

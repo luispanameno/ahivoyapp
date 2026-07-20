@@ -33,9 +33,9 @@ const sectionTitle: React.CSSProperties = {
   marginBottom: 8,
 };
 
-function mifflinBMR(weightLb: number, heightCm: number, age: number): number {
+function mifflinBMR(weightLb: number, heightCm: number, age: number, sex: "M" | "F"): number {
   const kg = weightLb * 0.4536;
-  return Math.round(10 * kg + 6.25 * heightCm - 5 * age + 5);
+  return Math.round(10 * kg + 6.25 * heightCm - 5 * age + (sex === "F" ? -161 : 5));
 }
 
 function weeklySeries(weights: WeightEntry[]): { labels: string[]; values: number[] } {
@@ -100,7 +100,7 @@ export default function Perfil() {
     if (!Number.isNaN(n)) setField(field, n);
   };
 
-  const bmr = bodyComp?.bmr || mifflinBMR(profile.weight, profile.height, profile.age);
+  const bmr = bodyComp?.bmr || mifflinBMR(profile.weight, profile.height, profile.age, profile.sex);
   const tdee = Math.round(bmr * 1.35);
 
   // Serie de peso
@@ -151,7 +151,7 @@ export default function Perfil() {
         {
           label: "Metabolismo basal",
           value: `${bodyComp.bmr.toLocaleString()} kcal`,
-          ...(bodyComp.bmr >= mifflinBMR(profile.weight, profile.height, profile.age) * 0.95
+          ...(bodyComp.bmr >= mifflinBMR(profile.weight, profile.height, profile.age, profile.sex) * 0.95
             ? { badge: "Normal", ...GREEN }
             : { badge: "Bajo lo ideal", ...ORANGE }),
         },
@@ -365,6 +365,35 @@ export default function Perfil() {
             onChange={(e) => setDraft({ ...draft, weightGoal: e.target.value })}
             style={numInput}
           />
+        </div>
+        <div style={{ ...cardStyle, gridColumn: "1 / -1" }}>
+          <div style={labelStyle}>SEXO (para calcular tu metabolismo)</div>
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            {(
+              [
+                { value: "M", label: "Hombre" },
+                { value: "F", label: "Mujer" },
+              ] as const
+            ).map((s) => (
+              <div
+                key={s.value}
+                onClick={() => saveProfile({ ...profile, sex: s.value })}
+                style={{
+                  flex: 1,
+                  textAlign: "center",
+                  padding: "8px 0",
+                  borderRadius: 100,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  background: profile.sex === s.value ? "#c7f27a" : "rgba(255,255,255,.06)",
+                  color: profile.sex === s.value ? "#10240a" : "rgba(244,243,238,.6)",
+                }}
+              >
+                {s.label}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

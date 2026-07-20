@@ -9,7 +9,7 @@ export default function Toast() {
     <div
       style={{
         position: "fixed",
-        top: 16,
+        top: "calc(16px + env(safe-area-inset-top))",
         left: 20,
         right: 20,
         margin: "0 auto",

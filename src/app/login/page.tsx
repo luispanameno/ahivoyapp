@@ -97,7 +97,7 @@ export default function Login() {
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
-        padding: 28,
+        padding: "calc(28px + env(safe-area-inset-top)) 28px 28px",
         boxSizing: "border-box",
         background: "radial-gradient(130% 70% at 50% 10%, #12341f 0%, #0c1a12 48%, #060a08 100%)",
       }}
