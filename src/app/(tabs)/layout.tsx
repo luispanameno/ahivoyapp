@@ -6,7 +6,7 @@ import TabBar from "@/components/TabBar";
 import Toast from "@/components/Toast";
 
 // Rutas donde el prototipo oculta la barra de navegación
-const HIDE_NAV = ["/escanear", "/rutina", "/bascula", "/comida"];
+const HIDE_NAV = ["/escanear", "/rutina", "/comida"];
 
 function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

@@ -9,7 +9,21 @@ import ImageUploadZone, { ActionButton, StatusBadge } from "@/components/ImageUp
 import AvatarEditor from "@/components/AvatarEditor";
 import { analyze, fileToDataURL } from "@/lib/analyze";
 import { useApp } from "@/lib/store";
-import { WeightEntry } from "@/lib/types";
+import { WeightEntry, todayISO } from "@/lib/types";
+
+interface ScaleResult {
+  peso_lb: number;
+  score?: number;
+  complexion?: string;
+  imc?: number;
+  grasa_pct?: number;
+  agua_pct?: number;
+  proteina_pct?: number;
+  bmr?: number;
+  grasa_visceral?: number;
+  musculo_lb?: number;
+  masa_osea_lb?: number;
+}
 
 const cardStyle: React.CSSProperties = { background: "#1b1e21", borderRadius: 14, padding: "12px 14px" };
 const labelStyle: React.CSSProperties = { fontSize: 10.5, color: "rgba(244,243,238,.4)", fontWeight: 700 };
@@ -90,6 +104,52 @@ export default function Perfil() {
   const [healthShot, setHealthShot] = useState<string | null>(null);
   const [healthBusy, setHealthBusy] = useState(false);
   const [healthError, setHealthError] = useState<string | null>(null);
+
+  // Báscula inline (mismo patrón que la actividad del reloj)
+  const [scaleShot, setScaleShot] = useState<string | null>(null);
+  const [scaleParsed, setScaleParsed] = useState<ScaleResult | null>(null);
+  const [scaleBusy, setScaleBusy] = useState(false);
+  const [scaleError, setScaleError] = useState<string | null>(null);
+
+  const readScaleCapture = async () => {
+    if (!scaleShot) {
+      setScaleError("Primero sube la captura de tu báscula.");
+      return;
+    }
+    setScaleBusy(true);
+    setScaleError(null);
+    try {
+      const res = await analyze<ScaleResult>({ mode: "scale", image: scaleShot });
+      setScaleParsed(res);
+    } catch (e) {
+      setScaleError(e instanceof Error ? e.message : "No se pudo leer la captura");
+    } finally {
+      setScaleBusy(false);
+    }
+  };
+
+  const applyScale = async () => {
+    if (!scaleParsed) return;
+    await app.setBodyComp(
+      {
+        score: Math.round(scaleParsed.score ?? 0),
+        build: scaleParsed.complexion ?? "—",
+        bmi: scaleParsed.imc ?? 0,
+        fatPct: scaleParsed.grasa_pct ?? 0,
+        waterPct: scaleParsed.agua_pct ?? 0,
+        proteinPct: scaleParsed.proteina_pct ?? 0,
+        bmr: Math.round(scaleParsed.bmr ?? 0),
+        visceralFat: scaleParsed.grasa_visceral ?? 0,
+        muscle: scaleParsed.musculo_lb ?? 0,
+        boneMass: scaleParsed.masa_osea_lb ?? 0,
+        date: todayISO(),
+      },
+      scaleParsed.peso_lb > 0 ? scaleParsed.peso_lb : undefined
+    );
+    setScaleParsed(null);
+    setScaleShot(null);
+    showToast("Perfil actualizado desde tu báscula");
+  };
 
   const setField = (field: keyof typeof profile, value: string | number) => {
     saveProfile({ ...profile, [field]: value });
@@ -581,17 +641,62 @@ export default function Perfil() {
         <StatusBadge text={`Actualizado · ${activity.steps.toLocaleString()} pasos · ${activity.activityKcal} kcal activas hoy`} />
       )}
 
-      {/* Báscula */}
+      {/* Báscula (inline, mismo patrón que la actividad del reloj) */}
       <div style={sectionTitle}>BÁSCULA INTELIGENTE</div>
-      <div
-        onClick={() => router.push("/bascula")}
-        style={{ borderRadius: 14, padding: 12, textAlign: "center", fontSize: 12, fontWeight: 700, cursor: "pointer", background: "#1b1e21", color: "rgba(244,243,238,.7)" }}
-      >
-        📸 Sube una captura de tu báscula
+      <div style={{ fontSize: 11, color: "rgba(244,243,238,.5)", marginBottom: 10, lineHeight: 1.4 }}>
+        Sube una captura de tu app de báscula — funciona con cualquier marca (Zepp Life, Renpho, etc.) — y
+        actualizamos tu peso y composición corporal.
       </div>
-      <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.4)", marginTop: 6, textAlign: "center" }}>
-        Funciona con cualquier marca (Zepp Life, Renpho, etc.)
-      </div>
+      <ImageUploadZone
+        placeholder="Toca para subir la captura de tu báscula (cualquier marca)"
+        icon="⚖️"
+        height={120}
+        radius={14}
+        onImage={(url) => {
+          setScaleShot(url);
+          setScaleParsed(null);
+        }}
+      />
+      {scaleError && <div style={{ marginTop: 8, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)" }}>{scaleError}</div>}
+      {scaleParsed && (
+        <div style={{ marginTop: 10, background: "#1b1e21", borderRadius: 14, padding: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em", marginBottom: 10 }}>
+            DATOS DETECTADOS
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12.5 }}>
+            {(
+              [
+                ["Puntuación", scaleParsed.score != null ? String(scaleParsed.score) : "—"],
+                ["Peso", `${scaleParsed.peso_lb} lb`],
+                ["Complexión", scaleParsed.complexion ?? "—"],
+                ["IMC", scaleParsed.imc != null ? String(scaleParsed.imc) : "—"],
+                ["Grasa corporal", scaleParsed.grasa_pct != null ? `${scaleParsed.grasa_pct}%` : "—"],
+                ["Nivel de agua", scaleParsed.agua_pct != null ? `${scaleParsed.agua_pct}%` : "—"],
+                ["Proteína", scaleParsed.proteina_pct != null ? `${scaleParsed.proteina_pct}%` : "—"],
+                ["Metab. basal", scaleParsed.bmr != null ? `${scaleParsed.bmr.toLocaleString()} kcal` : "—"],
+                ["Grasa visceral", scaleParsed.grasa_visceral != null ? String(scaleParsed.grasa_visceral) : "—"],
+                ["Músculo", scaleParsed.musculo_lb != null ? `${scaleParsed.musculo_lb} lb` : "—"],
+                ["Masa ósea", scaleParsed.masa_osea_lb != null ? `${scaleParsed.masa_osea_lb} lb` : "—"],
+              ] as [string, string][]
+            ).map(([label, value]) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "rgba(244,243,238,.5)" }}>{label}</span>
+                <span style={{ fontWeight: 700 }}>{value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <ActionButton
+        label={scaleBusy ? "Leyendo captura…" : scaleParsed ? "Actualizar mi perfil" : "Leer captura de la báscula"}
+        onClick={scaleParsed ? applyScale : readScaleCapture}
+        busy={scaleBusy}
+      />
+      {bodyComp && (
+        <StatusBadge
+          text={`Actualizado · última captura ${bodyComp.date.slice(8, 10)}/${bodyComp.date.slice(5, 7)} · ${profile.weight} lb`}
+        />
+      )}
 
       {/* Cerrar sesión */}
       {userEmail && (
