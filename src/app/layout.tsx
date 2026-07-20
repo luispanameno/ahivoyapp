@@ -42,6 +42,24 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${sora.variable} ${jakarta.variable}`}>
       <body>
+        {/* Barra fija sobre la zona del notch / Dynamic Island: el contenido
+            pasa por debajo con desenfoque al hacer scroll (como la tab bar). */}
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            margin: "0 auto",
+            maxWidth: 480,
+            height: "env(safe-area-inset-top)",
+            background: "rgba(18,20,22,.88)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            zIndex: 90,
+            pointerEvents: "none",
+          }}
+        />
         <div
           style={{
             maxWidth: 480,
