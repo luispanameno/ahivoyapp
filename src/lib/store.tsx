@@ -42,6 +42,10 @@ interface AppState {
   routine: Routine;
   weights: WeightEntry[];
   toast: string | null;
+  // Foto tomada/elegida desde el botón central de la tab bar, en tránsito
+  // hacia /escanear (que la consume y la limpia al montar).
+  pendingScanPhoto: string | null;
+  setPendingScanPhoto: (dataUrl: string | null) => void;
 
   // derivados
   kcalEaten: number;
@@ -91,6 +95,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [routine, setRoutineState] = useState<Routine>(DEFAULT_ROUTINE);
   const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [toast, setToast] = useState<string | null>(null);
+  const [pendingScanPhoto, setPendingScanPhoto] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const date = todayISO();
@@ -125,6 +130,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Sesión expirada: si el token caduca y no se puede refrescar, Supabase
+  // emite SIGNED_OUT. Ahí mandamos al usuario a iniciar sesión de nuevo
+  // en vez de dejar la app fallando en silencio.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    const sb = getSupabase()!;
+    const { data } = sb.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") router.replace("/login");
+    });
+    return () => data.subscription.unsubscribe();
+  }, [router]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -271,6 +288,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     routine,
     weights,
     toast,
+    pendingScanPhoto,
+    setPendingScanPhoto,
     ...derived,
     showToast,
     saveProfile,

@@ -11,7 +11,6 @@ interface UploadCardProps {
   onImage: (url: string) => void;
   isUpdated?: boolean;
   busy?: boolean;
-  onAction?: () => void;
 }
 
 export default function UploadCard({
@@ -22,7 +21,6 @@ export default function UploadCard({
   onImage,
   isUpdated = false,
   busy = false,
-  onAction,
 }: UploadCardProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -133,15 +131,11 @@ export default function UploadCard({
           )}
         </div>
 
-        {/* Botón flotante a la derecha */}
+        {/* Botón flotante a la derecha: siempre "subir" para dejar claro
+            que se puede volver a actualizar. El estado "Actualizado" se
+            comunica con el badge verde y el punto, no cambiando el ícono. */}
         <Pressable
-          onClick={() => {
-            if (isUpdated && onAction) {
-              onAction();
-            } else {
-              inputRef.current?.click();
-            }
-          }}
+          onClick={() => inputRef.current?.click()}
           tapScale={0.9}
           style={{
             display: "flex",
@@ -175,8 +169,6 @@ export default function UploadCard({
                 animation: "spin 0.8s linear infinite",
               }}
             />
-          ) : isUpdated ? (
-            "✓"
           ) : (
             "⬆"
           )}

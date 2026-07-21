@@ -32,7 +32,12 @@ function lsGet<T>(key: string, fallback: T): T {
 
 function lsSet(key: string, value: unknown) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(LS + key, JSON.stringify(value));
+  try {
+    localStorage.setItem(LS + key, JSON.stringify(value));
+  } catch {
+    // Cuota de localStorage excedida (p. ej. muchas miniaturas de comidas):
+    // no rompemos la app, solo no persistimos ese dato en modo local.
+  }
 }
 
 async function userId(): Promise<string | null> {
@@ -107,6 +112,7 @@ export async function loadAll(date: string): Promise<AllData> {
     p: m.proteina,
     c: m.carbos,
     f: m.grasa,
+    photo: m.foto_url ?? null,
   }));
 
   const a = activityQ.data;
@@ -202,6 +208,7 @@ export async function mealsFor(date: string): Promise<Meal[]> {
       p: m.proteina,
       c: m.carbos,
       f: m.grasa,
+      photo: m.foto_url ?? null,
     }));
   }
   return lsGet<Meal[]>("meals", []).filter((m) => m.date === date);
@@ -256,6 +263,7 @@ export async function addMeal(meal: Meal) {
       proteina: meal.p,
       carbos: meal.c,
       grasa: meal.f,
+      foto_url: meal.photo ?? null,
     });
   } else {
     const all = lsGet<Meal[]>("meals", []);

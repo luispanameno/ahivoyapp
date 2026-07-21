@@ -10,6 +10,7 @@ export interface Meal {
   p: number;
   c: number;
   f: number;
+  photo?: string | null; // miniatura JPEG (data URL) de la foto del plato
 }
 
 export type ActivityLevel = "sedentario" | "ligero" | "activo";

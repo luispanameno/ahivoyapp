@@ -61,7 +61,10 @@ export default function Historial() {
                     width: 36,
                     height: 36,
                     borderRadius: 10,
-                    background: "repeating-linear-gradient(45deg,#2a2d30,#2a2d30 4px,#232527 4px,#232527 8px)",
+                    overflow: "hidden",
+                    background: meal.photo
+                      ? `center/cover no-repeat url(${meal.photo})`
+                      : "repeating-linear-gradient(45deg,#2a2d30,#2a2d30 4px,#232527 4px,#232527 8px)",
                     flex: "none",
                     display: "flex",
                     alignItems: "center",
@@ -69,7 +72,7 @@ export default function Historial() {
                     fontSize: 15,
                   }}
                 >
-                  🍽️
+                  {meal.photo ? "" : "🍽️"}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 700 }}>{meal.desc}</div>

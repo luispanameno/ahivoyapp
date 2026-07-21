@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Pressable from "@/components/Pressable";
 import { analyze, fileToDataURL, FoodResult } from "@/lib/analyze";
+import { resizeDataURL } from "@/lib/img";
 import { useApp, currentMealTime } from "@/lib/store";
 import { MealTime } from "@/lib/types";
 
@@ -77,6 +78,15 @@ export default function Escanear() {
 
   const save = async () => {
     if (!result) return;
+    // Guardamos una miniatura de la foto para verla luego en el historial.
+    let thumb: string | null = null;
+    if (photo) {
+      try {
+        thumb = await resizeDataURL(photo);
+      } catch {
+        thumb = null; // si falla el redimensionado, guardamos sin foto
+      }
+    }
     await addMeal({
       time: mealTime,
       desc: result.descripcion,
@@ -84,6 +94,7 @@ export default function Escanear() {
       p: Math.round(result.proteina),
       c: Math.round(result.carbos),
       f: Math.round(result.grasa),
+      photo: thumb,
     });
     showToast(`¡Agregado! ${Math.round(result.kcal)} kcal`);
     router.push("/hoy");

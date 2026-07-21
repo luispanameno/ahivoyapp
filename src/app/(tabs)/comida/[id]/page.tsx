@@ -60,6 +60,15 @@ export default function EditarComida() {
       <div className="font-sora" style={{ fontSize: 18, fontWeight: 700 }}>Editar comida</div>
       <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>{meal.time}</div>
 
+      {meal.photo && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={meal.photo}
+          alt="Tu plato"
+          style={{ width: "100%", height: 180, objectFit: "cover", borderRadius: 16, marginTop: 16 }}
+        />
+      )}
+
       <div style={{ marginTop: 16, fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)" }}>DESCRIPCIÓN</div>
       <input value={desc} onChange={(e) => setDesc(e.target.value)} style={fieldStyle} />
 
