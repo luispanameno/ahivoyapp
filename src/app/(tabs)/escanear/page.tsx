@@ -4,7 +4,7 @@
 // aclarar (si la IA aún tiene dudas) → confirmar tiempo → guardar.
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Pressable from "@/components/Pressable";
 import { analyze, fileToDataURL, FoodResult } from "@/lib/analyze";
 import { resizeDataURL } from "@/lib/img";
@@ -17,25 +17,20 @@ const MEAL_TIMES: MealTime[] = ["Desayuno", "Almuerzo", "Cena", "Snack"];
 
 export default function Escanear() {
   const router = useRouter();
-  const { addMeal, showToast, pendingScanPhoto, setPendingScanPhoto } = useApp();
-  const photoInputRef = useRef<HTMLInputElement>(null);
+  const { addMeal, showToast } = useApp();
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
-  // Si la foto vino del botón central de la tab bar (picker nativo:
-  // "Tomar foto" / "Elegir de la galería"), arrancamos ya en la vista previa
-  // leyendo la foto pendiente una sola vez al montar.
-  const [step, setStep] = useState<Step>(() => (pendingScanPhoto ? "preview" : "capture"));
-  const [photo, setPhoto] = useState<string | null>(() => pendingScanPhoto);
+  // Todo el flujo (tomar/elegir foto → contexto → analizar) vive en ESTA
+  // sola pantalla, sin ningún cambio de ruta de por medio: así nunca se
+  // pierde la foto en tránsito ni se vuelve a pedir dos veces.
+  const [step, setStep] = useState<Step>("capture");
+  const [photo, setPhoto] = useState<string | null>(null);
   const [context, setContext] = useState(""); // contexto que el usuario escribe ANTES de analizar
   const [result, setResult] = useState<FoodResult | null>(null);
   const [clarifyText, setClarifyText] = useState(""); // aclaración que pide la IA DESPUÉS de analizar
   const [mealTime, setMealTime] = useState<MealTime>(currentMealTime());
   const [error, setError] = useState<string | null>(null);
-
-  // Ya la consumimos para el estado inicial: limpiamos el buffer del contexto.
-  useEffect(() => {
-    if (pendingScanPhoto) setPendingScanPhoto(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const runAnalysis = async (dataUrl: string, textoContexto?: string) => {
     setStep("analyzing");
@@ -142,49 +137,93 @@ export default function Escanear() {
             {error}
           </div>
         )}
-        {/* Un solo botón grande: el SO abre su hoja nativa (Cámara / Galería) */}
-        <Pressable
-          onClick={() => photoInputRef.current?.click()}
+        {/* Zona ilustrativa + dos botones claros. Damos las dos opciones por
+            separado porque Android a veces manda el input directo a la galería
+            y no ofrece la cámara; con capture="environment" la forzamos. */}
+        <div
           style={{
             position: "absolute",
             left: 32,
             right: 32,
             top: 110,
-            bottom: 130,
+            bottom: 150,
             borderRadius: 24,
-            overflow: "hidden",
             border: "1.5px dashed rgba(255,255,255,.25)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            cursor: "pointer",
-            background: "transparent",
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-            <div
-              style={{
-                width: 72,
-                height: 72,
-                borderRadius: "50%",
-                background: "#f4f3ee",
-                border: "4px solid rgba(244,243,238,.4)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 26,
-              }}
-            >
-              📷
-            </div>
-            <div style={{ fontSize: 13, color: "rgba(244,243,238,.55)", fontWeight: 600, textAlign: "center", padding: "0 24px", lineHeight: 1.6 }}>
-              Tomar foto o elegir de la galería
-            </div>
+          <div
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: "50%",
+              background: "#f4f3ee",
+              border: "4px solid rgba(244,243,238,.4)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 26,
+            }}
+          >
+            📷
           </div>
-        </Pressable>
-        {/* Sin "capture": Android/iOS muestran el selector nativo completo */}
+        </div>
+        <div style={{ position: "absolute", left: 32, right: 32, bottom: 40, display: "flex", flexDirection: "column", gap: 10 }}>
+          <Pressable
+            onClick={() => cameraInputRef.current?.click()}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              background: "#c7f27a",
+              color: "#10240a",
+              borderRadius: 16,
+              padding: "15px 18px",
+              fontWeight: 800,
+              fontSize: 14.5,
+              cursor: "pointer",
+              boxShadow: "0 0 16px rgba(199,242,122,.4)",
+            }}
+          >
+            <span style={{ fontSize: 20 }}>📷</span> Tomar foto
+          </Pressable>
+          <Pressable
+            onClick={() => galleryInputRef.current?.click()}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              background: "#1b1e21",
+              color: "#f4f3ee",
+              borderRadius: 16,
+              padding: "15px 18px",
+              fontWeight: 700,
+              fontSize: 14.5,
+              cursor: "pointer",
+              border: "1px solid rgba(255,255,255,.1)",
+            }}
+          >
+            <span style={{ fontSize: 20 }}>🖼️</span> Elegir de la galería
+          </Pressable>
+        </div>
+        {/* Cámara (fuerza cámara en Android) + galería, cada uno su input. */}
         <input
-          ref={photoInputRef}
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            handleFile(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
+        <input
+          ref={galleryInputRef}
           type="file"
           accept="image/*"
           style={{ display: "none" }}
