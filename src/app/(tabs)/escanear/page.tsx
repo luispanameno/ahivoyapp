@@ -1,57 +1,78 @@
 "use client";
 
-// Escanear comida: captura → analizando (Gemini) → aclarar → confirmar tiempo → guardar.
+// Escanear comida: captura → vista previa + contexto → analizando (Gemini) →
+// aclarar (si la IA aún tiene dudas) → confirmar tiempo → guardar.
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Pressable from "@/components/Pressable";
 import { analyze, fileToDataURL, FoodResult } from "@/lib/analyze";
 import { useApp, currentMealTime } from "@/lib/store";
 import { MealTime } from "@/lib/types";
 
-type Step = "capture" | "analyzing" | "clarify" | "confirm";
+type Step = "capture" | "preview" | "analyzing" | "clarify" | "confirm";
 
 const MEAL_TIMES: MealTime[] = ["Desayuno", "Almuerzo", "Cena", "Snack"];
 
 export default function Escanear() {
   const router = useRouter();
-  const { addMeal, showToast } = useApp();
-  const cameraRef = useRef<HTMLInputElement>(null);
-  const galleryRef = useRef<HTMLInputElement>(null);
+  const { addMeal, showToast, pendingScanPhoto, setPendingScanPhoto } = useApp();
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
-  const [step, setStep] = useState<Step>("capture");
-  const [photo, setPhoto] = useState<string | null>(null);
+  // Si la foto vino del botón central de la tab bar (picker nativo:
+  // "Tomar foto" / "Elegir de la galería"), arrancamos ya en la vista previa
+  // leyendo la foto pendiente una sola vez al montar.
+  const [step, setStep] = useState<Step>(() => (pendingScanPhoto ? "preview" : "capture"));
+  const [photo, setPhoto] = useState<string | null>(() => pendingScanPhoto);
+  const [context, setContext] = useState(""); // contexto que el usuario escribe ANTES de analizar
   const [result, setResult] = useState<FoodResult | null>(null);
-  const [clarifyText, setClarifyText] = useState("");
+  const [clarifyText, setClarifyText] = useState(""); // aclaración que pide la IA DESPUÉS de analizar
   const [mealTime, setMealTime] = useState<MealTime>(currentMealTime());
   const [error, setError] = useState<string | null>(null);
 
-  const runAnalysis = async (dataUrl: string, clarification?: string) => {
+  // Ya la consumimos para el estado inicial: limpiamos el buffer del contexto.
+  useEffect(() => {
+    if (pendingScanPhoto) setPendingScanPhoto(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const runAnalysis = async (dataUrl: string, textoContexto?: string) => {
     setStep("analyzing");
     setError(null);
     try {
       const res = await analyze<FoodResult>({
         mode: "food",
         image: dataUrl,
-        text: clarification || undefined,
+        text: textoContexto || undefined,
       });
       setResult(res);
-      if (res.pregunta && !clarification) {
+      if (res.pregunta && !textoContexto) {
         setStep("clarify");
       } else {
         setStep("confirm");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo analizar la foto");
-      setStep("capture");
+      setStep("preview");
     }
   };
 
+  // Entrada de respaldo (si el usuario llega aquí sin pasar por la tab bar):
+  // un solo input SIN "capture" → el SO abre su selector nativo con
+  // "Tomar foto" / "Elegir de la galería" en Android e iOS por igual.
   const handleFile = async (file: File | undefined | null) => {
     if (!file) return;
     const url = await fileToDataURL(file);
     setPhoto(url);
-    runAnalysis(url);
+    setContext("");
+    setStep("preview");
+  };
+
+  // El "Filtro de Precisión": la foto NUNCA se envía sola. Se manda junto
+  // con el contexto que el usuario haya escrito (puede ir vacío).
+  const startAnalysis = () => {
+    if (!photo) return;
+    runAnalysis(photo, context.trim() || undefined);
   };
 
   const save = async () => {
@@ -68,7 +89,7 @@ export default function Escanear() {
     router.push("/hoy");
   };
 
-  // ---------- Captura ----------
+  // ---------- Captura (entrada de respaldo) ----------
   if (step === "capture") {
     return (
       <div style={{ height: "100dvh", position: "relative", background: "#08090a" }}>
@@ -87,7 +108,7 @@ export default function Escanear() {
           ‹ Volver
         </div>
         <div style={{ position: "absolute", top: "calc(24px + env(safe-area-inset-top))", left: 0, right: 0, textAlign: "center", fontSize: 12, fontWeight: 600, color: "rgba(244,243,238,.7)" }}>
-          Toma una foto o elige de tu galería
+          Toca para tomar o elegir la foto de tu plato
         </div>
         {error && (
           <div
@@ -110,14 +131,15 @@ export default function Escanear() {
             {error}
           </div>
         )}
-        <div
-          onClick={() => galleryRef.current?.click()}
+        {/* Un solo botón grande: el SO abre su hoja nativa (Cámara / Galería) */}
+        <Pressable
+          onClick={() => photoInputRef.current?.click()}
           style={{
             position: "absolute",
             left: 32,
             right: 32,
             top: 110,
-            bottom: 180,
+            bottom: 130,
             borderRadius: 24,
             overflow: "hidden",
             border: "1.5px dashed rgba(255,255,255,.25)",
@@ -125,75 +147,133 @@ export default function Escanear() {
             alignItems: "center",
             justifyContent: "center",
             cursor: "pointer",
-            background: photo ? `center/cover no-repeat url(${photo})` : "transparent",
+            background: "transparent",
           }}
         >
-          {!photo && (
-            <div style={{ fontSize: 13, color: "rgba(244,243,238,.5)", fontWeight: 600, textAlign: "center", padding: "0 24px", lineHeight: 1.6 }}>
-              🖼️ Toca aquí para elegir una foto
-              <br />
-              de tu galería
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: "50%",
+                background: "#f4f3ee",
+                border: "4px solid rgba(244,243,238,.4)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 26,
+              }}
+            >
+              📷
             </div>
-          )}
-        </div>
-        {/* Botón blanco = cámara directa */}
-        <Pressable
-          onClick={() => cameraRef.current?.click()}
-          tapScale={0.9}
-          style={{
-            position: "absolute",
-            bottom: 56,
-            left: "calc(50% - 36px)",
-            width: 72,
-            height: 72,
-            borderRadius: "50%",
-            background: "#f4f3ee",
-            border: "4px solid rgba(244,243,238,.4)",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 26,
-            boxSizing: "border-box",
-          }}
-        >
-          📷
+            <div style={{ fontSize: 13, color: "rgba(244,243,238,.55)", fontWeight: 600, textAlign: "center", padding: "0 24px", lineHeight: 1.6 }}>
+              Tomar foto o elegir de la galería
+            </div>
+          </div>
         </Pressable>
-        <div
+        {/* Sin "capture": Android/iOS muestran el selector nativo completo */}
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            handleFile(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
+      </div>
+    );
+  }
+
+  // ---------- Vista previa + contexto obligatorio ("Filtro de Precisión") ----------
+  if (step === "preview") {
+    return (
+      <div style={{ height: "100dvh", boxSizing: "border-box", padding: "calc(24px + env(safe-area-inset-top)) 20px 24px", display: "flex", flexDirection: "column" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div className="font-sora" style={{ fontSize: 18, fontWeight: 700 }}>Antes de analizar</div>
+          <div
+            onClick={() => {
+              setPhoto(null);
+              setContext("");
+              setError(null);
+              setStep("capture");
+            }}
+            style={{ fontSize: 12, fontWeight: 700, color: "rgba(244,243,238,.5)", cursor: "pointer" }}
+          >
+            Cambiar foto
+          </div>
+        </div>
+        <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>
+          Agrega contexto para que el cálculo sea más preciso (opcional)
+        </div>
+
+        {error && (
+          <div
+            style={{
+              marginTop: 14,
+              background: "rgba(230,120,60,.15)",
+              border: "1px solid rgba(230,120,60,.35)",
+              borderRadius: 14,
+              padding: "10px 12px",
+              fontSize: 11,
+              fontWeight: 600,
+              color: "oklch(78% 0.15 50)",
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        {photo && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photo}
+            alt="Tu plato"
+            style={{ width: "100%", height: 220, objectFit: "cover", borderRadius: 20, marginTop: 16 }}
+          />
+        )}
+
+        <div style={{ marginTop: 18, fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".03em" }}>
+          CONTEXTO ADICIONAL
+        </div>
+        <textarea
+          value={context}
+          onChange={(e) => setContext(e.target.value)}
+          placeholder="¿Algún detalle extra? (Ej: Usé 1 cucharada de aceite, dejé la mitad...)"
           style={{
-            position: "absolute",
-            bottom: 30,
-            left: 0,
-            right: 0,
+            marginTop: 8,
+            background: "#1b1e21",
+            border: "1px solid rgba(255,255,255,.08)",
+            borderRadius: 14,
+            padding: "12px 14px",
+            color: "#f4f3ee",
+            fontSize: 13,
+            resize: "none",
+            height: 90,
+            boxSizing: "border-box",
+            outline: "none",
+          }}
+        />
+
+        <div style={{ flex: 1 }} />
+        <Pressable
+          onClick={startAnalysis}
+          style={{
+            background: "#c7f27a",
+            color: "#10240a",
             textAlign: "center",
-            fontSize: 10.5,
-            fontWeight: 600,
-            color: "rgba(244,243,238,.45)",
+            padding: 16,
+            borderRadius: 18,
+            fontWeight: 800,
+            fontSize: 14,
+            marginTop: 16,
+            cursor: "pointer",
+            boxShadow: "0 0 20px rgba(199,242,122,.5)",
           }}
         >
-          El botón te deja tomar foto o elegir de tu galería
-        </div>
-        {/* Sin "capture": Android muestra el menú Cámara / Galería / Archivos */}
-        <input
-          ref={cameraRef}
-          type="file"
-          accept="image/*"
-          style={{ display: "none" }}
-          onChange={(e) => {
-            handleFile(e.target.files?.[0]);
-            e.target.value = "";
-          }}
-        />
-        <input
-          ref={galleryRef}
-          type="file"
-          accept="image/*"
-          style={{ display: "none" }}
-          onChange={(e) => {
-            handleFile(e.target.files?.[0]);
-            e.target.value = "";
-          }}
-        />
+          Analizar Comida
+        </Pressable>
       </div>
     );
   }
@@ -220,10 +300,10 @@ export default function Escanear() {
     );
   }
 
-  // ---------- Aclaración ----------
+  // ---------- Aclaración (la IA aún tiene una duda) ----------
   if (step === "clarify") {
     return (
-      <div style={{ height: "100dvh", boxSizing: "border-box", padding: "40px 24px 24px", display: "flex", flexDirection: "column" }}>
+      <div style={{ height: "100dvh", boxSizing: "border-box", padding: "calc(40px + env(safe-area-inset-top)) 24px 24px", display: "flex", flexDirection: "column" }}>
         <div className="font-sora" style={{ fontSize: 18, fontWeight: 700 }}>Una pregunta rápida</div>
         <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 4 }}>Para afinar el cálculo de macros</div>
         <div style={{ marginTop: 20, fontSize: 14, fontWeight: 600 }}>{result?.pregunta}</div>
@@ -282,7 +362,7 @@ export default function Escanear() {
 
   // ---------- Confirmar ----------
   return (
-    <div style={{ minHeight: "100dvh", boxSizing: "border-box", padding: "40px 20px 0", display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "100dvh", boxSizing: "border-box", padding: "calc(40px + env(safe-area-inset-top)) 20px 0", display: "flex", flexDirection: "column" }}>
       <div className="font-sora" style={{ fontSize: 18, fontWeight: 700 }}>Confirma tu comida</div>
       <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>
         Detectado por foto · ajusta si algo no cuadra

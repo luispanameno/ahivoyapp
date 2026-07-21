@@ -54,18 +54,6 @@ export interface AllData {
   weights: WeightEntry[];
 }
 
-const EMPTY: AllData = {
-  profile: DEFAULT_PROFILE,
-  meals: [],
-  water: 0,
-  activity: null,
-  workout: null,
-  sleep: null,
-  bodyComp: null,
-  routine: DEFAULT_ROUTINE,
-  weights: [],
-};
-
 export async function loadAll(date: string): Promise<AllData> {
   const sb = getSupabase();
   const uid = await userId();

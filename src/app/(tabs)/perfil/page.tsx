@@ -66,6 +66,15 @@ function r1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
+// "20/07 · 6:58 p. m." para la marca de última actualización de las tarjetas.
+function fmtStamp(d: Date): string {
+  return (
+    d.toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit" }) +
+    " · " +
+    d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: true })
+  );
+}
+
 function weeklySeries(weights: WeightEntry[]): { labels: string[]; values: number[] } {
   const byWeek = new Map<string, number[]>();
   for (const w of weights) {
@@ -115,12 +124,10 @@ export default function Perfil() {
     if (weight !== profile.weight && weight > 0) await app.setWeight(weight);
     showToast("Datos guardados ✓");
   };
-  const [healthShot, setHealthShot] = useState<string | null>(null);
   const [healthBusy, setHealthBusy] = useState(false);
   const [healthError, setHealthError] = useState<string | null>(null);
 
   // Báscula inline (mismo patrón que la actividad del reloj)
-  const [scaleShot, setScaleShot] = useState<string | null>(null);
   const [scaleParsed, setScaleParsed] = useState<ScaleResult | null>(null);
   const [scaleBusy, setScaleBusy] = useState(false);
   const [scaleError, setScaleError] = useState<string | null>(null);
@@ -141,7 +148,6 @@ export default function Perfil() {
   };
 
   const onScaleImage = (url: string) => {
-    setScaleShot(url);
     setScaleParsed(null);
     readScaleCapture(url);
   };
@@ -165,7 +171,6 @@ export default function Perfil() {
       scaleParsed.peso_lb > 0 ? scaleParsed.peso_lb : undefined
     );
     setScaleParsed(null);
-    setScaleShot(null);
     setScaleUpdatedAt(new Date());
     showToast("Perfil actualizado desde tu báscula");
   };
@@ -276,7 +281,6 @@ export default function Perfil() {
   };
 
   const onHealthImage = (url: string) => {
-    setHealthShot(url);
     readHealthCapture(url);
   };
 
@@ -762,20 +766,12 @@ export default function Perfil() {
           icon="⌚"
           lastUpdated={
             healthUpdatedAt
-              ? {
-                  timestamp: healthUpdatedAt.toLocaleDateString("es-CO", {
-                    day: "2-digit",
-                    month: "2-digit",
-                  }) + " · " + healthUpdatedAt.toLocaleTimeString("es-CO", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true,
-                  }),
-                  label: "Actualizado",
-                }
+              ? { timestamp: fmtStamp(healthUpdatedAt), label: "Actualizado" }
+              : activity?.synced
+              ? { timestamp: "hoy", label: "Actualizado" }
               : undefined
           }
-          isUpdated={!!healthUpdatedAt}
+          isUpdated={!!healthUpdatedAt || !!activity?.synced}
           busy={healthBusy}
           onImage={onHealthImage}
         />
@@ -792,20 +788,12 @@ export default function Perfil() {
           icon="⚖️"
           lastUpdated={
             scaleUpdatedAt
-              ? {
-                  timestamp: scaleUpdatedAt.toLocaleDateString("es-CO", {
-                    day: "2-digit",
-                    month: "2-digit",
-                  }) + " · " + scaleUpdatedAt.toLocaleTimeString("es-CO", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true,
-                  }),
-                  label: "Actualizado",
-                }
+              ? { timestamp: fmtStamp(scaleUpdatedAt), label: "Actualizado" }
+              : bodyComp
+              ? { timestamp: `${bodyComp.date.slice(8, 10)}/${bodyComp.date.slice(5, 7)}`, label: "Actualizado" }
               : undefined
           }
-          isUpdated={!!scaleUpdatedAt && !scaleParsed}
+          isUpdated={(!!scaleUpdatedAt || !!bodyComp) && !scaleParsed}
           busy={scaleBusy}
           onImage={onScaleImage}
         />
