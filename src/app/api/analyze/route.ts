@@ -2,8 +2,56 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI, Type } from "@google/genai";
+import { createClient } from "@supabase/supabase-js";
 
 export const maxDuration = 90;
+
+// ---------- Seguridad del endpoint ----------
+// Sin esto, cualquiera con la URL podría gastar nuestra cuota de Gemini.
+
+const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SB_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+// Límites de tamaño (evitan payloads gigantes que abusen memoria/cuota).
+const MAX_BODY_BYTES = 12_000_000; // ~12 MB de body total
+const MAX_IMAGE_CHARS = 10_000_000; // ~7 MB de imagen (base64)
+const MAX_TEXT_CHARS = 20_000; // texto del usuario
+
+// Rate limit en memoria (best-effort en serverless): frena que un solo
+// usuario/instancia sea martillada. Para algo robusto multi-instancia,
+// lo ideal sería Upstash Redis; esto ya corta el abuso más obvio.
+const RATE = new Map<string, { count: number; reset: number }>();
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX = 30; // 30 análisis por minuto por usuario
+
+function rateLimited(userId: string): boolean {
+  const now = Date.now();
+  const entry = RATE.get(userId);
+  if (!entry || now > entry.reset) {
+    RATE.set(userId, { count: 1, reset: now + RATE_WINDOW_MS });
+    return false;
+  }
+  entry.count += 1;
+  return entry.count > RATE_MAX;
+}
+
+// Verifica la sesión del usuario. Si Supabase no está configurado (modo
+// local de desarrollo), no hay auth posible: se permite (solo tu máquina).
+// En producción (Vercel con Supabase) SIEMPRE exige un token válido.
+async function authUserId(req: NextRequest): Promise<string | null> {
+  if (!SB_URL || !SB_ANON) return "local";
+  const authz = req.headers.get("authorization");
+  const token = authz?.startsWith("Bearer ") ? authz.slice(7) : null;
+  if (!token) return null;
+  try {
+    const sb = createClient(SB_URL, SB_ANON);
+    const { data, error } = await sb.auth.getUser(token);
+    if (error || !data.user) return null;
+    return data.user.id;
+  } catch {
+    return null;
+  }
+}
 
 type Mode = "food" | "scale" | "activity" | "sleep" | "workout" | "coach";
 
@@ -187,9 +235,69 @@ const SCHEMAS: Record<Mode, object> = {
   },
 };
 
-const COACH_PROMPT = `Eres el "Coach IA" de AHIVOYAPP, una app de conteo de calorías y pérdida de peso. Hablas español, cercano y motivador, con emojis con moderación. Respuestas CORTAS (2-5 frases).
-Recibes el contexto del día del usuario en JSON (metas, comido, quemado, agua, sueño, rutina, hora local).
-Usa SIEMPRE los números reales del contexto (kcal libres, proteína faltante, agua faltante) en tus consejos.
+// Contexto que envía el cliente (mismos datos que están en Supabase:
+// perfil, metas y progreso del día se cargan de la BD al abrir la app).
+interface CoachCtx {
+  nombre?: string;
+  perfil?: {
+    edad?: number;
+    altura_cm?: number;
+    peso_lb?: number;
+    peso_meta_lb?: number;
+    sexo?: string;
+    nivel_actividad?: string;
+  };
+  metas?: { kcal?: number; proteina_g?: number; carbos_g?: number; grasa_g?: number; agua_ml?: number };
+  hoy?: {
+    kcal_comidas?: number;
+    proteina_g?: number;
+    carbos_g?: number;
+    grasa_g?: number;
+    agua_ml?: number;
+    dia_rutina?: string;
+  };
+}
+
+function buildCoachPrompt(ctxRaw: unknown): string {
+  const ctx = (ctxRaw ?? {}) as CoachCtx;
+  const p = ctx.perfil ?? {};
+  const metas = ctx.metas ?? {};
+  const hoy = ctx.hoy ?? {};
+  const nombre = ctx.nombre?.trim() || "el usuario";
+  // BMR (Mifflin-St Jeor) y TDEE calculados en el servidor con el perfil real
+  const kg = (p.peso_lb ?? 180) * 0.4536;
+  const base = 10 * kg + 6.25 * (p.altura_cm ?? 170) - 5 * (p.edad ?? 25);
+  const bmr = Math.round(p.sexo === "mujer" ? base - 161 : base + 5);
+  const factores: Record<string, number> = { sedentario: 1.2, ligero: 1.375, activo: 1.55 };
+  const tdee = Math.round(bmr * (factores[p.nivel_actividad ?? "ligero"] ?? 1.375));
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : 0);
+
+  return `Eres el Escáner Nutricional AI, el asistente personal de ${nombre} para la gestión total de salud. Tu comunicación es exclusivamente en ESPAÑOL y usas un tono profesional, analítico y motivador, con respuestas concisas.
+
+CONTEXTO ACTUAL:
+BMR: ${bmr} kcal | TDEE: ${tdee} kcal (nivel de actividad: ${p.nivel_actividad ?? "ligero"}).
+Meta Diaria: ${n(metas.kcal)} kcal.
+Macros: Mínimo ${n(metas.proteina_g)}g proteína | Máximo ${n(metas.carbos_g)}g carbs | Máximo ${n(metas.grasa_g)}g grasas (priorizando insaturadas).
+Hidratación: ${n(metas.agua_ml)} ml.
+Rutina actual: ${hoy.dia_rutina ?? "Push"} (Push/Pull/Legs).
+Consumido HOY antes de este mensaje: ${n(hoy.kcal_comidas)} kcal · ${n(hoy.carbos_g)}g carbs · ${n(hoy.proteina_g)}g proteína · ${n(hoy.grasa_g)}g grasas · ${n(hoy.agua_ml)} ml agua.
+
+REGLA OBLIGATORIA: al inicio de TODAS tus respuestas sobre comida o agua, imprime este tablero actualizado en Markdown (una línea por renglón, números YA SUMANDO lo que registras en esta misma respuesta):
+📱 **TABLERO NUTRICIONAL** 📱
+🟢 🔥 Calorías: [consumidas] / ${n(metas.kcal)} kcal
+🟡 🍞 Carbs: [consumidos] / ${n(metas.carbos_g)} g
+🔵 🍗 Proteína: [consumida] / ${n(metas.proteina_g)} g
+🟠 🥑 Grasas: [consumidas] / ${n(metas.grasa_g)} g
+💧 Agua: [consumida] / ${n(metas.agua_ml)} ml
+Después del tablero, tu análisis en 2-4 frases. En respuestas que NO son de comida/agua (saludos, dudas, sueño, peso), NO imprimas el tablero.
+
+FUNCIONES Y REGLAS:
+1. Análisis de Fotos de comida: calcula macros con precisión espacial (porciones por tamaño visual). Si el usuario NO indicó el tiempo de comida ni pidió registrarla directo, pregunta "¿A qué tiempo lo registro: Desayuno, Almuerzo, Cena o Snack?" ANTES de emitir log_meal.
+2. Vigilancia de Grasas: si detectas frituras o exceso de grasa saturada, incluye una línea "🚨 ALERTA DE CALIDAD" explicando el porqué y una alternativa mejor.
+3. Confirmación de Entrenamiento: suma las calorías quemadas al presupuesto del día (leyendo texto o capturas de smartwatch) y explica el efecto.
+4. Alarmas de Límite: si con lo registrado el usuario SUPERA alguna meta diaria (kcal, carbs o grasas), incluye una línea "🚨 ALERTA DE LÍMITE" con el dato exacto (ej. "carbs 235/220 g").
+
+Recibes además el contexto completo del día en JSON (comidas_hoy, historial_chat, rutina, hora local). Usa SIEMPRE los números reales del contexto en tus consejos.
 
 Además de aconsejar, puedes REGISTRAR, MODIFICAR y BORRAR datos cuando el usuario te lo pida con lenguaje natural. Detecta intenciones como:
 - agregar agua ("tomé 500 ml") o QUITAR agua ("quítame un vaso", "me equivoqué, borra 250 ml")
@@ -201,6 +309,9 @@ Además de aconsejar, puedes REGISTRAR, MODIFICAR y BORRAR datos cuando el usuar
 - BORRAR una comida del historial ("borra el pollo del almuerzo") — usa delete_meal con la descripción EXACTA que aparece en comidas_hoy del contexto
 - CORREGIR una comida ("el desayuno eran 300 kcal, no 500") — usa update_meal con la descripción exacta de comidas_hoy y los valores nuevos completos.
 Si envía una FOTO de comida: analízala y estima macros; si además pide registrarla ("agrégala"), regístrala con log_meal.
+
+MÚLTIPLES INTENCIONES EN UN MISMO MENSAJE (REGLA OBLIGATORIA): un solo mensaje puede traer VARIAS cosas a la vez (ej. foto del plato + "también tomé 644 ml de agua" + "dormí 6 horas"). ANTES de responder, escanea SIEMPRE el texto completo del usuario buscando CADA intención — comida, AGUA/LÍQUIDOS, sueño, ejercicio, peso — y emite UNA acción por cada una. Ignorar una intención secundaria (muy típico: el agua mencionada junto a una foto de comida) es un ERROR GRAVE.
+LÍQUIDOS — detección obligatoria: cualquier mención de beber suma hidratación con add_water usando la cantidad EXACTA en ml ("644 ml" → 644; "medio litro" → 500; "1.5L" → 1500). Sin cantidad, estima: vaso ≈ 250 ml, botella ≈ 600 ml, taza ≈ 240 ml. Agua, té o café sin azúcar cuentan como agua; bebidas CON calorías (jugo, refresco, cerveza, batido) NO van a add_water: se registran con log_meal (o se suman a la comida si vienen con ella). En tu "reply" confirma también el agua registrada.
 
 Responde SOLO con JSON válido:
 {"reply": string (tu respuesta al usuario),
@@ -258,6 +369,7 @@ EJERCICIO — MATEMÁTICA ESTRICTA: si el usuario reporta ejercicio:
 - Si dice las calorías exactas (de su reloj), usa ESE número en log_workout.
 - Si no, estímalas con METs: kcal = MET × peso_kg × horas. METs de referencia: caminar 3.5 · caminar rápido 4.5 · correr suave 8 · correr fuerte 11 · bici 7 · pesas 5 · fútbol 8 · natación 7 · baile 5 · limpieza intensa 3.5. (peso_kg = peso_lb × 0.4536). Redondea a enteros.
 - Registra con log_workout (kcal y nombre) y en "reply" explica amigablemente el efecto en su presupuesto: "quemaste ~X kcal → tu presupuesto de hoy sube de kcal_presupuesto a kcal_presupuesto+X". OJO: hoy.kcal_quemadas ya refleja lo contado (reloj o entrenamiento previo, se toma el MAYOR de los dos, no se suman); si ya hay quemadas mayores registradas por el reloj, aclara que ya estaban contadas y el presupuesto no cambia.`;
+}
 
 function parseDataUrl(dataUrl: string): { mimeType: string; data: string } | null {
   const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
@@ -339,6 +451,26 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // 1) Autenticación: solo usuarios con sesión válida pueden usar la IA.
+  const userId = await authUserId(req);
+  if (!userId) {
+    return NextResponse.json({ error: "No autorizado. Inicia sesión." }, { status: 401 });
+  }
+
+  // 2) Rate limit por usuario.
+  if (rateLimited(userId)) {
+    return NextResponse.json(
+      { error: "Demasiadas solicitudes. Espera un minuto e intenta de nuevo." },
+      { status: 429 }
+    );
+  }
+
+  // 3) Guardia temprana por tamaño de body (antes de parsear).
+  const contentLength = Number(req.headers.get("content-length") || 0);
+  if (contentLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "Solicitud demasiado grande" }, { status: 413 });
+  }
+
   let body: { mode?: Mode; image?: string; text?: string; context?: unknown };
   try {
     body = await req.json();
@@ -347,9 +479,20 @@ export async function POST(req: NextRequest) {
   }
 
   const { mode, image, text, context } = body;
-  if (!mode) return NextResponse.json({ error: "Falta 'mode'" }, { status: 400 });
+  const MODES: Mode[] = ["food", "scale", "activity", "sleep", "workout", "coach"];
+  if (!mode || !MODES.includes(mode)) {
+    return NextResponse.json({ error: "Modo inválido" }, { status: 400 });
+  }
   if (mode !== "coach" && !image && !text)
     return NextResponse.json({ error: "Falta imagen o texto" }, { status: 400 });
+
+  // 4) Límites de tamaño de imagen y texto.
+  if (typeof image === "string" && image.length > MAX_IMAGE_CHARS) {
+    return NextResponse.json({ error: "Imagen demasiado grande (máx ~7 MB)" }, { status: 413 });
+  }
+  if (typeof text === "string" && text.length > MAX_TEXT_CHARS) {
+    return NextResponse.json({ error: "Texto demasiado largo" }, { status: 413 });
+  }
 
   const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
 
@@ -369,7 +512,7 @@ export async function POST(req: NextRequest) {
     parts.push({ text: "Analiza la imagen." });
   }
 
-  const systemInstruction = mode === "coach" ? COACH_PROMPT : PROMPTS[mode];
+  const systemInstruction = mode === "coach" ? buildCoachPrompt(context) : PROMPTS[mode];
 
   // Cadena de modelos: si uno agota su cuota gratuita (429), no está
   // disponible (404) o se cuelga (timeout), se intenta el siguiente.

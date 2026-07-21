@@ -2,6 +2,8 @@
 
 // Cliente del endpoint /api/analyze (Gemini corre SOLO en el servidor).
 
+import { getSupabase } from "./supabase";
+
 export type AnalyzeMode =
   | "food"
   | "scale"
@@ -70,9 +72,20 @@ export async function analyze<T = unknown>(payload: {
   text?: string;
   context?: unknown;
 }): Promise<T> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+  // Adjuntamos el token de sesión para que el servidor autentique la llamada
+  // y nadie externo pueda gastar la cuota de la IA con nuestra API.
+  const sb = getSupabase();
+  if (sb) {
+    const { data } = await sb.auth.getSession();
+    const token = data.session?.access_token;
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch("/api/analyze", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(payload),
   });
   if (!res.ok) {
