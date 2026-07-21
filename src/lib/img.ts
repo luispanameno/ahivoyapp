@@ -29,3 +29,17 @@ export function resizeDataURL(
     img.src = dataUrl;
   });
 }
+
+// Comprime una foto ANTES de mandarla a la IA. La reduce a ~1600px de lado
+// mayor con calidad alta: el texto de capturas (báscula/reloj) sigue siendo
+// legible, pero el archivo baja de varios MB a unos cientos de KB. Así el
+// usuario puede subir cualquier foto de su celular sin ver "imagen demasiado
+// grande" ni tener que reducirla a mano. Si algo falla, devuelve la original.
+export async function compressForAnalysis(dataUrl: string): Promise<string> {
+  if (!dataUrl.startsWith("data:image/")) return dataUrl;
+  try {
+    return await resizeDataURL(dataUrl, 1600, 0.85);
+  } catch {
+    return dataUrl;
+  }
+}

@@ -12,9 +12,11 @@ export const maxDuration = 90;
 const SB_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SB_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Límites de tamaño (evitan payloads gigantes que abusen memoria/cuota).
-const MAX_BODY_BYTES = 12_000_000; // ~12 MB de body total
-const MAX_IMAGE_CHARS = 10_000_000; // ~7 MB de imagen (base64)
+// Límites de tamaño (solo red de seguridad contra payloads maliciosos:
+// el cliente ya comprime las fotos a ~cientos de KB antes de enviarlas,
+// así que un usuario normal nunca los alcanza aunque suba una foto enorme).
+const MAX_BODY_BYTES = 22_000_000; // ~22 MB de body total
+const MAX_IMAGE_CHARS = 18_000_000; // ~13 MB de imagen (base64)
 const MAX_TEXT_CHARS = 20_000; // texto del usuario
 
 // Rate limit en memoria (best-effort en serverless): frena que un solo

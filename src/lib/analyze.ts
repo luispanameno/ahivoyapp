@@ -3,6 +3,7 @@
 // Cliente del endpoint /api/analyze (Gemini corre SOLO en el servidor).
 
 import { getSupabase } from "./supabase";
+import { compressForAnalysis } from "./img";
 
 export type AnalyzeMode =
   | "food"
@@ -83,10 +84,14 @@ export async function analyze<T = unknown>(payload: {
     if (token) headers["Authorization"] = `Bearer ${token}`;
   }
 
+  // Comprimimos la foto aquí, en el único punto por el que pasan todas las
+  // imágenes: el usuario sube cualquier foto y nunca ve "imagen muy grande".
+  const image = payload.image ? await compressForAnalysis(payload.image) : payload.image;
+
   const res = await fetch("/api/analyze", {
     method: "POST",
     headers,
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, image }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
