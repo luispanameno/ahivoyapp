@@ -5,7 +5,8 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import ImageUploadZone, { ActionButton, StatusBadge } from "@/components/ImageUploadZone";
+import UploadCard from "@/components/UploadCard";
+import { ActionButton } from "@/components/ImageUploadZone";
 import Pressable from "@/components/Pressable";
 import AvatarEditor from "@/components/AvatarEditor";
 import { analyze, fileToDataURL } from "@/lib/analyze";
@@ -124,21 +125,25 @@ export default function Perfil() {
   const [scaleBusy, setScaleBusy] = useState(false);
   const [scaleError, setScaleError] = useState<string | null>(null);
 
-  const readScaleCapture = async () => {
-    if (!scaleShot) {
-      setScaleError("Primero sube la captura de tu báscula.");
-      return;
-    }
+  const [scaleUpdatedAt, setScaleUpdatedAt] = useState<Date | null>(null);
+
+  const readScaleCapture = async (shot: string) => {
     setScaleBusy(true);
     setScaleError(null);
     try {
-      const res = await analyze<ScaleResult>({ mode: "scale", image: scaleShot });
+      const res = await analyze<ScaleResult>({ mode: "scale", image: shot });
       setScaleParsed(res);
     } catch (e) {
       setScaleError(e instanceof Error ? e.message : "No se pudo leer la captura");
     } finally {
       setScaleBusy(false);
     }
+  };
+
+  const onScaleImage = (url: string) => {
+    setScaleShot(url);
+    setScaleParsed(null);
+    readScaleCapture(url);
   };
 
   const applyScale = async () => {
@@ -161,6 +166,7 @@ export default function Perfil() {
     );
     setScaleParsed(null);
     setScaleShot(null);
+    setScaleUpdatedAt(new Date());
     showToast("Perfil actualizado desde tu báscula");
   };
 
@@ -239,11 +245,9 @@ export default function Perfil() {
       ]
     : [];
 
-  const readHealthCapture = async () => {
-    if (!healthShot) {
-      setHealthError("Primero sube la captura de tu app de salud.");
-      return;
-    }
+  const [healthUpdatedAt, setHealthUpdatedAt] = useState<Date | null>(null);
+
+  const readHealthCapture = async (shot: string) => {
     setHealthBusy(true);
     setHealthError(null);
     try {
@@ -253,7 +257,7 @@ export default function Perfil() {
         kcal_activas: number;
         kcal_totales: number;
         distancia_km: number;
-      }>({ mode: "activity", image: healthShot });
+      }>({ mode: "activity", image: shot });
       await setActivity({
         steps: Math.round(res.pasos) || 0,
         activeMin: Math.round(res.min_activos) || 0,
@@ -262,12 +266,18 @@ export default function Perfil() {
         distance: Math.round((res.distancia_km || 0) * 100) / 100,
         synced: true,
       });
+      setHealthUpdatedAt(new Date());
       showToast("Actividad actualizada desde tu captura");
     } catch (e) {
       setHealthError(e instanceof Error ? e.message : "No se pudo leer la captura");
     } finally {
       setHealthBusy(false);
     }
+  };
+
+  const onHealthImage = (url: string) => {
+    setHealthShot(url);
+    readHealthCapture(url);
   };
 
 
@@ -743,84 +753,101 @@ export default function Perfil() {
         <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)" }}>Editar ›</span>
       </div>
 
-      {/* Actividad del reloj */}
-      <div style={sectionTitle}>ACTIVIDAD DE TU RELOJ</div>
-      <div style={{ fontSize: 11, color: "rgba(244,243,238,.5)", marginBottom: 10, lineHeight: 1.4 }}>
-        Sube una captura de las calorías o actividad de tu app de salud (Samsung Health, Apple Salud, Garmin, etc.) y la
-        leemos por ti.
-      </div>
-      <ImageUploadZone
-        placeholder="Toca para subir la captura de tu app de salud (kcal, pasos)"
-        icon="⌚"
-        height={120}
-        radius={14}
-        onImage={setHealthShot}
-      />
-      {healthError && <div style={{ marginTop: 8, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)" }}>{healthError}</div>}
-      <ActionButton
-        label={healthBusy ? "Leyendo captura…" : "Actualizar actividad desde la captura"}
-        onClick={readHealthCapture}
-        busy={healthBusy}
-      />
-      {activity?.synced && (
-        <StatusBadge text={`Actualizado · ${activity.steps.toLocaleString()} pasos · ${activity.activityKcal} kcal activas hoy`} />
-      )}
-
-      {/* Báscula (inline, mismo patrón que la actividad del reloj) */}
-      <div style={sectionTitle}>BÁSCULA INTELIGENTE</div>
-      <div style={{ fontSize: 11, color: "rgba(244,243,238,.5)", marginBottom: 10, lineHeight: 1.4 }}>
-        Sube una captura de tu app de báscula — funciona con cualquier marca (Zepp Life, Renpho, etc.) — y
-        actualizamos tu peso y composición corporal.
-      </div>
-      <ImageUploadZone
-        placeholder="Toca para subir la captura de tu báscula (cualquier marca)"
-        icon="⚖️"
-        height={120}
-        radius={14}
-        onImage={(url) => {
-          setScaleShot(url);
-          setScaleParsed(null);
-        }}
-      />
-      {scaleError && <div style={{ marginTop: 8, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)" }}>{scaleError}</div>}
-      {scaleParsed && (
-        <div style={{ marginTop: 10, background: "#1b1e21", borderRadius: 14, padding: 14 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em", marginBottom: 10 }}>
-            DATOS DETECTADOS
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12.5 }}>
-            {(
-              [
-                ["Puntuación", scaleParsed.score != null ? String(Math.round(scaleParsed.score)) : "—"],
-                ["Peso", `${r1(scaleParsed.peso_lb)} lb`],
-                ["Complexión", scaleParsed.complexion ?? "—"],
-                ["IMC", scaleParsed.imc != null ? String(r1(scaleParsed.imc)) : "—"],
-                ["Grasa corporal", scaleParsed.grasa_pct != null ? `${r1(scaleParsed.grasa_pct)}%` : "—"],
-                ["Nivel de agua", scaleParsed.agua_pct != null ? `${r1(scaleParsed.agua_pct)}%` : "—"],
-                ["Proteína", scaleParsed.proteina_pct != null ? `${r1(scaleParsed.proteina_pct)}%` : "—"],
-                ["Metab. basal", scaleParsed.bmr != null ? `${Math.round(scaleParsed.bmr).toLocaleString()} kcal` : "—"],
-                ["Grasa visceral", scaleParsed.grasa_visceral != null ? String(Math.round(scaleParsed.grasa_visceral)) : "—"],
-                ["Músculo", scaleParsed.musculo_lb != null ? `${r1(scaleParsed.musculo_lb)} lb` : "—"],
-                ["Masa ósea", scaleParsed.masa_osea_lb != null ? `${r1(scaleParsed.masa_osea_lb)} lb` : "—"],
-              ] as [string, string][]
-            ).map(([label, value]) => (
-              <div key={label} style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "rgba(244,243,238,.5)" }}>{label}</span>
-                <span style={{ fontWeight: 700 }}>{value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      <ActionButton
-        label={scaleBusy ? "Leyendo captura…" : scaleParsed ? "Actualizar mi perfil" : "Leer captura de la báscula"}
-        onClick={scaleParsed ? applyScale : readScaleCapture}
-        busy={scaleBusy}
-      />
-      {bodyComp && (
-        <StatusBadge
-          text={`Actualizado · última captura ${bodyComp.date.slice(8, 10)}/${bodyComp.date.slice(5, 7)} · ${profile.weight} lb`}
+      {/* Subir datos: actividad del reloj + báscula */}
+      <div style={sectionTitle}>SUBIR DATOS</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <UploadCard
+          title="Actividad del reloj"
+          subtitle="kcal · pasos · tiempo"
+          icon="⌚"
+          lastUpdated={
+            healthUpdatedAt
+              ? {
+                  timestamp: healthUpdatedAt.toLocaleDateString("es-CO", {
+                    day: "2-digit",
+                    month: "2-digit",
+                  }) + " · " + healthUpdatedAt.toLocaleTimeString("es-CO", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                  }),
+                  label: "Actualizado",
+                }
+              : undefined
+          }
+          isUpdated={!!healthUpdatedAt}
+          busy={healthBusy}
+          onImage={onHealthImage}
         />
+        {healthError && (
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)", background: "rgba(230,120,60,.1)", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(230,120,60,.2)" }}>
+            {healthError}
+          </div>
+        )}
+
+        {/* Báscula inteligente (mismo patrón: un toque sube + analiza) */}
+        <UploadCard
+          title="Báscula inteligente"
+          subtitle="peso · grasa · IMC"
+          icon="⚖️"
+          lastUpdated={
+            scaleUpdatedAt
+              ? {
+                  timestamp: scaleUpdatedAt.toLocaleDateString("es-CO", {
+                    day: "2-digit",
+                    month: "2-digit",
+                  }) + " · " + scaleUpdatedAt.toLocaleTimeString("es-CO", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                  }),
+                  label: "Actualizado",
+                }
+              : undefined
+          }
+          isUpdated={!!scaleUpdatedAt && !scaleParsed}
+          busy={scaleBusy}
+          onImage={onScaleImage}
+        />
+        {scaleError && (
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)", background: "rgba(230,120,60,.1)", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(230,120,60,.2)" }}>
+            {scaleError}
+          </div>
+        )}
+      </div>
+
+      {/* Datos detectados por la báscula: preview antes de confirmar */}
+      {scaleParsed && (
+        <>
+          <div style={{ marginTop: 14, background: "#1b1e21", borderRadius: 14, padding: 14 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em", marginBottom: 10 }}>
+              DATOS DETECTADOS
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12.5 }}>
+              {(
+                [
+                  ["Puntuación", scaleParsed.score != null ? String(Math.round(scaleParsed.score)) : "—"],
+                  ["Peso", `${r1(scaleParsed.peso_lb)} lb`],
+                  ["Complexión", scaleParsed.complexion ?? "—"],
+                  ["IMC", scaleParsed.imc != null ? String(r1(scaleParsed.imc)) : "—"],
+                  ["Grasa corporal", scaleParsed.grasa_pct != null ? `${r1(scaleParsed.grasa_pct)}%` : "—"],
+                  ["Nivel de agua", scaleParsed.agua_pct != null ? `${r1(scaleParsed.agua_pct)}%` : "—"],
+                  ["Proteína", scaleParsed.proteina_pct != null ? `${r1(scaleParsed.proteina_pct)}%` : "—"],
+                  ["Metab. basal", scaleParsed.bmr != null ? `${Math.round(scaleParsed.bmr).toLocaleString()} kcal` : "—"],
+                  ["Grasa visceral", scaleParsed.grasa_visceral != null ? String(Math.round(scaleParsed.grasa_visceral)) : "—"],
+                  ["Músculo", scaleParsed.musculo_lb != null ? `${r1(scaleParsed.musculo_lb)} lb` : "—"],
+                  ["Masa ósea", scaleParsed.masa_osea_lb != null ? `${r1(scaleParsed.masa_osea_lb)} lb` : "—"],
+                ] as [string, string][]
+              ).map(([label, value]) => (
+                <div key={label} style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "rgba(244,243,238,.5)" }}>{label}</span>
+                  <span style={{ fontWeight: 700 }}>{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <ActionButton label="Actualizar mi perfil" onClick={applyScale} busy={false} />
+        </>
       )}
 
       {/* Cerrar sesión */}
