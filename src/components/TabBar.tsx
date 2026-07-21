@@ -2,6 +2,8 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "motion/react";
+import { useApp } from "@/lib/store";
+import { fileToDataURL } from "@/lib/analyze";
 
 const OFF = "rgba(244,243,238,.3)";
 const ON = "#c7f27a";
@@ -9,8 +11,18 @@ const ON = "#c7f27a";
 export default function TabBar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { setPendingScanPhoto } = useApp();
 
   const c = (route: string) => (pathname === route ? ON : OFF);
+
+  // Un solo input, SIN `capture`: en Android e iOS el SO abre su selector
+  // nativo con "Tomar foto" y "Elegir de la galería" en la misma hoja.
+  const onPickAny = async (file: File | undefined | null) => {
+    if (!file) return;
+    const url = await fileToDataURL(file);
+    setPendingScanPhoto(url);
+    router.push("/escanear");
+  };
 
   return (
     <div
@@ -48,11 +60,10 @@ export default function TabBar() {
         <div style={{ width: 20, height: 15, border: `2.5px solid ${c("/historial")}`, borderRadius: 3 }} />
         <div style={{ fontSize: 10, fontWeight: 700, color: c("/historial") }}>Historial</div>
       </div>
-      <motion.div
+      <motion.label
         whileTap={{ scale: 0.95 }}
         whileHover={{ scale: 1.02 }}
         transition={{ type: "spring", stiffness: 400, damping: 25 }}
-        onClick={() => router.push("/escanear")}
         style={{
           width: 52,
           height: 52,
@@ -81,7 +92,16 @@ export default function TabBar() {
           <div style={{ position: "absolute", top: -4, left: 5, width: 7, height: 3, background: "#10240a", borderRadius: 1 }} />
           <div style={{ width: 8, height: 8, border: "1.8px solid #10240a", borderRadius: "50%" }} />
         </div>
-      </motion.div>
+        <input
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            onPickAny(e.target.files?.[0]);
+            e.target.value = "";
+          }}
+        />
+      </motion.label>
       <div
         onClick={() => router.push("/coach")}
         style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: "pointer" }}
