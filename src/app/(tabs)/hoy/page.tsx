@@ -3,7 +3,8 @@
 // Dashboard "Hoy" (screenshots/01-hoy.png)
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import Pressable from "@/components/Pressable";
 import { useApp } from "@/lib/store";
 
@@ -15,17 +16,26 @@ function MacroRing({
   label,
   center,
   sub,
+  centerAlt,
+  subAlt,
   color,
   glow,
+  showRemaining,
 }: {
   value: number; // 0..1
   label: string;
   center: string;
   sub: string;
+  centerAlt: string;
+  subAlt: string;
   color: string;
   glow: string;
+  showRemaining: boolean;
 }) {
   const deg = Math.min(360, Math.round(value * 360));
+  const displayCenter = showRemaining ? centerAlt : center;
+  const displaySub = showRemaining ? subAlt : sub;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
       <div
@@ -43,10 +53,25 @@ function MacroRing({
       >
         <div style={{ position: "absolute", inset: 6, borderRadius: "50%", background: "#1b1e21" }} />
         <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <div className="font-sora" style={{ fontSize: 15, fontWeight: 800, textShadow: `0 0 8px ${glow}` }}>
-            {center}
-          </div>
-          <div style={{ fontSize: 8.5, color: "rgba(244,243,238,.4)" }}>{sub}</div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={displayCenter}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.35 }}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+              }}
+            >
+              <div className="font-sora" style={{ fontSize: 15, fontWeight: 800, textShadow: `0 0 8px ${glow}` }}>
+                {displayCenter}
+              </div>
+              <div style={{ fontSize: 8.5, color: "rgba(244,243,238,.4)" }}>{displaySub}</div>
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
       <div style={{ fontSize: 10, fontWeight: 700, color: "rgba(244,243,238,.6)" }}>{label}</div>
@@ -58,6 +83,14 @@ export default function Hoy() {
   const router = useRouter();
   const app = useApp();
   const [waterStep, setWaterStep] = useState("250");
+  const [showRemaining, setShowRemaining] = useState(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setShowRemaining((prev) => !prev);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const {
     profile,
@@ -187,32 +220,44 @@ export default function Hoy() {
             label="CALORÍAS"
             center={String(kcalEaten)}
             sub={`/${kcalBudget}`}
+            centerAlt={String(kcalRemaining)}
+            subAlt="libres"
             color="#c7f27a"
             glow="rgba(199,242,122,.65)"
+            showRemaining={showRemaining}
           />
           <MacroRing
             value={carbsG / profile.metaCarbs}
             label="CARBS"
             center={`${carbsG}g`}
             sub={`/${profile.metaCarbs}g`}
+            centerAlt={`${Math.max(0, profile.metaCarbs - carbsG)}g`}
+            subAlt="faltan"
             color="oklch(78% 0.15 85)"
             glow="oklch(78% 0.15 85 / 0.55)"
+            showRemaining={showRemaining}
           />
           <MacroRing
             value={proteinG / profile.metaProtein}
             label="PROTEÍNA"
             center={`${proteinG}g`}
             sub={`/${profile.metaProtein}g`}
+            centerAlt={`${Math.max(0, profile.metaProtein - proteinG)}g`}
+            subAlt="faltan"
             color="oklch(72% 0.15 250)"
             glow="oklch(72% 0.15 250 / 0.55)"
+            showRemaining={showRemaining}
           />
           <MacroRing
             value={fatG / profile.metaFat}
             label="GRASAS"
             center={`${fatG}g`}
             sub={`/${profile.metaFat}g`}
+            centerAlt={`${Math.max(0, profile.metaFat - fatG)}g`}
+            subAlt="faltan"
             color="oklch(72% 0.15 40)"
             glow="oklch(72% 0.15 40 / 0.55)"
+            showRemaining={showRemaining}
           />
         </div>
       </div>
