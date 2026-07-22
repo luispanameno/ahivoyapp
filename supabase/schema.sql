@@ -34,6 +34,9 @@ create table if not exists public.meals (
 );
 create index if not exists meals_user_fecha on public.meals (user_id, fecha);
 
+-- OBSOLETA (dejada por compatibilidad, ya no la usa la app): guardaba un
+-- solo total de agua por día, sin forma de corregir un valor erróneo.
+-- Reemplazada por "drinks" (un registro por cada vaso/bebida, como "meals").
 create table if not exists public.water_logs (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -41,6 +44,16 @@ create table if not exists public.water_logs (
   ml int not null default 0,
   unique (user_id, fecha)
 );
+
+create table if not exists public.drinks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  fecha date not null,
+  ml int not null default 0,        -- puede ser negativo (ajuste/resta)
+  nombre text not null default 'Agua', -- "Agua", "Café", "Jugo", "Ajuste"...
+  creado timestamptz default now()
+);
+create index if not exists drinks_user_fecha on public.drinks (user_id, fecha);
 
 create table if not exists public.weight_logs (
   id uuid primary key default gen_random_uuid(),
@@ -120,6 +133,7 @@ alter table public.profiles add column if not exists nivel_actividad text defaul
 alter table public.profiles enable row level security;
 alter table public.meals enable row level security;
 alter table public.water_logs enable row level security;
+alter table public.drinks enable row level security;
 alter table public.weight_logs enable row level security;
 alter table public.sleep_logs enable row level security;
 alter table public.workouts enable row level security;
@@ -136,7 +150,7 @@ create policy "own profile" on public.profiles
 do $$
 declare t text;
 begin
-  foreach t in array array['meals','water_logs','weight_logs','sleep_logs','workouts','activity_logs','body_composition','routines']
+  foreach t in array array['meals','water_logs','drinks','weight_logs','sleep_logs','workouts','activity_logs','body_composition','routines']
   loop
     execute format('drop policy if exists "own rows" on public.%I', t);
     execute format(

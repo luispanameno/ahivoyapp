@@ -12,7 +12,7 @@ const ORDER: MealTime[] = ["Desayuno", "Almuerzo", "Cena", "Snack"];
 
 export default function Historial() {
   const router = useRouter();
-  const { meals, kcalEaten } = useApp();
+  const { meals, drinks, kcalEaten, water, deleteDrink, showToast } = useApp();
 
   const now = new Date();
   const subtitle = `${DIAS[now.getDay()]}, ${now.getDate()} ${MESES[now.getMonth()]} · ${kcalEaten.toLocaleString()} kcal totales`;
@@ -22,12 +22,17 @@ export default function Historial() {
     items: meals.filter((m) => m.time === t),
   })).filter((g) => g.items.length);
 
+  const removeDrink = (id: string) => {
+    deleteDrink(id);
+    showToast("Registro eliminado");
+  };
+
   return (
     <div style={{ boxSizing: "border-box", padding: "24px 20px 0" }}>
       <div className="font-sora" style={{ fontSize: 20, fontWeight: 700 }}>Historial</div>
       <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>{subtitle}</div>
 
-      {groups.length === 0 && (
+      {groups.length === 0 && drinks.length === 0 && (
         <div style={{ marginTop: 40, textAlign: "center", color: "rgba(244,243,238,.45)", fontSize: 13, lineHeight: 1.6 }}>
           Aún no registras comidas hoy.
           <br />
@@ -36,6 +41,74 @@ export default function Historial() {
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 14, marginTop: 18, paddingBottom: 20 }}>
+        {drinks.length > 0 && (
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em", marginBottom: 8 }}>
+              BEBIDAS · {water}ml
+            </div>
+            {drinks.map((d) => (
+              <div
+                key={d.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  background: "#1b1e21",
+                  borderRadius: 14,
+                  padding: "10px 12px",
+                  marginBottom: 8,
+                }}
+              >
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: "rgba(255,255,255,.06)",
+                    flex: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 15,
+                  }}
+                >
+                  💧
+                </div>
+                <div style={{ flex: 1, fontSize: 13, fontWeight: 700 }}>{d.label}</div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: d.ml < 0 ? "oklch(65% 0.19 25)" : "#f4f3ee",
+                  }}
+                >
+                  {d.ml > 0 ? "+" : ""}
+                  {d.ml}ml
+                </div>
+                <div
+                  onClick={() => removeDrink(d.id)}
+                  style={{
+                    width: 26,
+                    height: 26,
+                    flex: "none",
+                    borderRadius: "50%",
+                    background: "rgba(255,255,255,.08)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: "rgba(244,243,238,.6)",
+                    marginLeft: 2,
+                  }}
+                >
+                  ×
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         {groups.map((group) => (
           <div key={group.label}>
             <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em", marginBottom: 8 }}>

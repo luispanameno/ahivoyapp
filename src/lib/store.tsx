@@ -17,6 +17,7 @@ import {
   BodyComp,
   DEFAULT_PROFILE,
   DEFAULT_ROUTINE,
+  Drink,
   Meal,
   MealTime,
   Profile,
@@ -34,7 +35,8 @@ interface AppState {
   userEmail: string | null;
   profile: Profile;
   meals: Meal[];
-  water: number;
+  drinks: Drink[];
+  water: number; // suma de "drinks" del día — se calcula sola, no se guarda
   activity: Activity | null;
   workout: WorkoutState | null;
   sleep: SleepState | null;
@@ -58,7 +60,8 @@ interface AppState {
   addMeal: (m: Omit<Meal, "id" | "date">) => Promise<void>;
   updateMeal: (m: Meal) => Promise<void>;
   deleteMeal: (id: string) => Promise<void>;
-  addWater: (ml: number) => Promise<void>;
+  addWater: (ml: number, label?: string) => Promise<void>;
+  deleteDrink: (id: string) => Promise<void>;
   setActivity: (a: Activity) => Promise<void>;
   setWorkout: (w: WorkoutState) => Promise<void>;
   setSleep: (s: SleepState) => Promise<void>;
@@ -83,7 +86,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE);
   const [meals, setMeals] = useState<Meal[]>([]);
-  const [water, setWaterState] = useState(0);
+  const [drinks, setDrinks] = useState<Drink[]>([]);
   const [activity, setActivityState] = useState<Activity | null>(null);
   const [workout, setWorkoutState] = useState<WorkoutState | null>(null);
   const [sleep, setSleepState] = useState<SleepState | null>(null);
@@ -111,7 +114,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (cancelled) return;
       setProfile(all.profile);
       setMeals(all.meals);
-      setWaterState(all.water);
+      setDrinks(all.drinks);
       setActivityState(all.activity);
       setWorkoutState(all.workout);
       setSleepState(all.sleep);
@@ -168,14 +171,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await db.deleteMeal(id);
   }, []);
 
+  // Cada llamada crea un NUEVO registro (como una comida) en vez de
+  // sobreescribir un total único: así cualquier valor erróneo se puede
+  // borrar en Historial y nunca queda un número dañado sin forma de arreglarlo.
   const addWater = useCallback(
-    async (ml: number) => {
-      const next = Math.max(0, water + ml);
-      setWaterState(next);
-      await db.setWater(date, next);
+    async (ml: number, label?: string) => {
+      const entry: Drink = {
+        id: crypto.randomUUID(),
+        date,
+        ml,
+        label: label || (ml < 0 ? "Ajuste" : "Agua"),
+      };
+      setDrinks((prev) => [...prev, entry]);
+      await db.addDrink(entry);
     },
-    [water, date]
+    [date]
   );
+
+  const deleteDrink = useCallback(async (id: string) => {
+    setDrinks((prev) => prev.filter((d) => d.id !== id));
+    await db.deleteDrink(id);
+  }, []);
 
   const setActivity = useCallback(
     async (a: Activity) => {
@@ -259,6 +275,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     // tomamos el mayor de los dos para no duplicar.
     const burnedKcal = Math.max(activityBurned, workoutBurned);
     const kcalBudget = profile.metaKcal + burnedKcal;
+    const water = drinks.reduce((a, d) => a + d.ml, 0);
     return {
       kcalEaten,
       proteinG: sum("p"),
@@ -267,15 +284,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       burnedKcal,
       kcalBudget,
       kcalRemaining: Math.max(0, kcalBudget - kcalEaten),
+      water,
     };
-  }, [meals, activity, workout, profile.metaKcal]);
+  }, [meals, activity, workout, profile.metaKcal, drinks]);
 
   const value: AppState = {
     ready,
     userEmail,
     profile,
     meals,
-    water,
+    drinks,
     activity,
     workout,
     sleep,
@@ -290,6 +308,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     updateMeal,
     deleteMeal,
     addWater,
+    deleteDrink,
     setActivity,
     setWorkout,
     setSleep,

@@ -208,6 +208,27 @@ interface SpeechRecognitionLike {
 }
 type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
 
+// Rojo de alerta cuando el usuario se pasó de la meta (mismo tono que en "Hoy").
+const OVER_COLOR = "oklch(65% 0.19 25)";
+const OVER_GLOW = "oklch(65% 0.19 25 / .55)";
+
+// Tarjeta de la tira de contexto: si el usuario se pasó de la meta, en vez
+// de clavarse en 0 muestra cuánto se pasó ("+Xg") en rojo, con su propia etiqueta.
+function statInfo(
+  actual: number,
+  meta: number,
+  unit: string,
+  normalLabel: string,
+  overLabel: string,
+  color: string,
+  glow: string
+) {
+  const over = meta > 0 && actual > meta;
+  return over
+    ? { value: `+${actual - meta}${unit}`, label: overLabel, color: OVER_COLOR, glow: OVER_GLOW }
+    : { value: `${Math.max(0, meta - actual)}${unit}`, label: normalLabel, color, glow };
+}
+
 const QUICK_PROMPTS = [
   { text: "Calcula mi meta ideal", send: "Calcula mi meta diaria de calorías ideal según mi peso, altura, edad y sexo, con un déficit saludable, explícame el cálculo y actualízala" },
   { text: "Registré ejercicio", send: "Acabo de hacer ejercicio, ¿cómo lo registro para que sume a mi presupuesto?" },
@@ -231,6 +252,7 @@ export default function Coach() {
     carbsG,
     fatG,
     burnedKcal,
+    kcalBudget,
     kcalRemaining,
     showToast,
   } = app;
@@ -325,9 +347,13 @@ export default function Coach() {
   };
 
   const protLeft = Math.max(0, profile.metaProtein - proteinG);
-  const carbsLeft = Math.max(0, profile.metaCarbs - carbsG);
-  const fatLeft = Math.max(0, profile.metaFat - fatG);
   const waterLeft = Math.max(0, profile.metaWater - water);
+
+  const kcalCard = statInfo(kcalEaten, kcalBudget, "", "KCAL LIBRES", "KCAL DE MÁS", "#c7f27a", "rgba(199,242,122,.5)");
+  const carbsCard = statInfo(carbsG, profile.metaCarbs, "g", "CARBS FALTAN", "CARBS DE MÁS", "oklch(78% 0.15 85)", "oklch(78% 0.15 85 / .5)");
+  const protCard = statInfo(proteinG, profile.metaProtein, "g", "PROTEÍNA FALTA", "PROTEÍNA DE MÁS", "oklch(80% 0.14 25)", "oklch(80% 0.14 25 / .5)");
+  const fatCard = statInfo(fatG, profile.metaFat, "g", "GRASAS FALTAN", "GRASAS DE MÁS", "oklch(72% 0.15 40)", "oklch(72% 0.15 40 / .5)");
+  const waterCard = statInfo(water, profile.metaWater, "ml", "AGUA FALTA", "AGUA DE MÁS", "oklch(80% 0.13 230)", "oklch(80% 0.13 230 / .5)");
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -355,7 +381,10 @@ export default function Coach() {
         if (!fecha) {
           // ---- Acciones sobre HOY (actualizan la pantalla al instante) ----
           if (a.type === "add_water" && a.ml) await app.addWater(a.ml);
-          else if (a.type === "remove_water" && a.ml) await app.addWater(-a.ml);
+          else if (a.type === "remove_water" && a.ml) {
+            const removeMl = Math.min(a.ml, water);
+            if (removeMl > 0) await app.addWater(-removeMl, "Ajuste");
+          }
           else if (a.type === "delete_meal" && a.desc) {
             const meal = matchMeal(app.meals, a.desc);
             if (meal) await app.deleteMeal(meal.id);
@@ -417,10 +446,14 @@ export default function Coach() {
             );
         } else {
           // ---- Acciones sobre OTRO día (directo a la base de datos) ----
-          if ((a.type === "add_water" || a.type === "remove_water") && a.ml) {
-            const actual = await db.waterFor(fecha);
-            const delta = a.type === "add_water" ? a.ml : -a.ml;
-            await db.setWater(fecha, Math.max(0, actual + delta));
+          if (a.type === "add_water" && a.ml) {
+            await db.addDrink({ id: crypto.randomUUID(), date: fecha, ml: a.ml, label: "Agua" });
+          } else if (a.type === "remove_water" && a.ml) {
+            const actual = (await db.drinksFor(fecha)).reduce((s, d) => s + d.ml, 0);
+            const removeMl = Math.min(a.ml, actual);
+            if (removeMl > 0) {
+              await db.addDrink({ id: crypto.randomUUID(), date: fecha, ml: -removeMl, label: "Ajuste" });
+            }
           } else if (a.type === "log_meal" && a.desc) {
             await db.addMeal({
               id: crypto.randomUUID(),
@@ -626,11 +659,11 @@ export default function Coach() {
 
       {/* Tira de contexto — las 5 métricas en una sola fila (mobile-first) */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 5, padding: "10px 20px 4px", flex: "none" }}>
-        <ContextCard value={String(kcalRemaining)} label="KCAL LIBRES" color="#c7f27a" glow="rgba(199,242,122,.5)" />
-        <ContextCard value={`${carbsLeft}g`} label="CARBS FALTAN" color="oklch(78% 0.15 85)" glow="oklch(78% 0.15 85 / .5)" />
-        <ContextCard value={`${protLeft}g`} label="PROTEÍNA FALTA" color="oklch(80% 0.14 25)" glow="oklch(80% 0.14 25 / .5)" />
-        <ContextCard value={`${fatLeft}g`} label="GRASAS FALTAN" color="oklch(72% 0.15 40)" glow="oklch(72% 0.15 40 / .5)" />
-        <ContextCard value={`${waterLeft}ml`} label="AGUA FALTA" color="oklch(80% 0.13 230)" glow="oklch(80% 0.13 230 / .5)" />
+        <ContextCard value={kcalCard.value} label={kcalCard.label} color={kcalCard.color} glow={kcalCard.glow} />
+        <ContextCard value={carbsCard.value} label={carbsCard.label} color={carbsCard.color} glow={carbsCard.glow} />
+        <ContextCard value={protCard.value} label={protCard.label} color={protCard.color} glow={protCard.glow} />
+        <ContextCard value={fatCard.value} label={fatCard.label} color={fatCard.color} glow={fatCard.glow} />
+        <ContextCard value={waterCard.value} label={waterCard.label} color={waterCard.color} glow={waterCard.glow} />
       </div>
 
       {/* Mensajes */}

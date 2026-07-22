@@ -93,6 +93,16 @@ export interface WeightEntry {
   lb: number;
 }
 
+// Registro individual de agua/bebida (como una comida, pero solo ml + etiqueta).
+// El total del día se calcula sumando estos registros — así cualquier valor
+// erróneo se puede borrar en Historial en vez de quedar pegado para siempre.
+export interface Drink {
+  id: string;
+  date: string; // YYYY-MM-DD
+  ml: number; // puede ser negativo (ajuste/resta)
+  label: string; // "Agua", "Café", "Jugo", "Ajuste", etc.
+}
+
 export interface ChatMessage {
   role: "user" | "coach";
   text: string;

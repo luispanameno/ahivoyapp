@@ -773,6 +773,7 @@ export default function Perfil() {
           }
           isUpdated={!!healthUpdatedAt || !!activity?.synced}
           busy={healthBusy}
+          busyMessages={["Leyendo tu captura…", "Buscando pasos y calorías…", "Recopilando todos tus datos…", "Casi listo…"]}
           onImage={onHealthImage}
         />
         {healthError && (
@@ -795,6 +796,7 @@ export default function Perfil() {
           }
           isUpdated={(!!scaleUpdatedAt || !!bodyComp) && !scaleParsed}
           busy={scaleBusy}
+          busyMessages={["Leyendo tu captura…", "Recopilando todos tus datos…", "Extrayendo peso, IMC y composición…", "Casi listo…"]}
           onImage={onScaleImage}
         />
         {scaleError && (

@@ -11,28 +11,38 @@ import { useApp } from "@/lib/store";
 const DIAS = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
 const MESES = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
 
+// Rojo de alerta cuando el usuario se pasó de la meta (mismo tono en toda la app).
+const OVER_COLOR = "oklch(65% 0.19 25)";
+const OVER_GLOW = "oklch(65% 0.19 25 / 0.6)";
+
 function MacroRing({
-  value,
+  actual,
+  meta,
   label,
-  center,
-  sub,
-  centerAlt,
-  subAlt,
+  unit,
   color,
   glow,
   showRemaining,
 }: {
-  value: number; // 0..1
+  actual: number;
+  meta: number;
   label: string;
-  center: string;
-  sub: string;
-  centerAlt: string;
-  subAlt: string;
+  unit: string; // "" para calorías, "g" para macros
   color: string;
   glow: string;
   showRemaining: boolean;
 }) {
-  const deg = Math.min(360, Math.round(value * 360));
+  const exceeded = meta > 0 && actual > meta;
+  const ringColor = exceeded ? OVER_COLOR : color;
+  const ringGlow = exceeded ? OVER_GLOW : glow;
+  const deg = Math.min(360, meta ? Math.round((actual / meta) * 360) : 0);
+
+  const center = `${actual}${unit}`;
+  const sub = meta ? `/${meta}${unit}` : "";
+  // Cuando se excede, la parte "faltan/libres" pasa a mostrar cuánto se pasó.
+  const centerAlt = exceeded ? `+${actual - meta}${unit}` : `${Math.max(0, meta - actual)}${unit}`;
+  const subAlt = exceeded ? "te has pasado" : unit ? "faltan" : "libres";
+
   const displayCenter = showRemaining ? centerAlt : center;
   const displaySub = showRemaining ? subAlt : sub;
 
@@ -44,8 +54,8 @@ function MacroRing({
           width: 80,
           height: 80,
           borderRadius: "50%",
-          background: `conic-gradient(${color} ${deg}deg, rgba(255,255,255,.06) ${deg}deg 360deg)`,
-          filter: `drop-shadow(0 0 10px ${glow})`,
+          background: `conic-gradient(${ringColor} ${deg}deg, rgba(255,255,255,.06) ${deg}deg 360deg)`,
+          filter: `drop-shadow(0 0 10px ${ringGlow})`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -55,7 +65,7 @@ function MacroRing({
         <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <AnimatePresence mode="wait">
             <motion.div
-              key={displayCenter}
+              key={displayCenter + displaySub}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
@@ -66,10 +76,13 @@ function MacroRing({
                 alignItems: "center",
               }}
             >
-              <div className="font-sora" style={{ fontSize: 15, fontWeight: 800, textShadow: `0 0 8px ${glow}` }}>
+              <div
+                className="font-sora"
+                style={{ fontSize: 15, fontWeight: 800, color: exceeded ? OVER_COLOR : undefined, textShadow: `0 0 8px ${ringGlow}` }}
+              >
                 {displayCenter}
               </div>
-              <div style={{ fontSize: 8.5, color: "rgba(244,243,238,.4)" }}>{displaySub}</div>
+              <div style={{ fontSize: 8.5, color: exceeded ? OVER_COLOR : "rgba(244,243,238,.4)" }}>{displaySub}</div>
             </motion.div>
           </AnimatePresence>
         </div>
@@ -156,7 +169,8 @@ export default function Hoy() {
 
   const removeWaterNow = () => {
     const ml = Number(waterStep) || 0;
-    if (ml > 0 && water > 0) app.addWater(-ml);
+    const removeMl = Math.min(ml, water);
+    if (removeMl > 0) app.addWater(-removeMl, "Ajuste");
   };
 
   return (
@@ -216,45 +230,37 @@ export default function Hoy() {
         </div>
         <div style={{ display: "flex", justifyContent: "space-around", animation: "ringIn .6s cubic-bezier(.2,.8,.2,1) both" }}>
           <MacroRing
-            value={kcalBudget ? kcalEaten / kcalBudget : 0}
+            actual={kcalEaten}
+            meta={kcalBudget}
+            unit=""
             label="CALORÍAS"
-            center={String(kcalEaten)}
-            sub={`/${kcalBudget}`}
-            centerAlt={String(kcalRemaining)}
-            subAlt="libres"
             color="#c7f27a"
             glow="rgba(199,242,122,.65)"
             showRemaining={showRemaining}
           />
           <MacroRing
-            value={carbsG / profile.metaCarbs}
+            actual={carbsG}
+            meta={profile.metaCarbs}
+            unit="g"
             label="CARBS"
-            center={`${carbsG}g`}
-            sub={`/${profile.metaCarbs}g`}
-            centerAlt={`${Math.max(0, profile.metaCarbs - carbsG)}g`}
-            subAlt="faltan"
             color="oklch(78% 0.15 85)"
             glow="oklch(78% 0.15 85 / 0.55)"
             showRemaining={showRemaining}
           />
           <MacroRing
-            value={proteinG / profile.metaProtein}
+            actual={proteinG}
+            meta={profile.metaProtein}
+            unit="g"
             label="PROTEÍNA"
-            center={`${proteinG}g`}
-            sub={`/${profile.metaProtein}g`}
-            centerAlt={`${Math.max(0, profile.metaProtein - proteinG)}g`}
-            subAlt="faltan"
             color="oklch(72% 0.15 250)"
             glow="oklch(72% 0.15 250 / 0.55)"
             showRemaining={showRemaining}
           />
           <MacroRing
-            value={fatG / profile.metaFat}
+            actual={fatG}
+            meta={profile.metaFat}
+            unit="g"
             label="GRASAS"
-            center={`${fatG}g`}
-            sub={`/${profile.metaFat}g`}
-            centerAlt={`${Math.max(0, profile.metaFat - fatG)}g`}
-            subAlt="faltan"
             color="oklch(72% 0.15 40)"
             glow="oklch(72% 0.15 40 / 0.55)"
             showRemaining={showRemaining}

@@ -9,6 +9,7 @@ import {
   BodyComp,
   DEFAULT_PROFILE,
   DEFAULT_ROUTINE,
+  Drink,
   Meal,
   Profile,
   Routine,
@@ -50,7 +51,7 @@ async function userId(): Promise<string | null> {
 export interface AllData {
   profile: Profile;
   meals: Meal[];
-  water: number;
+  drinks: Drink[];
   activity: Activity | null;
   workout: WorkoutState | null;
   sleep: SleepState | null;
@@ -68,11 +69,11 @@ export async function loadAll(date: string): Promise<AllData> {
   since.setDate(since.getDate() - 45);
   const sinceISO = since.toISOString().slice(0, 10);
 
-  const [profileQ, mealsQ, waterQ, activityQ, workoutQ, sleepQ, bodyQ, routineQ, weightsQ] =
+  const [profileQ, mealsQ, drinksQ, activityQ, workoutQ, sleepQ, bodyQ, routineQ, weightsQ] =
     await Promise.all([
       sb.from("profiles").select("*").eq("id", uid).maybeSingle(),
       sb.from("meals").select("*").eq("user_id", uid).eq("fecha", date),
-      sb.from("water_logs").select("ml").eq("user_id", uid).eq("fecha", date).maybeSingle(),
+      sb.from("drinks").select("*").eq("user_id", uid).eq("fecha", date).order("creado"),
       sb.from("activity_logs").select("*").eq("user_id", uid).eq("fecha", date).maybeSingle(),
       sb.from("workouts").select("*").eq("user_id", uid).eq("fecha", date).maybeSingle(),
       sb.from("sleep_logs").select("*").eq("user_id", uid).eq("fecha", date).maybeSingle(),
@@ -113,6 +114,13 @@ export async function loadAll(date: string): Promise<AllData> {
     c: m.carbos,
     f: m.grasa,
     photo: m.foto_url ?? null,
+  }));
+
+  const drinks: Drink[] = (drinksQ.data ?? []).map((d) => ({
+    id: d.id,
+    date: d.fecha,
+    ml: d.ml,
+    label: d.nombre ?? "Agua",
   }));
 
   const a = activityQ.data;
@@ -167,7 +175,7 @@ export async function loadAll(date: string): Promise<AllData> {
   return {
     profile,
     meals,
-    water: waterQ.data?.ml ?? 0,
+    drinks,
     activity,
     workout,
     sleep,
@@ -179,10 +187,11 @@ export async function loadAll(date: string): Promise<AllData> {
 
 function loadLocal(date: string): AllData {
   const meals = lsGet<Meal[]>("meals", []).filter((m) => m.date === date);
+  const drinks = lsGet<Drink[]>("drinks", []).filter((d) => d.date === date);
   return {
     profile: lsGet<Profile>("profile", DEFAULT_PROFILE),
     meals,
-    water: lsGet<Record<string, number>>("water", {})[date] ?? 0,
+    drinks,
     activity: lsGet<Record<string, Activity>>("activity", {})[date] ?? null,
     workout: lsGet<Record<string, WorkoutState>>("workout", {})[date] ?? null,
     sleep: lsGet<Record<string, SleepState>>("sleep", {})[date] ?? null,
@@ -214,14 +223,14 @@ export async function mealsFor(date: string): Promise<Meal[]> {
   return lsGet<Meal[]>("meals", []).filter((m) => m.date === date);
 }
 
-export async function waterFor(date: string): Promise<number> {
+export async function drinksFor(date: string): Promise<Drink[]> {
   const sb = getSupabase();
   const uid = await userId();
   if (sb && uid) {
-    const { data } = await sb.from("water_logs").select("ml").eq("user_id", uid).eq("fecha", date).maybeSingle();
-    return data?.ml ?? 0;
+    const { data } = await sb.from("drinks").select("*").eq("user_id", uid).eq("fecha", date).order("creado");
+    return (data ?? []).map((d) => ({ id: d.id, date: d.fecha, ml: d.ml, label: d.nombre ?? "Agua" }));
   }
-  return lsGet<Record<string, number>>("water", {})[date] ?? 0;
+  return lsGet<Drink[]>("drinks", []).filter((d) => d.date === date);
 }
 
 export async function saveProfile(profile: Profile) {
@@ -304,15 +313,31 @@ export async function deleteMeal(id: string) {
   }
 }
 
-export async function setWater(date: string, ml: number) {
+export async function addDrink(d: Drink) {
   const sb = getSupabase();
   const uid = await userId();
   if (sb && uid) {
-    await sb.from("water_logs").upsert({ user_id: uid, fecha: date, ml }, { onConflict: "user_id,fecha" });
+    await sb.from("drinks").insert({
+      id: d.id,
+      user_id: uid,
+      fecha: d.date,
+      ml: d.ml,
+      nombre: d.label,
+    });
   } else {
-    const all = lsGet<Record<string, number>>("water", {});
-    all[date] = ml;
-    lsSet("water", all);
+    const all = lsGet<Drink[]>("drinks", []);
+    lsSet("drinks", [...all, d]);
+  }
+}
+
+export async function deleteDrink(id: string) {
+  const sb = getSupabase();
+  const uid = await userId();
+  if (sb && uid) {
+    await sb.from("drinks").delete().eq("id", id).eq("user_id", uid);
+  } else {
+    const all = lsGet<Drink[]>("drinks", []);
+    lsSet("drinks", all.filter((d) => d.id !== id));
   }
 }
 

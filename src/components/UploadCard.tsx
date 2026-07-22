@@ -1,7 +1,10 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import Pressable from "./Pressable";
+
+const DEFAULT_BUSY_MESSAGES = ["Leyendo tu captura…", "Recopilando todos tus datos…", "Casi listo…"];
 
 interface UploadCardProps {
   title: string;
@@ -11,6 +14,8 @@ interface UploadCardProps {
   onImage: (url: string) => void;
   isUpdated?: boolean;
   busy?: boolean;
+  // Mensajes que rotan mientras se analiza la foto (feedback de progreso).
+  busyMessages?: string[];
 }
 
 export default function UploadCard({
@@ -21,8 +26,26 @@ export default function UploadCard({
   onImage,
   isUpdated = false,
   busy = false,
+  busyMessages = DEFAULT_BUSY_MESSAGES,
 }: UploadCardProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [msgIdx, setMsgIdx] = useState(0);
+
+  // Mientras se analiza, vamos rotando el mensaje cada ~2.2s para que se
+  // sienta que algo avanza (el análisis de báscula/reloj puede tardar).
+  useEffect(() => {
+    if (!busy) return;
+    // Reinicia al primer mensaje en el siguiente tick (no directamente en
+    // el cuerpo del efecto) y luego avanza cada ~2.2s.
+    const resetTimer = setTimeout(() => setMsgIdx(0), 0);
+    const interval = setInterval(() => {
+      setMsgIdx((i) => Math.min(i + 1, busyMessages.length - 1));
+    }, 2200);
+    return () => {
+      clearTimeout(resetTimer);
+      clearInterval(interval);
+    };
+  }, [busy, busyMessages.length]);
 
   const handleFile = async (file: File | undefined | null) => {
     if (!file) return;
@@ -77,18 +100,27 @@ export default function UploadCard({
           >
             {title}
           </div>
-          <div
-            style={{
-              fontSize: 12,
-              color: "rgba(244, 243, 238, 0.6)",
-              marginBottom: 8,
-            }}
-          >
-            {subtitle}
+          <div style={{ marginBottom: 8, minHeight: 16 }}>
+            {busy ? (
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={msgIdx}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.25 }}
+                  style={{ fontSize: 12, color: "#c7f27a", fontWeight: 600 }}
+                >
+                  {busyMessages[msgIdx]}
+                </motion.div>
+              </AnimatePresence>
+            ) : (
+              <div style={{ fontSize: 12, color: "rgba(244, 243, 238, 0.6)" }}>{subtitle}</div>
+            )}
           </div>
 
           {/* Última actualización */}
-          {lastUpdated && (
+          {!busy && lastUpdated && (
             <div
               style={{
                 display: "flex",
@@ -135,8 +167,8 @@ export default function UploadCard({
             que se puede volver a actualizar. El estado "Actualizado" se
             comunica con el badge verde y el punto, no cambiando el ícono. */}
         <Pressable
-          onClick={() => inputRef.current?.click()}
-          tapScale={0.9}
+          onClick={() => !busy && inputRef.current?.click()}
+          tapScale={busy ? 1 : 0.9}
           style={{
             display: "flex",
             alignItems: "center",
@@ -144,11 +176,11 @@ export default function UploadCard({
             width: 44,
             height: 44,
             borderRadius: 14,
+            cursor: busy ? "default" : "pointer",
             background: isUpdated
               ? "rgba(199, 242, 122, 0.15)"
               : "rgba(199, 242, 122, 0.1)",
             border: "1.5px solid rgba(199, 242, 122, 0.3)",
-            cursor: "pointer",
             flex: "none",
             fontSize: 20,
             color: "#c7f27a",
