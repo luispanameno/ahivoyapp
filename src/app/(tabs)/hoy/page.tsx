@@ -15,6 +15,21 @@ const MESES = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "O
 const OVER_COLOR = "oklch(65% 0.19 25)";
 const OVER_GLOW = "oklch(65% 0.19 25 / 0.6)";
 
+// Ícono minimalista de calendario (SVG, no emoji) para abrir el resumen diario.
+function CalendarIcon() {
+  return (
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="rgba(244,243,238,.75)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="16" rx="3" />
+      <line x1="8" y1="3" x2="8" y2="7" />
+      <line x1="16" y1="3" x2="16" y2="7" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+      <line x1="8" y1="14.5" x2="8" y2="14.5" />
+      <line x1="12" y1="14.5" x2="12" y2="14.5" />
+      <line x1="16" y1="14.5" x2="16" y2="14.5" />
+    </svg>
+  );
+}
+
 function MacroRing({
   actual,
   meta,
@@ -187,38 +202,57 @@ export default function Hoy() {
             <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(244,243,238,.5)" }}>{healthSyncLabel}</div>
           </div>
         </div>
-        <div
-          onClick={() => router.push("/perfil")}
-          style={{
-            width: 44,
-            height: 44,
-            flex: "none",
-            borderRadius: "50%",
-            padding: 2,
-            background: "linear-gradient(135deg,#a6f06a,#39c9a3)",
-            cursor: "pointer",
-            boxShadow: "0 0 14px rgba(90,220,150,.35)",
-          }}
-        >
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flex: "none" }}>
           <div
+            onClick={() => router.push("/resumen-dia")}
+            aria-label="Ver resumen diario"
             style={{
-              width: "100%",
-              height: "100%",
+              width: 40,
+              height: 40,
               borderRadius: "50%",
-              overflow: "hidden",
               background: "#1b1e21",
+              border: "1px solid rgba(255,255,255,.08)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 18,
+              cursor: "pointer",
             }}
           >
-            {profile.photo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={profile.photo} alt="Perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            ) : (
-              "👤"
-            )}
+            <CalendarIcon />
+          </div>
+          <div
+            onClick={() => router.push("/perfil")}
+            style={{
+              width: 44,
+              height: 44,
+              flex: "none",
+              borderRadius: "50%",
+              padding: 2,
+              background: "linear-gradient(135deg,#a6f06a,#39c9a3)",
+              cursor: "pointer",
+              boxShadow: "0 0 14px rgba(90,220,150,.35)",
+            }}
+          >
+            <div
+              style={{
+                width: "100%",
+                height: "100%",
+                borderRadius: "50%",
+                overflow: "hidden",
+                background: "#1b1e21",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 18,
+              }}
+            >
+              {profile.photo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.photo} alt="Perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                "👤"
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -233,6 +233,35 @@ export async function drinksFor(date: string): Promise<Drink[]> {
   return lsGet<Drink[]>("drinks", []).filter((d) => d.date === date);
 }
 
+export async function activityFor(date: string): Promise<Activity | null> {
+  const sb = getSupabase();
+  const uid = await userId();
+  if (sb && uid) {
+    const { data: a } = await sb.from("activity_logs").select("*").eq("user_id", uid).eq("fecha", date).maybeSingle();
+    return a
+      ? {
+          steps: a.pasos,
+          activeMin: a.min_activos,
+          activityKcal: a.kcal_activas,
+          totalKcal: a.kcal_totales,
+          distance: Number(a.distancia_km),
+          synced: true,
+        }
+      : null;
+  }
+  return lsGet<Record<string, Activity>>("activity", {})[date] ?? null;
+}
+
+export async function workoutFor(date: string): Promise<WorkoutState | null> {
+  const sb = getSupabase();
+  const uid = await userId();
+  if (sb && uid) {
+    const { data: w } = await sb.from("workouts").select("*").eq("user_id", uid).eq("fecha", date).maybeSingle();
+    return w ? { day: w.dia, done: w.completado, kcal: w.kcal_quemadas, name: w.nombre ?? "", notes: w.notas ?? "" } : null;
+  }
+  return lsGet<Record<string, WorkoutState>>("workout", {})[date] ?? null;
+}
+
 export async function saveProfile(profile: Profile) {
   const sb = getSupabase();
   const uid = await userId();
