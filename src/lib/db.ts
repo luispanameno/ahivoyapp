@@ -330,6 +330,17 @@ export async function addDrink(d: Drink) {
   }
 }
 
+export async function updateDrink(d: Drink) {
+  const sb = getSupabase();
+  const uid = await userId();
+  if (sb && uid) {
+    await sb.from("drinks").update({ ml: d.ml, nombre: d.label }).eq("id", d.id).eq("user_id", uid);
+  } else {
+    const all = lsGet<Drink[]>("drinks", []);
+    lsSet("drinks", all.map((x) => (x.id === d.id ? d : x)));
+  }
+}
+
 export async function deleteDrink(id: string) {
   const sb = getSupabase();
   const uid = await userId();

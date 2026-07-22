@@ -12,7 +12,7 @@ const ORDER: MealTime[] = ["Desayuno", "Almuerzo", "Cena", "Snack"];
 
 export default function Historial() {
   const router = useRouter();
-  const { meals, drinks, kcalEaten, water, deleteDrink, showToast } = useApp();
+  const { meals, drinks, kcalEaten, water } = useApp();
 
   const now = new Date();
   const subtitle = `${DIAS[now.getDay()]}, ${now.getDate()} ${MESES[now.getMonth()]} · ${kcalEaten.toLocaleString()} kcal totales`;
@@ -21,11 +21,6 @@ export default function Historial() {
     label: t.toUpperCase(),
     items: meals.filter((m) => m.time === t),
   })).filter((g) => g.items.length);
-
-  const removeDrink = (id: string) => {
-    deleteDrink(id);
-    showToast("Registro eliminado");
-  };
 
   return (
     <div style={{ boxSizing: "border-box", padding: "24px 20px 0" }}>
@@ -49,6 +44,7 @@ export default function Historial() {
             {drinks.map((d) => (
               <div
                 key={d.id}
+                onClick={() => router.push(`/bebida/${d.id}`)}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -57,6 +53,7 @@ export default function Historial() {
                   borderRadius: 14,
                   padding: "10px 12px",
                   marginBottom: 8,
+                  cursor: "pointer",
                 }}
               >
                 <div
@@ -84,26 +81,6 @@ export default function Historial() {
                 >
                   {d.ml > 0 ? "+" : ""}
                   {d.ml}ml
-                </div>
-                <div
-                  onClick={() => removeDrink(d.id)}
-                  style={{
-                    width: 26,
-                    height: 26,
-                    flex: "none",
-                    borderRadius: "50%",
-                    background: "rgba(255,255,255,.08)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    fontSize: 14,
-                    fontWeight: 700,
-                    color: "rgba(244,243,238,.6)",
-                    marginLeft: 2,
-                  }}
-                >
-                  ×
                 </div>
               </div>
             ))}

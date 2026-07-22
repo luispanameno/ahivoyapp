@@ -12,9 +12,11 @@ import {
 import { useRouter } from "next/navigation";
 import * as db from "./db";
 import { getSupabase, isSupabaseConfigured } from "./supabase";
+import { analyze, CoachAction, CoachResult } from "./analyze";
 import {
   Activity,
   BodyComp,
+  ChatMessage,
   DEFAULT_PROFILE,
   DEFAULT_ROUTINE,
   Drink,
@@ -30,6 +32,42 @@ import {
   todayISO,
 } from "./types";
 
+// El chat se guarda de forma permanente; solo se borra con el botón "Limpiar".
+const CHAT_KEY = "ahivoy:chat";
+
+function loadChat(greeting: ChatMessage): ChatMessage[] {
+  if (typeof window === "undefined") return [greeting];
+  try {
+    const raw = localStorage.getItem(CHAT_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw) as { messages: ChatMessage[] };
+      if (saved.messages?.length) return saved.messages;
+    }
+  } catch {
+    // chat corrupto: empezamos de cero
+  }
+  return [greeting];
+}
+
+function saveChat(messages: ChatMessage[]) {
+  try {
+    // Sin imágenes (pesan mucho): se reemplazan por un marcador.
+    const light = messages.map((m) => (m.image ? { ...m, image: "", text: m.text || "(foto)" } : m));
+    localStorage.setItem(CHAT_KEY, JSON.stringify({ messages: light.slice(-60) }));
+  } catch {
+    // sin espacio: no pasa nada
+  }
+}
+
+// Busca una comida por descripción (exacta o aproximada) — la usa el Coach.
+function matchMeal(lista: { id: string; desc: string }[], desc: string) {
+  const q = desc.trim().toLowerCase();
+  return (
+    lista.find((m) => m.desc.toLowerCase() === q) ??
+    lista.find((m) => m.desc.toLowerCase().includes(q) || q.includes(m.desc.toLowerCase()))
+  );
+}
+
 interface AppState {
   ready: boolean;
   userEmail: string | null;
@@ -44,6 +82,14 @@ interface AppState {
   routine: Routine;
   weights: WeightEntry[];
   toast: string | null;
+
+  // chat del Coach — vive aquí (no en la página) para que una respuesta en
+  // curso no se pierda si el usuario cambia de pestaña y vuelve antes de
+  // que la IA conteste.
+  chatMessages: ChatMessage[];
+  chatTyping: boolean;
+  sendChat: (text: string, image?: string) => Promise<void>;
+  clearChat: () => void;
 
   // derivados
   kcalEaten: number;
@@ -61,6 +107,7 @@ interface AppState {
   updateMeal: (m: Meal) => Promise<void>;
   deleteMeal: (id: string) => Promise<void>;
   addWater: (ml: number, label?: string) => Promise<void>;
+  updateDrink: (d: Drink) => Promise<void>;
   deleteDrink: (id: string) => Promise<void>;
   setActivity: (a: Activity) => Promise<void>;
   setWorkout: (w: WorkoutState) => Promise<void>;
@@ -95,6 +142,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Chat del Coach: vive en el provider, no en la página /coach, para que
+  // una respuesta que sigue en camino no se pierda si el usuario navega
+  // a otra pestaña y vuelve.
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatTyping, setChatTyping] = useState(false);
+  const chatHydratedRef = useRef(false);
 
   const date = todayISO();
 
@@ -140,6 +194,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
     return () => data.subscription.unsubscribe();
   }, [router]);
+
+  // Carga el chat guardado (o el saludo inicial) una sola vez, cuando ya
+  // conocemos el perfil (para personalizar el saludo con el nombre).
+  useEffect(() => {
+    if (!ready || chatHydratedRef.current) return;
+    chatHydratedRef.current = true;
+    const firstName = profile.name ? profile.name.split(" ")[0] : "";
+    const greeting: ChatMessage = {
+      role: "coach",
+      text: `¡Hola${firstName ? " " + firstName : ""}! 👋 Soy tu Coach IA. Conozco tus macros, tu meta y tu rutina de hoy. Pregúntame qué comer, pídeme que revise el menú de un restaurante o cuéntame cómo te sientes.`,
+    };
+    setChatMessages(loadChat(greeting));
+  }, [ready, profile.name]);
+
+  useEffect(() => {
+    if (chatMessages.length > 1) saveChat(chatMessages);
+  }, [chatMessages]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -187,6 +258,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     },
     [date]
   );
+
+  const updateDrink = useCallback(async (d: Drink) => {
+    setDrinks((prev) => prev.map((x) => (x.id === d.id ? d : x)));
+    await db.updateDrink(d);
+  }, []);
 
   const deleteDrink = useCallback(async (id: string) => {
     setDrinks((prev) => prev.filter((d) => d.id !== id));
@@ -288,6 +364,256 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, [meals, activity, workout, profile.metaKcal, drinks]);
 
+  // Acciones que el Coach detecta en el mensaje del usuario (agregar agua,
+  // registrar comida, cambiar metas, etc.) — vive aquí para poder aplicarse
+  // aunque la respuesta llegue después de que el usuario cambió de pantalla.
+  const applyChatActions = useCallback(
+    async (actions: CoachAction[]) => {
+      const today = date;
+      for (const a of actions) {
+        try {
+          const fecha = a.fecha && /^\d{4}-\d{2}-\d{2}$/.test(a.fecha) && a.fecha !== today ? a.fecha : null;
+
+          if (!fecha) {
+            // ---- Acciones sobre HOY (actualizan la pantalla al instante) ----
+            if (a.type === "add_water" && a.ml) await addWater(a.ml);
+            else if (a.type === "remove_water" && a.ml) {
+              const removeMl = Math.min(a.ml, derived.water);
+              if (removeMl > 0) await addWater(-removeMl, "Ajuste");
+            } else if (a.type === "delete_meal" && a.desc) {
+              const meal = matchMeal(meals, a.desc);
+              if (meal) await deleteMeal(meal.id);
+            } else if (a.type === "update_meal" && a.desc) {
+              const meal = matchMeal(meals, a.desc) as (typeof meals)[number] | undefined;
+              if (meal)
+                await updateMeal({
+                  ...meal,
+                  kcal: a.kcal ?? meal.kcal,
+                  p: a.p ?? meal.p,
+                  c: a.c ?? meal.c,
+                  f: a.f ?? meal.f,
+                });
+            } else if (a.type === "set_weight" && a.lb) await setWeight(a.lb);
+            else if (a.type === "set_goal_weight" && a.lb) await setWeightGoal(a.lb);
+            else if (a.type === "set_meta_kcal" && a.kcal) await saveProfile({ ...profile, metaKcal: a.kcal });
+            else if (a.type === "log_sleep" && a.minutos) await setSleep({ minutes: a.minutos, phases: sleep?.phases ?? null });
+            else if (a.type === "log_workout")
+              await setWorkout({
+                day: workout?.day ?? "Push",
+                done: true,
+                kcal: a.kcal ?? 300,
+                name: a.nombre ?? "Entrenamiento",
+                notes: workout?.notes ?? "",
+              });
+            else if (a.type === "log_meal" && a.desc)
+              await addMeal({
+                time: (a.time as MealTime) || currentMealTime(),
+                desc: a.desc,
+                kcal: a.kcal ?? 0,
+                p: a.p ?? 0,
+                c: a.c ?? 0,
+                f: a.f ?? 0,
+              });
+            else if (a.type === "set_macros" && a.kcal)
+              await saveProfile({
+                ...profile,
+                metaKcal: Math.round(a.kcal),
+                metaProtein: Math.round(a.p ?? profile.metaProtein),
+                metaCarbs: Math.round(a.c ?? profile.metaCarbs),
+                metaFat: Math.round(a.f ?? profile.metaFat),
+              });
+            else if (a.type === "set_body_comp")
+              await setBodyComp(
+                {
+                  score: Math.round(a.score ?? 0),
+                  build: a.complexion || "—",
+                  bmi: a.imc ?? 0,
+                  fatPct: a.grasa_pct ?? 0,
+                  waterPct: a.agua_pct ?? 0,
+                  proteinPct: a.proteina_pct ?? 0,
+                  bmr: Math.round(a.bmr ?? 0),
+                  visceralFat: a.grasa_visceral ?? 0,
+                  muscle: a.musculo_lb ?? 0,
+                  boneMass: a.masa_osea_lb ?? 0,
+                  date: today,
+                },
+                a.peso_lb && a.peso_lb > 0 ? a.peso_lb : undefined
+              );
+          } else {
+            // ---- Acciones sobre OTRO día (directo a la base de datos) ----
+            if (a.type === "add_water" && a.ml) {
+              await db.addDrink({ id: crypto.randomUUID(), date: fecha, ml: a.ml, label: "Agua" });
+            } else if (a.type === "remove_water" && a.ml) {
+              const actual = (await db.drinksFor(fecha)).reduce((s, d) => s + d.ml, 0);
+              const removeMl = Math.min(a.ml, actual);
+              if (removeMl > 0) {
+                await db.addDrink({ id: crypto.randomUUID(), date: fecha, ml: -removeMl, label: "Ajuste" });
+              }
+            } else if (a.type === "log_meal" && a.desc) {
+              await db.addMeal({
+                id: crypto.randomUUID(),
+                date: fecha,
+                time: (a.time as MealTime) || "Snack",
+                desc: a.desc,
+                kcal: a.kcal ?? 0,
+                p: a.p ?? 0,
+                c: a.c ?? 0,
+                f: a.f ?? 0,
+              });
+            } else if (a.type === "delete_meal" && a.desc) {
+              const meal = matchMeal(await db.mealsFor(fecha), a.desc);
+              if (meal) await db.deleteMeal(meal.id);
+            } else if (a.type === "update_meal" && a.desc) {
+              const lista = await db.mealsFor(fecha);
+              const meal = matchMeal(lista, a.desc) as (typeof lista)[number] | undefined;
+              if (meal)
+                await db.updateMeal({
+                  ...meal,
+                  kcal: a.kcal ?? meal.kcal,
+                  p: a.p ?? meal.p,
+                  c: a.c ?? meal.c,
+                  f: a.f ?? meal.f,
+                });
+            } else if (a.type === "log_sleep" && a.minutos) {
+              await db.setSleep(fecha, { minutes: a.minutos, phases: null });
+            } else if (a.type === "log_workout") {
+              await db.setWorkout(fecha, {
+                day: (workout?.day ?? "Push") as RoutineDay,
+                done: true,
+                kcal: a.kcal ?? 300,
+                name: a.nombre ?? "Entrenamiento",
+                notes: "",
+              });
+            } else if (a.type === "set_weight" && a.lb) {
+              await db.addWeight({ date: fecha, lb: a.lb });
+            }
+          }
+        } catch {
+          // una acción fallida no debe romper el chat
+        }
+      }
+      if (actions.length) showToast("Coach actualizó tus datos ✓");
+    },
+    [
+      date,
+      meals,
+      workout,
+      sleep,
+      profile,
+      derived.water,
+      addWater,
+      deleteMeal,
+      updateMeal,
+      setWeight,
+      setWeightGoal,
+      saveProfile,
+      setSleep,
+      setWorkout,
+      addMeal,
+      setBodyComp,
+      showToast,
+    ]
+  );
+
+  const sendChat = useCallback(
+    async (text: string, image?: string) => {
+      const clean = text.trim();
+      if (!clean && !image) return;
+      const userMsg: ChatMessage = { role: "user", text: clean, image };
+      setChatMessages((prev) => [...prev, userMsg]);
+      setChatTyping(true);
+      try {
+        const protLeft = Math.max(0, profile.metaProtein - derived.proteinG);
+        const waterLeft = Math.max(0, profile.metaWater - derived.water);
+        const context = {
+          nombre: profile.name,
+          perfil: {
+            edad: profile.age,
+            altura_cm: profile.height,
+            peso_lb: profile.weight,
+            peso_meta_lb: profile.weightGoal,
+            sexo: profile.sex === "F" ? "mujer" : "hombre",
+            nivel_actividad: profile.activityLevel,
+          },
+          metas: {
+            kcal: profile.metaKcal,
+            proteina_g: profile.metaProtein,
+            carbos_g: profile.metaCarbs,
+            grasa_g: profile.metaFat,
+            agua_ml: profile.metaWater,
+            peso_meta_lb: profile.weightGoal,
+          },
+          hoy: {
+            kcal_comidas: derived.kcalEaten,
+            kcal_quemadas: derived.burnedKcal,
+            kcal_presupuesto: profile.metaKcal + derived.burnedKcal,
+            kcal_libres: derived.kcalRemaining,
+            proteina_g: derived.proteinG,
+            proteina_faltante_g: protLeft,
+            carbos_g: derived.carbsG,
+            grasa_g: derived.fatG,
+            agua_ml: derived.water,
+            agua_faltante_ml: waterLeft,
+            entrenamiento_hecho: workout?.done ?? false,
+            dia_rutina: workout?.day ?? "Push",
+            sueno_min: sleep?.minutes ?? null,
+          },
+          comidas_hoy: meals.map((m) => ({
+            desc: m.desc,
+            time: m.time,
+            kcal: m.kcal,
+            p: m.p,
+            c: m.c,
+            f: m.f,
+          })),
+          // Últimos mensajes para que el coach recuerde qué propuso
+          // (ej. macros pendientes de confirmar tras subir la báscula)
+          historial_chat: chatMessages.slice(-8).map((m) => ({
+            de: m.role === "user" ? "usuario" : "coach",
+            texto: m.text.slice(0, 400),
+          })),
+          peso_actual_lb: profile.weight,
+          rutina: routine,
+          hora_local: new Date().toTimeString().slice(0, 5),
+          fecha_hoy: date,
+          dia_semana: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"][new Date().getDay()],
+        };
+        const res = await analyze<CoachResult>({ mode: "coach", text: clean, image, context });
+        setChatMessages((prev) => [...prev, { role: "coach", text: res.reply }]);
+        if (res.actions?.length) await applyChatActions(res.actions);
+      } catch (e) {
+        setChatMessages((prev) => [
+          ...prev,
+          {
+            role: "coach",
+            text:
+              e instanceof Error && e.message.includes("GEMINI")
+                ? "Aún no tengo conectada la IA (falta la GEMINI_API_KEY en el servidor). Pídele a Luis que la configure 😉"
+                : "Ups, no pude responder ahora. Intenta de nuevo en un momento.",
+          },
+        ]);
+      } finally {
+        setChatTyping(false);
+      }
+    },
+    [profile, derived, workout, sleep, routine, meals, chatMessages, date, applyChatActions]
+  );
+
+  const clearChat = useCallback(() => {
+    const firstName = profile.name ? profile.name.split(" ")[0] : "";
+    const greeting: ChatMessage = {
+      role: "coach",
+      text: `¡Hola${firstName ? " " + firstName : ""}! 👋 Chat limpio. ¿En qué te ayudo?`,
+    };
+    setChatMessages([greeting]);
+    try {
+      localStorage.removeItem(CHAT_KEY);
+    } catch {
+      // sin acceso a storage: no pasa nada
+    }
+    showToast("Chat limpiado");
+  }, [profile.name, showToast]);
+
   const value: AppState = {
     ready,
     userEmail,
@@ -301,6 +627,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     routine,
     weights,
     toast,
+    chatMessages,
+    chatTyping,
+    sendChat,
+    clearChat,
     ...derived,
     showToast,
     saveProfile,
@@ -308,6 +638,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     updateMeal,
     deleteMeal,
     addWater,
+    updateDrink,
     deleteDrink,
     setActivity,
     setWorkout,
