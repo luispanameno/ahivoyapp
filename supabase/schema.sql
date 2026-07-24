@@ -141,16 +141,19 @@ alter table public.profiles alter column onboarded set default false;
 alter table public.profiles drop constraint if exists profiles_status_check;
 alter table public.profiles add constraint profiles_status_check check (status in ('pending','approved','rejected'));
 
--- Protege status/is_admin: solo un admin puede cambiarlos (ni siquiera el
--- propio dueño de la fila, aunque la API de Supabase técnicamente se lo
--- permitiría por RLS de fila — esto lo bloquea también a nivel de columna).
+-- Protege status/is_admin: solo un admin puede cambiarlos desde la APP (ni
+-- siquiera el propio dueño de la fila, aunque la API de Supabase
+-- técnicamente se lo permitiría por RLS de fila). auth.uid() es NULL
+-- cuando la consulta NO viene de una sesión de la app (ej. el SQL Editor
+-- del dashboard) — ahí sí se permite, porque solo alguien con acceso al
+-- dashboard del proyecto llega hasta ese punto.
 create or replace function public.protect_profile_privileges()
 returns trigger
 language plpgsql
 security definer set search_path = public
 as $$
 begin
-  if not exists (select 1 from public.profiles where id = auth.uid() and is_admin = true) then
+  if auth.uid() is not null and not public.is_admin() then
     new.status := old.status;
     new.is_admin := old.is_admin;
   end if;
