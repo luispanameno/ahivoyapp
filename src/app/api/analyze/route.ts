@@ -63,10 +63,12 @@ Responde SOLO con JSON válido con esta forma exacta:
 {"descripcion": string (nombre corto del plato en español),
  "kcal": number, "proteina": number (g), "carbos": number (g), "grasa": number (g),
  "gramos": number (peso estimado del plato en gramos),
- "pregunta": string | null}
+ "pregunta": string | null,
+ "agua_ml": number | null}
 "pregunta": si hay UNA ambigüedad que cambie mucho el cálculo (ej. ¿arroz blanco o integral?, ¿frito o a la plancha?), escríbela como pregunta corta en español; si no, null.
 Si el usuario ya aclaró algo, usa esa aclaración y pon "pregunta": null.
-Si la imagen NO es comida, responde {"descripcion":"No parece comida","kcal":0,"proteina":0,"carbos":0,"grasa":0,"gramos":0,"pregunta":null}.`,
+"agua_ml": si la aclaración del usuario menciona ADEMÁS que tomó agua u otra bebida sin calorías (ej. "también tomé 644 ml de agua", "con un vaso de agua"), extrae los mililitros como número ("un vaso"≈250, "una botella"≈600); si no menciona ninguna bebida, null. Bebidas CON calorías (jugo, refresco, café con azúcar) NO cuentan aquí, van sumadas a kcal/carbos del plato.
+Si la imagen NO es comida, responde {"descripcion":"No parece comida","kcal":0,"proteina":0,"carbos":0,"grasa":0,"gramos":0,"pregunta":null,"agua_ml":null}.`,
 
   scale: `Eres un lector OCR EXHAUSTIVO de apps de báscula inteligente (Zepp Life, Renpho, Samsung Health, Fitdays, etc.), en cualquier idioma. La imagen puede ser una captura de pantalla O una FOTO de la pantalla de otro celular (con reflejos o ángulo): léela igual, con máximo esfuerzo.
 
@@ -130,8 +132,8 @@ const STR_NULL = { type: Type.STRING, nullable: true } as const;
 const SCHEMAS: Record<Mode, object> = {
   food: {
     type: Type.OBJECT,
-    properties: { descripcion: STR, kcal: NUM, proteina: NUM, carbos: NUM, grasa: NUM, gramos: NUM, pregunta: STR_NULL },
-    required: ["descripcion", "kcal", "proteina", "carbos", "grasa"],
+    properties: { descripcion: STR, kcal: NUM, proteina: NUM, carbos: NUM, grasa: NUM, gramos: NUM, pregunta: STR_NULL, agua_ml: NUM_NULL },
+    required: ["descripcion", "kcal", "proteina", "carbos", "grasa", "agua_ml"],
   },
   scale: {
     type: Type.OBJECT,

@@ -59,6 +59,41 @@ function saveChat(messages: ChatMessage[]) {
   }
 }
 
+// Marcador de "pregunta en curso": si el navegador mata la app a media
+// respuesta (ej. el sistema operativo cierra la pestaña/PWA en segundo
+// plano — algo que ningún estado en memoria puede evitar), al reabrir la
+// app detectamos el marcador huérfano y avisamos en vez de dejar el chat
+// en silencio para siempre.
+const PENDING_KEY = "ahivoy:chat_pending";
+
+function setPendingMarker(text: string) {
+  try {
+    localStorage.setItem(PENDING_KEY, JSON.stringify({ text, ts: Date.now() }));
+  } catch {
+    // sin espacio: no pasa nada
+  }
+}
+
+function clearPendingMarker() {
+  try {
+    localStorage.removeItem(PENDING_KEY);
+  } catch {
+    // sin acceso a storage: no pasa nada
+  }
+}
+
+function takeOrphanedPending(): string | null {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY);
+    if (!raw) return null;
+    localStorage.removeItem(PENDING_KEY);
+    const { text } = JSON.parse(raw) as { text: string; ts: number };
+    return text || null;
+  } catch {
+    return null;
+  }
+}
+
 // Busca una comida por descripción (exacta o aproximada) — la usa el Coach.
 function matchMeal(lista: { id: string; desc: string }[], desc: string) {
   const q = desc.trim().toLowerCase();
@@ -205,7 +240,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       role: "coach",
       text: `¡Hola${firstName ? " " + firstName : ""}! 👋 Soy tu Coach IA. Conozco tus macros, tu meta y tu rutina de hoy. Pregúntame qué comer, pídeme que revise el menú de un restaurante o cuéntame cómo te sientes.`,
     };
-    setChatMessages(loadChat(greeting));
+    const messages = loadChat(greeting);
+    // Si quedó un marcador huérfano, la app se cerró a media respuesta en
+    // la sesión anterior (nada que un estado en memoria pueda prevenir):
+    // avisamos en vez de dejar el chat en silencio para siempre.
+    const orphaned = takeOrphanedPending();
+    setChatMessages(
+      orphaned
+        ? [
+            ...messages,
+            {
+              role: "coach",
+              text: "Parece que la app se cerró justo cuando te estaba respondiendo y tu último mensaje se perdió. ¿Me lo envías de nuevo? 🙏",
+            },
+          ]
+        : messages
+    );
   }, [ready, profile.name]);
 
   useEffect(() => {
@@ -522,6 +572,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const userMsg: ChatMessage = { role: "user", text: clean, image };
       setChatMessages((prev) => [...prev, userMsg]);
       setChatTyping(true);
+      // Si la app muere antes de que esto se limpie (el SO cierra la
+      // pestaña/PWA en segundo plano), el próximo arranque encuentra este
+      // marcador huérfano y avisa en vez de quedarse en silencio.
+      setPendingMarker(clean || "(foto)");
       try {
         const protLeft = Math.max(0, profile.metaProtein - derived.proteinG);
         const waterLeft = Math.max(0, profile.metaWater - derived.water);
@@ -593,6 +647,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           },
         ]);
       } finally {
+        clearPendingMarker();
         setChatTyping(false);
       }
     },

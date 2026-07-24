@@ -21,6 +21,7 @@ export interface FoodResult {
   grasa: number;
   gramos?: number;
   pregunta?: string | null;
+  agua_ml?: number | null;
 }
 
 export interface CoachAction {

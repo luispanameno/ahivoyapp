@@ -57,45 +57,66 @@ function computeDerived(meals: Meal[], drinks: Drink[], activity: Activity | nul
   };
 }
 
-// Resumen conversacional: un veredicto corto con humor que combina las
-// señales del día (proteína corta, carbos/grasas/calorías excedidos) en
-// una sola frase — no es solo "sí/no cumpliste", sugiere qué ajustar.
-function conversationalSummary(params: {
-  hasAnyData: boolean;
+function joinEs(items: string[]): string {
+  if (items.length === 0) return "";
+  if (items.length === 1) return items[0];
+  return `${items.slice(0, -1).join(", ")} y ${items[items.length - 1]}`;
+}
+
+interface DayVerdict {
   goalReached: boolean;
+  headline: string;
+  body: string;
+}
+
+// Veredicto motivador del día: no es solo "sí/no cumpliste" — dice qué SÍ
+// se cumplió, qué NO, y una recomendación. Si el día es HOY (aún no
+// termina), la recomendación mira hacia adelante ("aún estás a tiempo");
+// si es un día pasado, mira hacia la próxima vez.
+function buildDayVerdict(params: {
+  hasAnyData: boolean;
+  isToday: boolean;
   kcalOk: boolean;
   carbsOk: boolean;
   fatOk: boolean;
   proteinOk: boolean;
-  kcalOver: number;
-  carbsOver: number;
-  fatOver: number;
-  proteinShort: number;
-}): string | null {
-  const { hasAnyData, goalReached, kcalOk, carbsOk, fatOk, proteinOk, kcalOver, carbsOver, fatOver, proteinShort } = params;
+}): DayVerdict | null {
+  const { hasAnyData, isToday, kcalOk, carbsOk, fatOk, proteinOk } = params;
   if (!hasAnyData) return null;
-  if (goalReached) {
-    return "Día redondo: cumpliste todo sin dramas. Tu yo del espejo ya te lo está agradeciendo — mañana repetimos la jugada.";
+
+  const checks = [
+    { label: "las calorías", ok: kcalOk },
+    { label: "los carbohidratos", ok: carbsOk },
+    { label: "las grasas", ok: fatOk },
+    { label: "la proteína", ok: proteinOk },
+  ];
+  const met = checks.filter((c) => c.ok).map((c) => c.label);
+  const missed = checks.filter((c) => !c.ok).map((c) => c.label);
+
+  if (missed.length === 0) {
+    return {
+      goalReached: true,
+      headline: "¡Meta alcanzada!",
+      body: isToday
+        ? "Calorías, carbohidratos, grasas y proteína bajo control. Sigue así y cierras el día como un campeón."
+        : "Ese día cerraste todo dentro de tus metas. Así se hace.",
+    };
   }
-  if (!proteinOk && !carbsOk) {
-    return `Te faltaron ${proteinShort}g de proteína y sobraron ${carbsOver}g de carbohidratos — el combo perfecto para no ver resultados. Cambia el pan por pollo y verás la diferencia.`;
-  }
-  if (!proteinOk && !fatOk) {
-    return `Poca proteína (${proteinShort}g de menos) y demasiada grasa (${fatOver}g de más) hoy. Menos frituras, más a la plancha, y súmale un huevo mañana.`;
-  }
-  if (!kcalOk) {
-    return `Te pasaste ${kcalOver} kcal del presupuesto de hoy. No es el fin del mundo, pero mañana una cena ligera nos regresa al carril.`;
-  }
-  if (!carbsOk) {
-    return `${carbsOver}g de carbohidratos de más — el arroz y el pan se te fueron de las manos. Mañana con más calma, ¿va?`;
-  }
-  if (!fatOk) {
-    return `Te pasaste ${fatOver}g de grasas. Ojo con las frituras, ahí se esconden las calorías que no cuentas.`;
-  }
-  if (!proteinOk) {
-    return `Solo te faltaron ${proteinShort}g de proteína para cerrar un día perfecto. Un batido o un poco más de pollo y lo lograbas.`;
-  }
-  return "Casi lo logras — revisa tus macros y mañana le pegamos más duro.";
+
+  let tip = "";
+  if (!kcalOk) tip = "baja un poco las porciones o elige algo más ligero";
+  else if (!carbsOk) tip = "cambia el arroz o el pan por más vegetales";
+  else if (!fatOk) tip = "evita las frituras y elige proteínas a la plancha";
+  else tip = "suma un huevo, pollo o un batido de proteína";
+
+  const metText = met.length ? `Cumpliste con ${joinEs(met)}` : "Todavía no cumples ninguna meta";
+  const adviceText = isToday ? `Aún estás a tiempo: ${tip}.` : `Para la próxima, ${tip}.`;
+
+  return {
+    goalReached: false,
+    headline: "Meta no alcanzada",
+    body: `${metText}, pero te faltó en ${joinEs(missed)}. ${adviceText}`,
+  };
 }
 
 // ---------- Iconos minimalistas (SVG, no emoji) ----------
@@ -173,15 +194,6 @@ function CrossIcon() {
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10240a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
-    </svg>
-  );
-}
-
-// Burbuja de chat — resumen conversacional
-function ChatBubbleIcon({ size = 17, color = "currentColor" }: { size?: number; color?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
     </svg>
   );
 }
@@ -363,28 +375,8 @@ export default function DailyHistoryDashboard() {
   const carbsOk = derived.carbsG <= profile.metaCarbs;
   const fatOk = derived.fatG <= profile.metaFat;
   const proteinOk = derived.proteinG >= profile.metaProtein;
-  const goalReached = hasAnyData && kcalOk && carbsOk && fatOk && proteinOk;
 
-  let verdictReason: string | null = null;
-  if (hasAnyData && !goalReached) {
-    if (!kcalOk) verdictReason = `Superaste tu presupuesto por ${derived.kcalEaten - derived.kcalBudget} kcal.`;
-    else if (!carbsOk) verdictReason = `Te pasaste ${derived.carbsG - profile.metaCarbs}g de carbohidratos.`;
-    else if (!fatOk) verdictReason = `Te pasaste ${derived.fatG - profile.metaFat}g de grasas.`;
-    else if (!proteinOk) verdictReason = `Te faltaron ${profile.metaProtein - derived.proteinG}g de proteína.`;
-  }
-
-  const summaryText = conversationalSummary({
-    hasAnyData,
-    goalReached,
-    kcalOk,
-    carbsOk,
-    fatOk,
-    proteinOk,
-    kcalOver: derived.kcalEaten - derived.kcalBudget,
-    carbsOver: derived.carbsG - profile.metaCarbs,
-    fatOver: derived.fatG - profile.metaFat,
-    proteinShort: profile.metaProtein - derived.proteinG,
-  });
+  const dayVerdict = buildDayVerdict({ hasAnyData, isToday, kcalOk, carbsOk, fatOk, proteinOk });
 
   // Carrusel: centra automáticamente el día seleccionado.
   const dayRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -470,8 +462,55 @@ export default function DailyHistoryDashboard() {
         })}
       </div>
 
+      {/* Veredicto del día — motivador: qué cumpliste, qué no, y cómo mejorar */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={selectedDate}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
+          className="rounded-2xl border border-white/12 bg-white/[0.06] backdrop-blur-xl shadow-lg"
+          style={{ marginTop: 18, padding: 16 }}
+        >
+          {!dayVerdict ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ fontSize: 18 }}>—</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "rgba(244,243,238,.55)" }}>Sin registros para este día.</div>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <div
+                style={{
+                  width: 26,
+                  height: 26,
+                  flex: "none",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: dayVerdict.goalReached ? "#c7f27a" : OVER_COLOR,
+                  marginTop: 1,
+                }}
+              >
+                {dayVerdict.goalReached ? <CheckIcon /> : <CrossIcon />}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div
+                  className="font-sora"
+                  style={{ fontSize: 13.5, fontWeight: 800, color: dayVerdict.goalReached ? "#c7f27a" : OVER_COLOR }}
+                >
+                  {dayVerdict.headline}
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(244,243,238,.8)", marginTop: 4, lineHeight: 1.5 }}>{dayVerdict.body}</div>
+              </div>
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+
       {/* Barras de progreso — glassmorphism, una tarjeta ancha e independiente por métrica */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22, position: "relative" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 18, position: "relative" }}>
         {metrics.map((m, i) => (
           <ProgressBarRow key={m.key} metric={m} index={i} />
         ))}
@@ -502,97 +541,17 @@ export default function DailyHistoryDashboard() {
         )}
       </div>
 
-      {/* Resumen conversacional — glassmorphism, con humor */}
-      {summaryText && (
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`summary-${selectedDate}`}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25, delay: 0.08 }}
-            className="rounded-2xl border border-white/12 bg-white/[0.06] backdrop-blur-xl shadow-lg"
-            style={{ marginTop: 14, padding: 16, display: "flex", gap: 12, alignItems: "flex-start" }}
-          >
-            <div
-              style={{
-                width: 30,
-                height: 30,
-                flex: "none",
-                borderRadius: "50%",
-                background: "rgba(199,242,122,.12)",
-                border: "1px solid rgba(199,242,122,.3)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#c7f27a",
-              }}
-            >
-              <ChatBubbleIcon />
-            </div>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: "rgba(244,243,238,.85)", lineHeight: 1.5, paddingTop: 3 }}>{summaryText}</div>
-          </motion.div>
-        </AnimatePresence>
-      )}
-
-      {/* Veredicto + actividad física — glassmorphism */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={selectedDate}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.25 }}
-          className="rounded-3xl border border-white/12 bg-white/[0.06] backdrop-blur-xl shadow-lg"
-          style={{ marginTop: 22, padding: 16 }}
-        >
-          {!hasAnyData ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ fontSize: 18 }}>—</div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "rgba(244,243,238,.55)" }}>Sin registros para este día.</div>
-            </div>
-          ) : (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "10px 12px",
-                borderRadius: 14,
-                background: goalReached ? "rgba(199,242,122,.12)" : "rgba(230,80,60,.12)",
-                border: `1px solid ${goalReached ? "rgba(199,242,122,.3)" : "oklch(65% 0.19 25 / 0.35)"}`,
-              }}
-            >
-              <div
-                style={{
-                  width: 26,
-                  height: 26,
-                  flex: "none",
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: goalReached ? "#c7f27a" : OVER_COLOR,
-                }}
-              >
-                {goalReached ? <CheckIcon /> : <CrossIcon />}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div className="font-sora" style={{ fontSize: 13.5, fontWeight: 800, color: goalReached ? "#c7f27a" : OVER_COLOR }}>
-                  {goalReached ? "¡Meta alcanzada!" : "Meta no alcanzada"}
-                </div>
-                {verdictReason && <div style={{ fontSize: 11, color: "rgba(244,243,238,.65)", marginTop: 2 }}>{verdictReason}</div>}
-              </div>
-            </div>
-          )}
-
-          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-            <StatTile label="PASOS" value={steps.toLocaleString()} />
-            <StatTile label="KCAL EJERCICIO" value={String(derived.burnedKcal)} />
-            <StatTile label="RUTINAS" value={routineDone ? "1" : "0"} sub={routineDone ? activeWorkout?.day : "—"} />
-          </div>
-        </motion.div>
-      </AnimatePresence>
+      {/* Actividad física — glassmorphism */}
+      <div className="rounded-2xl border border-white/12 bg-white/[0.06] backdrop-blur-xl shadow-lg" style={{ marginTop: 14, padding: 16 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".04em", marginBottom: 10 }}>
+          ACTIVIDAD FÍSICA
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <StatTile label="PASOS" value={steps.toLocaleString()} />
+          <StatTile label="KCAL EJERCICIO" value={String(derived.burnedKcal)} />
+          <StatTile label="RUTINAS" value={routineDone ? "1" : "0"} sub={routineDone ? activeWorkout?.day : "—"} />
+        </div>
+      </div>
     </div>
   );
 }

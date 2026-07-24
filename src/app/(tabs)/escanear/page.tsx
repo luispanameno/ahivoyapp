@@ -17,7 +17,7 @@ const MEAL_TIMES: MealTime[] = ["Desayuno", "Almuerzo", "Cena", "Snack"];
 
 export default function Escanear() {
   const router = useRouter();
-  const { addMeal, showToast } = useApp();
+  const { addMeal, addWater, showToast } = useApp();
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -91,7 +91,16 @@ export default function Escanear() {
       f: Math.round(result.grasa),
       photo: thumb,
     });
-    showToast(`¡Agregado! ${Math.round(result.kcal)} kcal`);
+    // Si en el contexto mencionaste una bebida sin calorías (ej. "también
+    // tomé 644 ml de agua"), Gemini la extrae aparte y la registramos igual.
+    if (result.agua_ml && result.agua_ml > 0) {
+      await addWater(Math.round(result.agua_ml));
+    }
+    showToast(
+      result.agua_ml && result.agua_ml > 0
+        ? `¡Agregado! ${Math.round(result.kcal)} kcal + ${Math.round(result.agua_ml)}ml de agua`
+        : `¡Agregado! ${Math.round(result.kcal)} kcal`
+    );
     router.push("/hoy");
   };
 
