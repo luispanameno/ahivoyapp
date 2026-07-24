@@ -124,6 +124,10 @@ export default function Login() {
     if (busy) return;
     setError(null);
     setInfo(null);
+    if (mode === "signup" && !name.trim()) {
+      setError("Escribe tu nombre.");
+      return;
+    }
     if (!email || !password) {
       setError("Escribe tu correo y contraseña.");
       return;
