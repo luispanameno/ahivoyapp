@@ -126,6 +126,9 @@ create table if not exists public.routines (
 alter table public.profiles add column if not exists foto text;
 alter table public.profiles add column if not exists sexo text default 'M';
 alter table public.profiles add column if not exists nivel_actividad text default 'ligero';
+-- Plan de ejercicio en palabras del propio usuario (no todos hacen la misma
+-- rutina de pesas Push/Pull/Legs — puede ser caminar, nada por ahora, etc.)
+alter table public.profiles add column if not exists plan_ejercicio text default '';
 
 -- ============ CONTROL DE ACCESO (aprobación manual + panel admin) ============
 -- Las cuentas YA existentes quedan aprobadas y con el asistente de bienvenida

@@ -3,6 +3,7 @@
 // Editor de foto de perfil: arrastra para centrar y usa el slider para zoom.
 
 import { useEffect, useRef, useState } from "react";
+import Icon from "./Icon";
 import { fileToDataURL } from "@/lib/analyze";
 
 const VIEW = 280; // lado del recuadro de edición en px
@@ -192,9 +193,9 @@ export default function AvatarEditor({
 
       <div
         onClick={() => pickRef.current?.click()}
-        style={{ marginTop: 14, fontSize: 12, fontWeight: 700, color: "rgba(244,243,238,.55)", cursor: "pointer" }}
+        style={{ marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "rgba(244,243,238,.55)", cursor: "pointer" }}
       >
-        🖼️ Elegir otra foto
+        <Icon name="gallery" size={15} /> Elegir otra foto
       </div>
       <input
         ref={pickRef}

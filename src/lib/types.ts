@@ -44,6 +44,9 @@ export interface Profile {
   isAdmin: boolean;
   // Si ya completó el asistente de bienvenida (datos + metas iniciales).
   onboarded: boolean;
+  // En sus propias palabras, qué plan de ejercicio sigue (no todos hacen
+  // pesas Push/Pull/Legs — puede ser "camino 1 hora diaria", nada aún, etc.)
+  exercisePlan: string;
 }
 
 // Fila resumida de un usuario para el panel de administración (aprobar
@@ -145,6 +148,7 @@ export const DEFAULT_PROFILE: Profile = {
   status: "approved",
   isAdmin: false,
   onboarded: true,
+  exercisePlan: "",
 };
 
 export const DEFAULT_ROUTINE: Routine = {

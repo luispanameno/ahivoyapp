@@ -64,7 +64,12 @@ export default function ImageUploadZone({
     >
       {!preview && (
         <>
-          <div style={{ fontSize: 22, opacity: 0.5, lineHeight: 1 }}>{icon}</div>
+          {icon.startsWith("/") ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={icon} alt="" width={36} height={36} style={{ opacity: 0.7, display: "block" }} />
+          ) : (
+            <div style={{ fontSize: 22, opacity: 0.5, lineHeight: 1 }}>{icon}</div>
+          )}
           <div
             style={{
               fontSize: 12,

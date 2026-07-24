@@ -6,6 +6,7 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import Pressable from "@/components/Pressable";
+import Icon from "@/components/Icon";
 import { analyze, fileToDataURL, FoodResult } from "@/lib/analyze";
 import { resizeDataURL } from "@/lib/img";
 import { useApp, currentMealTime } from "@/lib/store";
@@ -216,7 +217,7 @@ export default function Escanear() {
               border: "1px solid rgba(255,255,255,.1)",
             }}
           >
-            <span style={{ fontSize: 20 }}>🖼️</span> Elegir de la galería
+            <Icon name="gallery" size={20} /> Elegir de la galería
           </Pressable>
         </div>
         {/* Cámara (fuerza cámara en Android) + galería, cada uno su input. */}

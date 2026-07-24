@@ -7,6 +7,7 @@ import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import { motion, AnimatePresence } from "motion/react";
 import Pressable from "@/components/Pressable";
+import Icon from "@/components/Icon";
 import { fileToDataURL } from "@/lib/analyze";
 import { useApp } from "@/lib/store";
 
@@ -393,6 +394,9 @@ export default function Coach() {
           onClick={clearChat}
           style={{
             flex: "none",
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
             fontSize: 11,
             fontWeight: 700,
             color: "rgba(244,243,238,.55)",
@@ -402,7 +406,7 @@ export default function Coach() {
             cursor: "pointer",
           }}
         >
-          🗑 Limpiar
+          <Icon name="delete" size={14} /> Limpiar
         </div>
       </div>
 

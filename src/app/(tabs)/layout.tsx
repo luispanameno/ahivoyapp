@@ -23,7 +23,12 @@ function CenteredMessage({
 }) {
   return (
     <div style={{ height: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "0 32px", textAlign: "center", boxSizing: "border-box" }}>
-      <div style={{ fontSize: 40 }}>{icon}</div>
+      {icon.startsWith("/") ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={icon} alt="" width={56} height={56} style={{ display: "block" }} />
+      ) : (
+        <div style={{ fontSize: 40 }}>{icon}</div>
+      )}
       <div className="font-sora" style={{ fontWeight: 800, fontSize: 18 }}>
         {title}
       </div>
@@ -61,7 +66,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   if (profile.status === "pending") {
     return (
       <CenteredMessage
-        icon="⏳"
+        icon="/icons/glyphs/pending.png"
         title="Tu cuenta está en revisión"
         body="El equipo de AHIVOYAPP está revisando tu solicitud. En cuanto te aprobemos vas a tener acceso completo — no debería tardar mucho."
         action={

@@ -7,16 +7,60 @@ import ImageUploadZone, { ActionButton } from "@/components/ImageUploadZone";
 import { analyze } from "@/lib/analyze";
 import { useApp } from "@/lib/store";
 
+const timeInputStyle: React.CSSProperties = {
+  flex: 1,
+  background: "#0f1113",
+  border: "1px solid rgba(255,255,255,.1)",
+  borderRadius: 12,
+  padding: "12px 14px",
+  color: "#f4f3ee",
+  fontSize: 14,
+  fontWeight: 700,
+  outline: "none",
+  boxSizing: "border-box",
+  colorScheme: "dark",
+};
+
+// De/hasta -> minutos, asumiendo que cruza medianoche si "hasta" es menor o igual a "de".
+function rangeToMinutes(from: string, to: string): number {
+  const [fh, fm] = from.split(":").map(Number);
+  const [th, tm] = to.split(":").map(Number);
+  if ([fh, fm, th, tm].some((n) => Number.isNaN(n))) return 0;
+  const start = fh * 60 + fm;
+  let end = th * 60 + tm;
+  if (end <= start) end += 24 * 60;
+  return end - start;
+}
+
 export default function Sueno() {
   const { sleep, setSleep, showToast } = useApp();
   const [shot, setShot] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [manualFrom, setManualFrom] = useState("23:00");
+  const [manualTo, setManualTo] = useState("07:00");
+  const [savingManual, setSavingManual] = useState(false);
 
   const mins = sleep?.minutes ?? 0;
   const sleepOk = mins >= 420 && mins <= 510;
   const label = sleep ? `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, "0")}m` : "— —";
   const phases = sleep?.phases;
+  const manualMinutes = rangeToMinutes(manualFrom, manualTo);
+
+  const saveManual = async () => {
+    if (manualMinutes <= 0) {
+      setError("Esas horas no cuadran — revisa a qué hora te acostaste y a qué hora despertaste.");
+      return;
+    }
+    setSavingManual(true);
+    setError(null);
+    try {
+      await setSleep({ minutes: manualMinutes, phases: null });
+      showToast(`Sueño actualizado: ${Math.floor(manualMinutes / 60)}h ${String(manualMinutes % 60).padStart(2, "0")}m`);
+    } finally {
+      setSavingManual(false);
+    }
+  };
 
   const readCapture = async () => {
     if (!shot) {
@@ -57,7 +101,7 @@ export default function Sueno() {
   return (
     <div style={{ boxSizing: "border-box", padding: "24px 20px 24px", display: "flex", flexDirection: "column" }}>
       <div className="font-sora" style={{ fontSize: 20, fontWeight: 700 }}>Sueño</div>
-      <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>Meta: 7–8 horas · respaldo con captura de tu reloj</div>
+      <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>Meta: 7–8 horas · con captura de tu reloj o a mano</div>
 
       <div style={{ background: "#1b1e21", borderRadius: 16, padding: 18, marginTop: 16, textAlign: "center" }}>
         <div className="font-sora" style={{ fontSize: 36, fontWeight: 800, textShadow: "0 0 12px oklch(72% 0.15 300 / 0.5)" }}>{label}</div>
@@ -89,9 +133,40 @@ export default function Sueno() {
       <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em", marginTop: 18, marginBottom: 8 }}>
         SUBE UNA CAPTURA DE TU RELOJ
       </div>
-      <ImageUploadZone placeholder="Toca para subir la captura de sueño de tu reloj" icon="😴" height={120} radius={14} onImage={setShot} />
-      {error && <div style={{ marginTop: 8, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)" }}>{error}</div>}
+      <ImageUploadZone placeholder="Toca para subir la captura de sueño de tu reloj" icon="/icons/glyphs/sleep.png" height={120} radius={14} onImage={setShot} />
       <ActionButton label={busy ? "Leyendo captura…" : "Leer captura del reloj"} onClick={readCapture} busy={busy} />
+
+      <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "22px 0 14px" }}>
+        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,.08)" }} />
+        <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(244,243,238,.35)", letterSpacing: ".04em" }}>
+          O ANÓTALO A MANO
+        </div>
+        <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,.08)" }} />
+      </div>
+
+      <div style={{ background: "#1b1e21", borderRadius: 16, padding: 16 }}>
+        <div style={{ fontSize: 11.5, color: "rgba(244,243,238,.5)", marginBottom: 12 }}>
+          ¿Sin reloj o app del celular a la mano? Escribe a qué hora te acostaste y a qué hora despertaste.
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(244,243,238,.4)", marginBottom: 6 }}>ME ACOSTÉ</div>
+            <input type="time" value={manualFrom} onChange={(e) => setManualFrom(e.target.value)} style={timeInputStyle} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(244,243,238,.4)", marginBottom: 6 }}>DESPERTÉ</div>
+            <input type="time" value={manualTo} onChange={(e) => setManualTo(e.target.value)} style={timeInputStyle} />
+          </div>
+        </div>
+        <div style={{ textAlign: "center", fontSize: 12, fontWeight: 700, color: "#c7f27a", marginTop: 12 }}>
+          {manualMinutes > 0
+            ? `Total: ${Math.floor(manualMinutes / 60)}h ${String(manualMinutes % 60).padStart(2, "0")}m`
+            : "Revisa las horas"}
+        </div>
+        <ActionButton label={savingManual ? "Guardando…" : "Guardar horas de sueño"} onClick={saveManual} busy={savingManual} />
+      </div>
+
+      {error && <div style={{ marginTop: 12, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)" }}>{error}</div>}
     </div>
   );
 }

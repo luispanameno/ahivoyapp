@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import Pressable from "@/components/Pressable";
+import Icon from "@/components/Icon";
 import { useApp } from "@/lib/store";
 
 const DIAS = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
@@ -271,7 +272,7 @@ export default function Hoy() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={profile.photo} alt="Perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
-                "👤"
+                <Icon name="user" size={20} />
               )}
             </div>
           </div>
@@ -440,7 +441,7 @@ export default function Hoy() {
           onClick={() => router.push("/sueno")}
           style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, background: "#1b1e21", borderRadius: 14, padding: "10px 12px", cursor: "pointer" }}
         >
-          <div style={{ fontSize: 13 }}>😴</div>
+          <Icon name="sleep" size={18} />
           <div style={{ flex: 1, fontSize: 11.5, fontWeight: 700, color: "rgba(244,243,238,.75)" }}>Anoche: {sleepLabel}</div>
           <div style={{ fontSize: 11, color: sleepOk ? "#c7f27a" : "oklch(75% 0.15 60)" }}>
             {sleep ? (sleepOk ? "✓ Meta" : "Bajo meta") : "›"}
@@ -480,7 +481,7 @@ export default function Hoy() {
           marginTop: 12,
         }}
       >
-        <div style={{ fontSize: 13 }}>🍽️</div>
+        <Icon name="food" size={18} />
         <div style={{ flex: 1, fontSize: 11, fontWeight: 600, color: "rgba(244,243,238,.7)", lineHeight: 1.4 }}>{menuSuggestion}</div>
       </div>
 

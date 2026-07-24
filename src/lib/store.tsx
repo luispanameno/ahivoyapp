@@ -588,6 +588,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             peso_meta_lb: profile.weightGoal,
             sexo: profile.sex === "F" ? "mujer" : "hombre",
             nivel_actividad: profile.activityLevel,
+            plan_ejercicio: profile.exercisePlan || null,
           },
           metas: {
             kcal: profile.metaKcal,

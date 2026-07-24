@@ -3,6 +3,7 @@
 // Historial: comidas del día agrupadas por tiempo; tocar para editar/borrar.
 
 import { useRouter } from "next/navigation";
+import Icon from "@/components/Icon";
 import { useApp } from "@/lib/store";
 import { MealTime } from "@/lib/types";
 
@@ -69,7 +70,7 @@ export default function Historial() {
                     fontSize: 15,
                   }}
                 >
-                  💧
+                  <Icon name="water-amount" size={22} />
                 </div>
                 <div style={{ flex: 1, fontSize: 13, fontWeight: 700 }}>{d.label}</div>
                 <div
@@ -122,7 +123,7 @@ export default function Historial() {
                     fontSize: 15,
                   }}
                 >
-                  {meal.photo ? "" : "🍽️"}
+                  {meal.photo ? null : <Icon name="food" size={22} />}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 700 }}>{meal.desc}</div>

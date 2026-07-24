@@ -79,13 +79,19 @@ export default function UploadCard({
             width: 56,
             height: 56,
             borderRadius: 16,
-            border: "2px solid rgba(199, 242, 122, 0.3)",
-            background: "rgba(199, 242, 122, 0.08)",
+            border: icon.startsWith("/") ? "none" : "2px solid rgba(199, 242, 122, 0.3)",
+            background: icon.startsWith("/") ? "transparent" : "rgba(199, 242, 122, 0.08)",
             fontSize: 28,
             flex: "none",
+            overflow: "hidden",
           }}
         >
-          {icon}
+          {icon.startsWith("/") ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={icon} alt="" width={56} height={56} style={{ display: "block" }} />
+          ) : (
+            icon
+          )}
         </div>
 
         {/* Contenido: título, subtítulo, timestamp */}

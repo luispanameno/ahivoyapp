@@ -9,6 +9,7 @@ import UploadCard from "@/components/UploadCard";
 import { ActionButton } from "@/components/ImageUploadZone";
 import Pressable from "@/components/Pressable";
 import AvatarEditor from "@/components/AvatarEditor";
+import Icon from "@/components/Icon";
 import { analyze, fileToDataURL } from "@/lib/analyze";
 import { useApp } from "@/lib/store";
 import { ACTIVITY_FACTORS, ActivityLevel, WeightEntry, todayISO } from "@/lib/types";
@@ -328,7 +329,7 @@ export default function Perfil() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={profile.photo} alt="Tu foto" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             ) : (
-              <span style={{ fontSize: 22 }}>👤</span>
+              <Icon name="user" size={26} />
             )}
           </div>
           <div
@@ -744,12 +745,33 @@ export default function Perfil() {
       </div>
 
       {/* Rutina */}
-      <div style={sectionTitle}>TU RUTINA</div>
+      <div style={sectionTitle}>TU PLAN DE EJERCICIO</div>
+      <textarea
+        defaultValue={profile.exercisePlan}
+        onBlur={(e) => {
+          if (e.target.value !== profile.exercisePlan) saveProfile({ ...profile, exercisePlan: e.target.value });
+        }}
+        placeholder="Ej. camino 1 hora todos los días… (lo que no hagas aquí, cuéntaselo al Coach o súbelo desde tu reloj)"
+        rows={2}
+        style={{
+          width: "100%",
+          background: "#1b1e21",
+          border: "1px solid rgba(255,255,255,.08)",
+          borderRadius: 14,
+          padding: "12px 14px",
+          color: "#f4f3ee",
+          fontSize: 13,
+          fontFamily: "inherit",
+          boxSizing: "border-box",
+          resize: "none",
+          outline: "none",
+        }}
+      />
       <div
         onClick={() => router.push("/rutina")}
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1b1e21", borderRadius: 14, padding: "12px 14px", cursor: "pointer" }}
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1b1e21", borderRadius: 14, padding: "12px 14px", marginTop: 8, cursor: "pointer" }}
       >
-        <span style={{ fontSize: 13, fontWeight: 700 }}>Push / Pull / Legs</span>
+        <span style={{ fontSize: 13, fontWeight: 700 }}>Ejercicios de pesas (Push / Pull / Legs)</span>
         <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)" }}>Editar ›</span>
       </div>
 
@@ -759,7 +781,7 @@ export default function Perfil() {
         <UploadCard
           title="Actividad del reloj"
           subtitle="kcal · pasos · tiempo"
-          icon="⌚"
+          icon="/icons/glyphs/watch-activity.png"
           lastUpdated={
             healthUpdatedAt
               ? { timestamp: fmtStamp(healthUpdatedAt), label: "Actualizado" }
@@ -782,7 +804,7 @@ export default function Perfil() {
         <UploadCard
           title="Báscula inteligente"
           subtitle="peso · grasa · IMC"
-          icon="⚖️"
+          icon="/icons/glyphs/smart-scale.png"
           lastUpdated={
             scaleUpdatedAt
               ? { timestamp: fmtStamp(scaleUpdatedAt), label: "Actualizado" }
@@ -852,7 +874,9 @@ export default function Perfil() {
             cursor: "pointer",
           }}
         >
-          <span style={{ fontSize: 13, fontWeight: 800, color: "#c7f27a" }}>👑 Control de acceso</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 800, color: "#c7f27a" }}>
+            <Icon name="premium" size={18} /> Control de acceso
+          </span>
           <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)" }}>Aprobar usuarios ›</span>
         </Pressable>
       )}
