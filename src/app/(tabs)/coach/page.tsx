@@ -236,6 +236,16 @@ export default function Coach() {
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // El campo de texto crece con el contenido (hasta un máximo) en vez de
+  // quedarse en una sola línea — así se puede leer lo que se está escribiendo.
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, [input]);
+
   // Copiar mensajes
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
@@ -406,7 +416,18 @@ export default function Coach() {
       </div>
 
       {/* Mensajes */}
-      <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "14px 20px 8px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div
+        ref={scrollRef}
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          overscrollBehaviorY: "contain",
+          padding: "14px 20px 8px",
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+        }}
+      >
         {chatMessages.map((m, i) => {
           // Tableros y alertas entran con un "pop" más notorio
           const destacado = m.role === "coach" && (m.text.includes("TABLERO NUTRICIONAL") || m.text.includes("🚨"));
@@ -598,28 +619,36 @@ export default function Coach() {
             }}
           />
         </label>
-        <input
+        <textarea
+          ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
+            // Enter envía; Shift+Enter agrega un salto de línea.
+            if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               send(input);
             }
           }}
+          rows={1}
           placeholder={listening ? "Escuchando…" : pendingPhoto ? "Agrega contexto a tu foto…" : "Pregúntale o sube una foto…"}
           style={{
             flex: 1,
             minWidth: 0,
             background: "#1b1e21",
             border: listening ? "1px solid rgba(199,242,122,.4)" : "1px solid rgba(255,255,255,.08)",
-            borderRadius: 100,
+            borderRadius: 20,
             color: "#f4f3ee",
             fontSize: 13,
             fontWeight: 500,
+            fontFamily: "inherit",
+            lineHeight: 1.4,
             padding: "13px 18px",
             outline: "none",
             boxSizing: "border-box",
+            resize: "none",
+            maxHeight: 120,
+            overflowY: "auto",
           }}
         />
         {/* Dictado por voz (Web Speech API, es-ES) — pulso infinito mientras escucha */}

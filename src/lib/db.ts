@@ -5,7 +5,9 @@
 
 import { getSupabase } from "./supabase";
 import {
+  AccessStatus,
   Activity,
+  AdminUserRow,
   BodyComp,
   DEFAULT_PROFILE,
   DEFAULT_ROUTINE,
@@ -83,6 +85,11 @@ export async function loadAll(date: string): Promise<AllData> {
     ]);
 
   const p = profileQ.data;
+  if (profileQ.error) {
+    // No lo tapamos: si algo salió mal leyendo el perfil, mejor saberlo
+    // en consola que caer en silencio a un perfil "aprobado" por defecto.
+    console.error("Error cargando perfil:", profileQ.error);
+  }
   const profile: Profile = p
     ? {
         name: p.nombre ?? "",
@@ -101,8 +108,19 @@ export async function loadAll(date: string): Promise<AllData> {
         metaCarbs: p.meta_carbos ?? 220,
         metaFat: p.meta_grasa ?? 70,
         metaWater: p.meta_agua ?? 3000,
+        // Fila existente sin este campo (no debería pasar tras la
+        // migración) → se asume aprobada, igual que el resto de columnas
+        // nuevas con "??" arriba.
+        status: (p.status as AccessStatus) ?? "approved",
+        isAdmin: p.is_admin ?? false,
+        onboarded: p.onboarded ?? true,
       }
-    : DEFAULT_PROFILE;
+    : // OJO: con Supabase configurado, si la fila de "profiles" no llegó
+      // (aún no la crea el trigger, un error de RLS, lo que sea) NUNCA se
+      // debe asumir "aprobado" — eso dejaría entrar a cualquiera que se
+      // registre antes de que exista su fila. DEFAULT_PROFILE (aprobado)
+      // es solo para el modo 100% local sin Supabase.
+      { ...DEFAULT_PROFILE, status: "pending", onboarded: false };
 
   const meals: Meal[] = (mealsQ.data ?? []).map((m) => ({
     id: m.id,
@@ -262,6 +280,9 @@ export async function workoutFor(date: string): Promise<WorkoutState | null> {
   return lsGet<Record<string, WorkoutState>>("workout", {})[date] ?? null;
 }
 
+// OJO: nunca manda "status" ni "is_admin" — esos solo los cambia un admin
+// desde el panel (setUserStatus), y además la base de datos los protege con
+// un trigger aunque este código intentara enviarlos.
 export async function saveProfile(profile: Profile) {
   const sb = getSupabase();
   const uid = await userId();
@@ -281,10 +302,35 @@ export async function saveProfile(profile: Profile) {
       meta_carbos: profile.metaCarbs,
       meta_grasa: profile.metaFat,
       meta_agua: profile.metaWater,
+      onboarded: profile.onboarded,
     });
   } else {
     lsSet("profile", profile);
   }
+}
+
+// ---- Panel de administración (aprobar / rechazar cuentas nuevas) ----
+
+export async function listUsersForAdmin(): Promise<AdminUserRow[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  const { data } = await sb
+    .from("profiles")
+    .select("id,nombre,email,status,creado")
+    .order("creado", { ascending: false });
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    nombre: r.nombre || "(sin nombre)",
+    email: r.email || "—",
+    status: (r.status as AccessStatus) ?? "approved",
+    creado: r.creado,
+  }));
+}
+
+export async function setUserStatus(userId: string, status: AccessStatus) {
+  const sb = getSupabase();
+  if (!sb) return;
+  await sb.from("profiles").update({ status }).eq("id", userId);
 }
 
 export async function addMeal(meal: Meal) {

@@ -12,6 +12,7 @@ import AvatarEditor from "@/components/AvatarEditor";
 import { analyze, fileToDataURL } from "@/lib/analyze";
 import { useApp } from "@/lib/store";
 import { ACTIVITY_FACTORS, ActivityLevel, WeightEntry, todayISO } from "@/lib/types";
+import { mifflinBMR } from "@/lib/nutrition";
 import InfoModal from "@/components/InfoModal";
 
 const ACTIVITY_OPTIONS: { value: ActivityLevel; label: string; desc: string }[] = [
@@ -55,11 +56,6 @@ const sectionTitle: React.CSSProperties = {
   marginTop: 20,
   marginBottom: 8,
 };
-
-function mifflinBMR(weightLb: number, heightCm: number, age: number, sex: "M" | "F"): number {
-  const kg = weightLb * 0.4536;
-  return Math.round(10 * kg + 6.25 * heightCm - 5 * age + (sex === "F" ? -161 : 5));
-}
 
 // Redondeo a 1 decimal para mostrar (evita 55.000000000000014)
 function r1(n: number): number {
@@ -838,6 +834,27 @@ export default function Perfil() {
           </div>
           <ActionButton label="Actualizar mi perfil" onClick={applyScale} busy={false} />
         </>
+      )}
+
+      {/* Control de acceso (solo admin) */}
+      {profile.isAdmin && (
+        <Pressable
+          onClick={() => router.push("/admin")}
+          style={{
+            marginTop: 24,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: "rgba(199,242,122,.08)",
+            border: "1px solid rgba(199,242,122,.25)",
+            borderRadius: 16,
+            padding: "14px 16px",
+            cursor: "pointer",
+          }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 800, color: "#c7f27a" }}>👑 Control de acceso</span>
+          <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)" }}>Aprobar usuarios ›</span>
+        </Pressable>
       )}
 
       {/* Cerrar sesión */}

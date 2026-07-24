@@ -12,6 +12,12 @@ html,
 body {
   background: #121416;
   color: #f4f3ee;
+  /* Sin esto, "tirar hacia abajo" en la parte superior de la pantalla
+     dispara el pull-to-refresh nativo del navegador/PWA: eso hace una
+     RECARGA COMPLETA de la página (se pierde todo el estado en memoria,
+     incluido un chat que sigue esperando respuesta) sin que el usuario
+     sienta que "salió" de la app — parece un simple scroll accidental. */
+  overscroll-behavior-y: none;
 }
 
 body {

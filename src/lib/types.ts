@@ -22,6 +22,8 @@ export const ACTIVITY_FACTORS: Record<ActivityLevel, number> = {
   activo: 1.55,
 };
 
+export type AccessStatus = "pending" | "approved" | "rejected";
+
 export interface Profile {
   name: string;
   photo: string | null; // data URL de la foto de perfil
@@ -36,6 +38,22 @@ export interface Profile {
   metaCarbs: number;
   metaFat: number;
   metaWater: number; // ml
+  // Control de acceso: solo el admin puede cambiar status/isAdmin (protegido
+  // también a nivel de base de datos, no solo aquí).
+  status: AccessStatus;
+  isAdmin: boolean;
+  // Si ya completó el asistente de bienvenida (datos + metas iniciales).
+  onboarded: boolean;
+}
+
+// Fila resumida de un usuario para el panel de administración (aprobar
+// cuentas nuevas). No lleva metas/macros — eso solo lo necesita el dueño.
+export interface AdminUserRow {
+  id: string;
+  nombre: string;
+  email: string;
+  status: AccessStatus;
+  creado: string;
 }
 
 export interface Activity {
@@ -123,6 +141,10 @@ export const DEFAULT_PROFILE: Profile = {
   metaCarbs: 220,
   metaFat: 70,
   metaWater: 3000,
+  // En modo local (sin Supabase) no hay control de acceso ni asistente.
+  status: "approved",
+  isAdmin: false,
+  onboarded: true,
 };
 
 export const DEFAULT_ROUTINE: Routine = {

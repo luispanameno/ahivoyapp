@@ -77,7 +77,7 @@ export default function Login() {
         if (data.session) {
           router.replace("/hoy");
         } else {
-          setInfo("Revisa tu correo para confirmar la cuenta y luego inicia sesión.");
+          setInfo("Revisa tu correo para confirmar la cuenta. Después, alguien debe aprobar tu acceso antes de que puedas entrar.");
         }
       } else {
         const { error } = await sb.auth.signInWithPassword({ email, password });

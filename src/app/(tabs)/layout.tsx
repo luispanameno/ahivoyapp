@@ -5,13 +5,37 @@ import { AnimatePresence, motion } from "motion/react";
 import { AppProvider, useApp } from "@/lib/store";
 import TabBar from "@/components/TabBar";
 import Toast from "@/components/Toast";
+import OnboardingWizard from "@/components/OnboardingWizard";
 
 // Rutas donde el prototipo oculta la barra de navegación
 const HIDE_NAV = ["/escanear", "/rutina", "/comida", "/bebida"];
 
+function CenteredMessage({
+  icon,
+  title,
+  body,
+  action,
+}: {
+  icon: string;
+  title: string;
+  body: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div style={{ height: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "0 32px", textAlign: "center", boxSizing: "border-box" }}>
+      <div style={{ fontSize: 40 }}>{icon}</div>
+      <div className="font-sora" style={{ fontWeight: 800, fontSize: 18 }}>
+        {title}
+      </div>
+      <div style={{ fontSize: 13, color: "rgba(244,243,238,.6)", lineHeight: 1.5 }}>{body}</div>
+      {action}
+    </div>
+  );
+}
+
 function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { ready } = useApp();
+  const { ready, profile, signOut } = useApp();
   const hideNav = HIDE_NAV.some((r) => pathname.startsWith(r));
 
   if (!ready) {
@@ -30,6 +54,43 @@ function Shell({ children }: { children: React.ReactNode }) {
         <div style={{ fontWeight: 700, fontSize: 13, color: "rgba(244,243,238,.6)" }}>Cargando tus datos…</div>
       </div>
     );
+  }
+
+  // Control de acceso: cuentas nuevas esperan aprobación manual del admin
+  // antes de poder usar la app (ver supabase/schema.sql).
+  if (profile.status === "pending") {
+    return (
+      <CenteredMessage
+        icon="⏳"
+        title="Tu cuenta está esperando aprobación"
+        body="Alguien tiene que aprobarte manualmente antes de que puedas entrar — avísale a quien te compartió la app."
+        action={
+          <div onClick={signOut} style={{ marginTop: 10, fontSize: 12.5, fontWeight: 700, color: "rgba(244,243,238,.5)", textDecoration: "underline", cursor: "pointer" }}>
+            Cerrar sesión
+          </div>
+        }
+      />
+    );
+  }
+  if (profile.status === "rejected") {
+    return (
+      <CenteredMessage
+        icon="🚫"
+        title="Acceso no autorizado"
+        body="Esta cuenta no fue aprobada para usar AHIVOYAPP."
+        action={
+          <div onClick={signOut} style={{ marginTop: 10, fontSize: 12.5, fontWeight: 700, color: "rgba(244,243,238,.5)", textDecoration: "underline", cursor: "pointer" }}>
+            Cerrar sesión
+          </div>
+        }
+      />
+    );
+  }
+
+  // Primera vez que un usuario aprobado entra: arma su perfil nutricional
+  // antes de dejarlo pasar al resto de la app.
+  if (!profile.onboarded) {
+    return <OnboardingWizard />;
   }
 
   return (
