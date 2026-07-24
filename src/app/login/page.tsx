@@ -19,11 +19,75 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
+// Validación de forma (no de existencia real): exige algo@algo.algo, para
+// atrapar errores obvios como "hola@jdkf" antes de mandarlo a Supabase.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function EyeIcon({ open, size = 18 }: { open: boolean; size?: number }) {
+  return open ? (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  ) : (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.94 10.94 0 0112 19c-7 0-11-7-11-7a18.5 18.5 0 015.06-5.94M9.9 4.24A10.94 10.94 0 0112 4c7 0 11 7 11 7a18.5 18.5 0 01-2.16 3.19M14.12 14.12a3 3 0 11-4.24-4.24" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  );
+}
+
+// Campo de contraseña con botón de ojito para mostrar/ocultar.
+function PasswordField({
+  value,
+  onChange,
+  placeholder,
+  autoComplete,
+  onEnter,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  autoComplete: string;
+  onEnter?: () => void;
+}) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div style={{ position: "relative" }}>
+      <input
+        style={{ ...inputStyle, paddingRight: 44 }}
+        placeholder={placeholder}
+        type={visible ? "text" : "password"}
+        autoComplete={autoComplete}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && onEnter?.()}
+      />
+      <div
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
+        style={{
+          position: "absolute",
+          right: 14,
+          top: "50%",
+          transform: "translateY(-50%)",
+          color: "rgba(244,243,238,.5)",
+          cursor: "pointer",
+          display: "flex",
+        }}
+      >
+        <EyeIcon open={visible} />
+      </div>
+    </div>
+  );
+}
+
 export default function Login() {
   const router = useRouter();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
@@ -64,12 +128,26 @@ export default function Login() {
       setError("Escribe tu correo y contraseña.");
       return;
     }
+    if (!EMAIL_RE.test(email.trim())) {
+      setError("Ese correo no parece válido — revisa que tenga la forma nombre@dominio.com.");
+      return;
+    }
+    if (mode === "signup") {
+      if (password.length < 6) {
+        setError("La contraseña debe tener al menos 6 caracteres.");
+        return;
+      }
+      if (password !== confirmPassword) {
+        setError("Las contraseñas no coinciden.");
+        return;
+      }
+    }
     setBusy(true);
     const sb = getSupabase()!;
     try {
       if (mode === "signup") {
         const { data, error } = await sb.auth.signUp({
-          email,
+          email: email.trim(),
           password,
           options: { data: { nombre: name } },
         });
@@ -80,7 +158,7 @@ export default function Login() {
           setInfo("Revisa tu correo para confirmar la cuenta. Después, alguien debe aprobar tu acceso antes de que puedas entrar.");
         }
       } else {
-        const { error } = await sb.auth.signInWithPassword({ email, password });
+        const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
         if (error) throw error;
         router.replace("/hoy");
       }
@@ -138,15 +216,22 @@ export default function Login() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        <input
-          style={inputStyle}
-          placeholder="Contraseña"
-          type="password"
-          autoComplete={mode === "signin" ? "current-password" : "new-password"}
+        <PasswordField
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && submit()}
+          onChange={setPassword}
+          placeholder="Contraseña"
+          autoComplete={mode === "signin" ? "current-password" : "new-password"}
+          onEnter={mode === "signin" ? submit : undefined}
         />
+        {mode === "signup" && (
+          <PasswordField
+            value={confirmPassword}
+            onChange={setConfirmPassword}
+            placeholder="Confirma tu contraseña"
+            autoComplete="new-password"
+            onEnter={submit}
+          />
+        )}
       </div>
 
       {error && (

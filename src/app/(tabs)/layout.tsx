@@ -62,8 +62,8 @@ function Shell({ children }: { children: React.ReactNode }) {
     return (
       <CenteredMessage
         icon="⏳"
-        title="Tu cuenta está esperando aprobación"
-        body="Alguien tiene que aprobarte manualmente antes de que puedas entrar — avísale a quien te compartió la app."
+        title="Tu cuenta está en revisión"
+        body="El equipo de AHIVOYAPP está revisando tu solicitud. En cuanto te aprobemos vas a tener acceso completo — no debería tardar mucho."
         action={
           <div onClick={signOut} style={{ marginTop: 10, fontSize: 12.5, fontWeight: 700, color: "rgba(244,243,238,.5)", textDecoration: "underline", cursor: "pointer" }}>
             Cerrar sesión
