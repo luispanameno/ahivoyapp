@@ -15,6 +15,27 @@ const MESES = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "O
 const OVER_COLOR = "oklch(65% 0.19 25)";
 const OVER_GLOW = "oklch(65% 0.19 25 / 0.6)";
 
+// Frases del header: una al azar cada vez que se carga la pantalla.
+const HERO_PHRASES = [
+  "Dile no a esa Coca-Cola heladita.",
+  "El café es delicioso sin pan dulce.",
+  "Esa pupusa extra no cuenta como cardio.",
+  "Suda ahora, sonríe en el espejo después.",
+  "Un día a la vez. ¡Tú puedes!",
+  "El agua es tu mejor amiga hoy.",
+  "Menos excusas, más sudor. ¡A darle!",
+  "Tu única competencia eres tú mismo ayer.",
+  "Cero carbohidratos tristes, pura disciplina.",
+  "El esfuerzo de hoy es el cuerpo de tus sueños mañana.",
+  "No cuentes los días, haz que los días cuenten (y quemen).",
+  "Respira hondo, mantén el ritmo y síguele.",
+  "Si la dieta fuera fácil, verías a medio mundo corriendo maratones en calzoncillos.",
+  "Recuerda: el chocolate oscuro te ama, pero tu abdomen finge demencia.",
+  "Hoy tu mayor logro será no comerte la refri de un solo mordisco.",
+  "¿Hacer ejercicio o llorar en posición fetal? Elige sabiamente.",
+  "Ese cheat meal de ayer ya pidió nacionalidad en tus caderas. ¡A moverse!",
+];
+
 // Ícono minimalista de calendario (SVG, no emoji) para abrir el resumen diario.
 function CalendarIcon() {
   return (
@@ -137,14 +158,8 @@ export default function Hoy() {
 
   const now = new Date();
   const todayLabel = `${DIAS[now.getDay()]}, ${now.getDate()} ${MESES[now.getMonth()]}`;
-  const firstName = profile.name ? profile.name.split(" ")[0] : "";
-  const heroMessages = [
-    "Empieza fuerte hoy 💪",
-    "Vas muy bien hoy 💪",
-    `¡Sigue así${firstName ? ", " + firstName : ""}! 🔥`,
-    "Último tramo del día 👊",
-  ];
-  const heroMessage = heroMessages[Math.min(3, Math.floor(kcalEaten / 600))];
+  // Una frase al azar cada vez que se monta la pantalla (no en cada render).
+  const [heroMessage] = useState(() => HERO_PHRASES[Math.floor(Math.random() * HERO_PHRASES.length)]);
 
   const healthSyncLabel = activity
     ? `${activity.steps.toLocaleString()} pasos · ${activity.activityKcal} kcal activas`
@@ -194,9 +209,16 @@ export default function Hoy() {
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <div>
           <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", fontWeight: 600 }}>{todayLabel}</div>
-          <div className="font-sora" style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}>
+          <motion.div
+            key={heroMessage}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="font-sora"
+            style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}
+          >
             {heroMessage}
-          </div>
+          </motion.div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#c7f27a" }} />
             <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(244,243,238,.5)" }}>{healthSyncLabel}</div>

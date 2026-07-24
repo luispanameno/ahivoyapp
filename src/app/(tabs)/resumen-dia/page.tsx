@@ -57,6 +57,47 @@ function computeDerived(meals: Meal[], drinks: Drink[], activity: Activity | nul
   };
 }
 
+// Resumen conversacional: un veredicto corto con humor que combina las
+// señales del día (proteína corta, carbos/grasas/calorías excedidos) en
+// una sola frase — no es solo "sí/no cumpliste", sugiere qué ajustar.
+function conversationalSummary(params: {
+  hasAnyData: boolean;
+  goalReached: boolean;
+  kcalOk: boolean;
+  carbsOk: boolean;
+  fatOk: boolean;
+  proteinOk: boolean;
+  kcalOver: number;
+  carbsOver: number;
+  fatOver: number;
+  proteinShort: number;
+}): string | null {
+  const { hasAnyData, goalReached, kcalOk, carbsOk, fatOk, proteinOk, kcalOver, carbsOver, fatOver, proteinShort } = params;
+  if (!hasAnyData) return null;
+  if (goalReached) {
+    return "Día redondo: cumpliste todo sin dramas. Tu yo del espejo ya te lo está agradeciendo — mañana repetimos la jugada.";
+  }
+  if (!proteinOk && !carbsOk) {
+    return `Te faltaron ${proteinShort}g de proteína y sobraron ${carbsOver}g de carbohidratos — el combo perfecto para no ver resultados. Cambia el pan por pollo y verás la diferencia.`;
+  }
+  if (!proteinOk && !fatOk) {
+    return `Poca proteína (${proteinShort}g de menos) y demasiada grasa (${fatOver}g de más) hoy. Menos frituras, más a la plancha, y súmale un huevo mañana.`;
+  }
+  if (!kcalOk) {
+    return `Te pasaste ${kcalOver} kcal del presupuesto de hoy. No es el fin del mundo, pero mañana una cena ligera nos regresa al carril.`;
+  }
+  if (!carbsOk) {
+    return `${carbsOver}g de carbohidratos de más — el arroz y el pan se te fueron de las manos. Mañana con más calma, ¿va?`;
+  }
+  if (!fatOk) {
+    return `Te pasaste ${fatOver}g de grasas. Ojo con las frituras, ahí se esconden las calorías que no cuentas.`;
+  }
+  if (!proteinOk) {
+    return `Solo te faltaron ${proteinShort}g de proteína para cerrar un día perfecto. Un batido o un poco más de pollo y lo lograbas.`;
+  }
+  return "Casi lo logras — revisa tus macros y mañana le pegamos más duro.";
+}
+
 // ---------- Iconos minimalistas (SVG, no emoji) ----------
 
 function CalendarIcon({ size = 18, color = "currentColor" }: { size?: number; color?: string }) {
@@ -132,6 +173,15 @@ function CrossIcon() {
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10240a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+// Burbuja de chat — resumen conversacional
+function ChatBubbleIcon({ size = 17, color = "currentColor" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
     </svg>
   );
 }
@@ -323,6 +373,19 @@ export default function DailyHistoryDashboard() {
     else if (!proteinOk) verdictReason = `Te faltaron ${profile.metaProtein - derived.proteinG}g de proteína.`;
   }
 
+  const summaryText = conversationalSummary({
+    hasAnyData,
+    goalReached,
+    kcalOk,
+    carbsOk,
+    fatOk,
+    proteinOk,
+    kcalOver: derived.kcalEaten - derived.kcalBudget,
+    carbsOver: derived.carbsG - profile.metaCarbs,
+    fatOver: derived.fatG - profile.metaFat,
+    proteinShort: profile.metaProtein - derived.proteinG,
+  });
+
   // Carrusel: centra automáticamente el día seleccionado.
   const dayRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const firstScrollRef = useRef(true);
@@ -438,6 +501,39 @@ export default function DailyHistoryDashboard() {
           </div>
         )}
       </div>
+
+      {/* Resumen conversacional — glassmorphism, con humor */}
+      {summaryText && (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`summary-${selectedDate}`}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25, delay: 0.08 }}
+            className="rounded-2xl border border-white/12 bg-white/[0.06] backdrop-blur-xl shadow-lg"
+            style={{ marginTop: 14, padding: 16, display: "flex", gap: 12, alignItems: "flex-start" }}
+          >
+            <div
+              style={{
+                width: 30,
+                height: 30,
+                flex: "none",
+                borderRadius: "50%",
+                background: "rgba(199,242,122,.12)",
+                border: "1px solid rgba(199,242,122,.3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#c7f27a",
+              }}
+            >
+              <ChatBubbleIcon />
+            </div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: "rgba(244,243,238,.85)", lineHeight: 1.5, paddingTop: 3 }}>{summaryText}</div>
+          </motion.div>
+        </AnimatePresence>
+      )}
 
       {/* Veredicto + actividad física — glassmorphism */}
       <AnimatePresence mode="wait">
