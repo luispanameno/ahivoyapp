@@ -268,6 +268,10 @@ export default function Login() {
       >
         {mode === "signin" ? "¿No tienes cuenta? Crear una nueva" : "Ya tengo cuenta · Iniciar sesión"}
       </div>
+
+      <div style={{ textAlign: "center", fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 24 }}>
+        By <span style={{ fontWeight: 800, color: "#f4f3ee" }}>PanaApp</span>
+      </div>
     </div>
   );
 }
