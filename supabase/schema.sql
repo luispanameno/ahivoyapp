@@ -173,6 +173,29 @@ create trigger protect_profile_privileges
   before update on public.profiles
   for each row execute procedure public.protect_profile_privileges();
 
+-- El trigger de arriba solo cubre UPDATE. Sin esto, alguien cuya fila fue
+-- borrada (ej. el admin eliminó su acceso rechazado) podría volver a
+-- INSERTARLA con status 'approved' y auto-aprobarse. Toda fila creada desde
+-- la app nace pendiente y sin permisos de admin, pase lo que pase.
+create or replace function public.force_new_profile_defaults()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if auth.uid() is not null and not public.is_admin() then
+    new.status := 'pending';
+    new.is_admin := false;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists force_new_profile_defaults on public.profiles;
+create trigger force_new_profile_defaults
+  before insert on public.profiles
+  for each row execute procedure public.force_new_profile_defaults();
+
 -- ============ ROW LEVEL SECURITY ============
 -- Cada usuario SOLO puede ver y tocar sus propios datos.
 

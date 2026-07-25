@@ -125,6 +125,20 @@ export async function loadAll(date: string): Promise<AllData> {
       // es solo para el modo 100% local sin Supabase.
       { ...DEFAULT_PROFILE, status: "pending", onboarded: false };
 
+  // Sesión válida pero sin fila de perfil: pasa si el admin eliminó a esa
+  // persona del panel. Sin recrearla quedaría invisible para el admin (no
+  // aparece en ninguna lista) y atrapada para siempre en "en revisión".
+  // La recreamos pendiente — el trigger de la BD garantiza que nazca así.
+  if (!p && !profileQ.error) {
+    const { data: sess } = await sb.auth.getSession();
+    const u = sess.session?.user;
+    await sb.from("profiles").insert({
+      id: uid,
+      email: u?.email ?? null,
+      nombre: (u?.user_metadata as { nombre?: string } | undefined)?.nombre ?? "",
+    });
+  }
+
   const meals: Meal[] = (mealsQ.data ?? []).map((m) => ({
     id: m.id,
     date: m.fecha,
@@ -337,6 +351,16 @@ export async function setUserStatus(userId: string, status: AccessStatus) {
   const sb = getSupabase();
   if (!sb) return;
   await sb.from("profiles").update({ status }).eq("id", userId);
+}
+
+// Quita a alguien de la lista del panel. OJO: borra su fila de "profiles",
+// no su cuenta de acceso (eso solo se puede desde el dashboard de Supabase).
+// Si esa persona vuelve a entrar, la app le recrea la fila como PENDIENTE y
+// reaparece en el panel para que decidas de nuevo.
+export async function deleteUserProfile(userId: string) {
+  const sb = getSupabase();
+  if (!sb) return;
+  await sb.from("profiles").delete().eq("id", userId);
 }
 
 export async function addMeal(meal: Meal) {

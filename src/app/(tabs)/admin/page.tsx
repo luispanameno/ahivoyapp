@@ -21,7 +21,24 @@ function fmtDate(iso: string): string {
   }
 }
 
-function UserRow({ user, onSetStatus }: { user: AdminUserRow; onSetStatus: (id: string, status: AccessStatus) => void }) {
+function CloseIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+      <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
+function UserRow({
+  user,
+  onSetStatus,
+  onDelete,
+}: {
+  user: AdminUserRow;
+  onSetStatus: (id: string, status: AccessStatus) => void;
+  onDelete?: (id: string) => void;
+}) {
+  const [confirmando, setConfirmando] = useState(false);
   return (
     <motion.div
       layout
@@ -36,7 +53,56 @@ function UserRow({ user, onSetStatus }: { user: AdminUserRow; onSetStatus: (id: 
           <div style={{ fontSize: 11.5, color: "rgba(244,243,238,.5)", marginTop: 2, wordBreak: "break-all" }}>{user.email}</div>
           <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.35)", marginTop: 2 }}>Registrado: {fmtDate(user.creado)}</div>
         </div>
+        {/* Quitar de la lista: pide confirmación porque no se deshace. */}
+        {onDelete && (
+          <Pressable
+            onClick={() => setConfirmando((c) => !c)}
+            ariaLabel={confirmando ? "Cancelar borrado" : `Quitar a ${user.nombre} de la lista`}
+            style={{
+              width: 44,
+              height: 44,
+              flex: "none",
+              marginTop: -6,
+              marginRight: -6,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              color: confirmando ? "#f4f3ee" : "rgba(244,243,238,.4)",
+            }}
+          >
+            <CloseIcon />
+          </Pressable>
+        )}
       </div>
+
+      {confirmando && onDelete && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          transition={{ type: "spring", stiffness: 340, damping: 30 }}
+          style={{ overflow: "hidden" }}
+        >
+          <div style={{ fontSize: 11.5, color: "rgba(244,243,238,.6)", lineHeight: 1.4, paddingTop: 8 }}>
+            Se quita de la lista. Si vuelve a entrar, reaparecerá como pendiente.
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <Pressable
+              onClick={() => onDelete(user.id)}
+              style={{ flex: 1, textAlign: "center", padding: "9px 0", borderRadius: 12, fontSize: 12, fontWeight: 800, cursor: "pointer", background: "oklch(72% 0.18 25)", color: "#1a0505" }}
+            >
+              Sí, quitar
+            </Pressable>
+            <Pressable
+              onClick={() => setConfirmando(false)}
+              style={{ flex: 1, textAlign: "center", padding: "9px 0", borderRadius: 12, fontSize: 12, fontWeight: 800, cursor: "pointer", background: "rgba(255,255,255,.06)", color: "rgba(244,243,238,.7)" }}
+            >
+              Cancelar
+            </Pressable>
+          </div>
+        </motion.div>
+      )}
       <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
         {user.status !== "approved" && (
           <Pressable
@@ -101,6 +167,12 @@ export default function AdminPanel() {
     showToast(status === "approved" ? "Acceso aprobado" : "Acceso rechazado");
   };
 
+  const removeUser = async (id: string) => {
+    setUsers((prev) => prev?.filter((u) => u.id !== id) ?? prev);
+    await db.deleteUserProfile(id);
+    showToast("Quitado de la lista");
+  };
+
   // El admin no se gestiona a sí mismo (evita un auto-bloqueo accidental).
   const others = users?.filter((u) => u.email !== userEmail) ?? [];
   const pending = others.filter((u) => u.status === "pending");
@@ -159,9 +231,11 @@ export default function AdminPanel() {
             <div style={{ marginTop: 24 }}>
               <Accordion label="Ver accesos rechazados" count={rejected.length}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {rejected.map((u) => (
-                    <UserRow key={u.id} user={u} onSetStatus={setStatus} />
-                  ))}
+                  <AnimatePresence>
+                    {rejected.map((u) => (
+                      <UserRow key={u.id} user={u} onSetStatus={setStatus} onDelete={removeUser} />
+                    ))}
+                  </AnimatePresence>
                 </div>
               </Accordion>
             </div>

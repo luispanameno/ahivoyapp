@@ -157,7 +157,7 @@ export default function Hoy() {
     kcalRemaining,
   } = app;
 
-  const { mood: coachMood, message: coachMessage } = useCoachMood();
+  const { mood: coachMood, messages: coachMessages } = useCoachMood();
 
   const now = new Date();
   const todayLabel = `${DIAS[now.getDay()]}, ${now.getDate()} ${MESES[now.getMonth()]}`;
@@ -210,7 +210,9 @@ export default function Hoy() {
     <div style={{ boxSizing: "border-box", padding: "24px 20px 24px" }}>
       {/* Encabezado */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-        <div>
+        {/* minWidth 0 deja que este bloque se encoja y la frase baje de
+            línea en vez de cortarse con puntos suspensivos. */}
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", fontWeight: 600 }}>{todayLabel}</div>
           <motion.div
             key={heroMessage}
@@ -224,10 +226,9 @@ export default function Hoy() {
               marginTop: 3,
               color: "#c7f27a",
               textShadow: "0 0 14px rgba(199,242,122,.45)",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              maxWidth: 220,
+              lineHeight: 1.3,
+              // La frase siempre se lee completa: envuelve en varias líneas.
+              overflowWrap: "anywhere",
             }}
           >
             {heroMessage}
@@ -294,9 +295,9 @@ export default function Hoy() {
         </div>
       </div>
 
-      {/* Mascota: reacciona a lo que lleva registrado hoy y lleva al Coach */}
+      {/* Mascota: reacciona a lo registrado hoy. Al tocarla cambia de consejo. */}
       <div style={{ marginTop: 14 }}>
-        <CoachAvatar mood={coachMood} message={coachMessage} onClick={() => router.push("/coach")} />
+        <CoachAvatar mood={coachMood} messages={coachMessages} />
       </div>
 
       {/* Macros */}
