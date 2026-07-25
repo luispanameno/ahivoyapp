@@ -11,7 +11,7 @@ const timeInputStyle: React.CSSProperties = {
   flex: 1,
   background: "#0f1113",
   border: "1px solid rgba(255,255,255,.1)",
-  borderRadius: 12,
+  borderRadius: 14,
   padding: "12px 14px",
   color: "#f4f3ee",
   fontSize: 14,
@@ -103,7 +103,7 @@ export default function Sueno() {
       <div className="font-sora" style={{ fontSize: 20, fontWeight: 700 }}>Sueño</div>
       <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>Meta: 7–8 horas · con captura de tu reloj o a mano</div>
 
-      <div style={{ background: "#1b1e21", borderRadius: 16, padding: 18, marginTop: 16, textAlign: "center" }}>
+      <div style={{ background: "#1b1e21", borderRadius: 20, padding: 18, marginTop: 16, textAlign: "center" }}>
         <div className="font-sora" style={{ fontSize: 36, fontWeight: 800, textShadow: "0 0 12px oklch(72% 0.15 300 / 0.5)" }}>{label}</div>
         <div style={{ fontSize: 11.5, color: sleepOk ? "#c7f27a" : "oklch(75% 0.15 60)", fontWeight: 700, marginTop: 4 }}>
           {sleep ? (sleepOk ? "Dentro de tu meta de 7–8 horas" : "Fuera de tu meta de 7–8 horas") : "Sin registro de anoche"}
@@ -111,7 +111,7 @@ export default function Sueno() {
       </div>
 
       {phases && (
-        <div style={{ background: "#1b1e21", borderRadius: 16, padding: 14, marginTop: 10 }}>
+        <div style={{ background: "#1b1e21", borderRadius: 20, padding: 14, marginTop: 10 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em", marginBottom: 10 }}>
             FASES DE ANOCHE
           </div>
@@ -144,7 +144,7 @@ export default function Sueno() {
         <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,.08)" }} />
       </div>
 
-      <div style={{ background: "#1b1e21", borderRadius: 16, padding: 16 }}>
+      <div style={{ background: "#1b1e21", borderRadius: 20, padding: 16 }}>
         <div style={{ fontSize: 11.5, color: "rgba(244,243,238,.5)", marginBottom: 12 }}>
           ¿Sin reloj o app del celular a la mano? Escribe a qué hora te acostaste y a qué hora despertaste.
         </div>

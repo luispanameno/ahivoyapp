@@ -136,7 +136,7 @@ export default function Escanear() {
               zIndex: 2,
               background: "rgba(230,120,60,.15)",
               border: "1px solid rgba(230,120,60,.35)",
-              borderRadius: 14,
+              borderRadius: 18,
               padding: "10px 12px",
               fontSize: 11,
               fontWeight: 600,
@@ -190,7 +190,7 @@ export default function Escanear() {
               gap: 10,
               background: "#c7f27a",
               color: "#10240a",
-              borderRadius: 16,
+              borderRadius: 20,
               padding: "15px 18px",
               fontWeight: 800,
               fontSize: 14.5,
@@ -209,7 +209,7 @@ export default function Escanear() {
               gap: 10,
               background: "#1b1e21",
               color: "#f4f3ee",
-              borderRadius: 16,
+              borderRadius: 20,
               padding: "15px 18px",
               fontWeight: 700,
               fontSize: 14.5,
@@ -274,7 +274,7 @@ export default function Escanear() {
               marginTop: 14,
               background: "rgba(230,120,60,.15)",
               border: "1px solid rgba(230,120,60,.35)",
-              borderRadius: 14,
+              borderRadius: 18,
               padding: "10px 12px",
               fontSize: 11,
               fontWeight: 600,
@@ -290,7 +290,7 @@ export default function Escanear() {
           <img
             src={photo}
             alt="Tu plato"
-            style={{ width: "100%", height: 220, objectFit: "cover", borderRadius: 20, marginTop: 16 }}
+            style={{ width: "100%", height: 220, objectFit: "cover", borderRadius: 24, marginTop: 16 }}
           />
         )}
 
@@ -305,7 +305,7 @@ export default function Escanear() {
             marginTop: 8,
             background: "#1b1e21",
             border: "1px solid rgba(255,255,255,.08)",
-            borderRadius: 14,
+            borderRadius: 18,
             padding: "12px 14px",
             color: "#f4f3ee",
             fontSize: 13,
@@ -324,7 +324,7 @@ export default function Escanear() {
             color: "#10240a",
             textAlign: "center",
             padding: 16,
-            borderRadius: 18,
+            borderRadius: 22,
             fontWeight: 800,
             fontSize: 14,
             marginTop: 16,
@@ -381,7 +381,7 @@ export default function Escanear() {
             marginTop: 14,
             background: "#1b1e21",
             border: "1px solid rgba(255,255,255,.08)",
-            borderRadius: 14,
+            borderRadius: 18,
             padding: "12px 14px",
             color: "#f4f3ee",
             fontSize: 13,
@@ -406,7 +406,7 @@ export default function Escanear() {
             color: "#10240a",
             textAlign: "center",
             padding: 15,
-            borderRadius: 18,
+            borderRadius: 22,
             fontWeight: 800,
             fontSize: 13.5,
             marginBottom: 10,
@@ -451,12 +451,12 @@ export default function Escanear() {
         ))}
       </div>
 
-      <div style={{ marginTop: 16, background: "#1b1e21", borderRadius: 18, padding: 14, display: "flex", gap: 12, alignItems: "center" }}>
+      <div style={{ marginTop: 16, background: "#1b1e21", borderRadius: 22, padding: 14, display: "flex", gap: 12, alignItems: "center" }}>
         <div
           style={{
             width: 56,
             height: 56,
-            borderRadius: 14,
+            borderRadius: 18,
             background: photo
               ? `center/cover no-repeat url(${photo})`
               : "repeating-linear-gradient(45deg,#2a2d30,#2a2d30 4px,#232527 4px,#232527 8px)",
@@ -480,7 +480,7 @@ export default function Escanear() {
           { v: `${Math.round(result?.proteina ?? 0)}g`, l: "prote", color: "oklch(72% 0.15 250)" },
           { v: `${Math.round(result?.grasa ?? 0)}g`, l: "grasa", color: "oklch(72% 0.15 40)" },
         ].map((x) => (
-          <div key={x.l} style={{ background: "#1b1e21", borderRadius: 14, padding: 10, textAlign: "center" }}>
+          <div key={x.l} style={{ background: "#1b1e21", borderRadius: 18, padding: 10, textAlign: "center" }}>
             <div className="font-sora" style={{ fontSize: 15, fontWeight: 800, color: x.color }}>{x.v}</div>
             <div style={{ fontSize: 10, color: "rgba(244,243,238,.45)", marginTop: 2 }}>{x.l}</div>
           </div>
@@ -495,7 +495,7 @@ export default function Escanear() {
           color: "#10240a",
           textAlign: "center",
           padding: 16,
-          borderRadius: 18,
+          borderRadius: 22,
           fontWeight: 800,
           fontSize: 14,
           margin: "16px 0 20px",

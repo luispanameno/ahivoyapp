@@ -12,7 +12,7 @@ const fieldStyle: React.CSSProperties = {
   marginTop: 6,
   background: "#1b1e21",
   border: "1px solid rgba(255,255,255,.08)",
-  borderRadius: 12,
+  borderRadius: 14,
   padding: "12px 14px",
   color: "#f4f3ee",
   fontSize: 13,
@@ -65,7 +65,7 @@ export default function EditarComida() {
         <img
           src={meal.photo}
           alt="Tu plato"
-          style={{ width: "100%", height: 180, objectFit: "cover", borderRadius: 16, marginTop: 16 }}
+          style={{ width: "100%", height: 180, objectFit: "cover", borderRadius: 20, marginTop: 16 }}
         />
       )}
 
@@ -94,7 +94,7 @@ export default function EditarComida() {
           color: "#10240a",
           textAlign: "center",
           padding: 15,
-          borderRadius: 18,
+          borderRadius: 22,
           fontWeight: 800,
           fontSize: 13.5,
           marginTop: 20,
@@ -109,7 +109,7 @@ export default function EditarComida() {
         style={{
           textAlign: "center",
           padding: 14,
-          borderRadius: 18,
+          borderRadius: 22,
           fontWeight: 700,
           fontSize: 13,
           marginTop: 10,

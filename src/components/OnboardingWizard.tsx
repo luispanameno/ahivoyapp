@@ -44,7 +44,7 @@ const fieldStyle: React.CSSProperties = {
   marginTop: 6,
   background: "#1b1e21",
   border: "1px solid rgba(255,255,255,.08)",
-  borderRadius: 14,
+  borderRadius: 18,
   padding: "13px 14px",
   color: "#f4f3ee",
   fontSize: 14,
@@ -115,7 +115,7 @@ function PresetChips<T extends { label: string; value: string }>({
               gap: 12,
               background: active ? "rgba(199,242,122,.12)" : "#1b1e21",
               border: active ? "1px solid rgba(199,242,122,.45)" : "1px solid rgba(255,255,255,.06)",
-              borderRadius: 14,
+              borderRadius: 18,
               padding: "12px 14px",
               cursor: "pointer",
             }}
@@ -337,7 +337,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
                       flex: 1,
                       textAlign: "center",
                       padding: "12px 0",
-                      borderRadius: 14,
+                      borderRadius: 18,
                       fontSize: 13,
                       fontWeight: 700,
                       cursor: "pointer",
@@ -409,7 +409,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
                         gap: 12,
                         background: active ? "rgba(199,242,122,.12)" : "#1b1e21",
                         border: active ? "1px solid rgba(199,242,122,.45)" : "1px solid rgba(255,255,255,.06)",
-                        borderRadius: 14,
+                        borderRadius: 18,
                         padding: "13px 14px",
                         cursor: "pointer",
                       }}
@@ -501,7 +501,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
                 onImage={readScale}
               />
               {scaleError && (
-                <div style={{ marginTop: 10, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)", background: "rgba(230,120,60,.1)", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(230,120,60,.2)" }}>
+                <div style={{ marginTop: 10, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)", background: "rgba(230,120,60,.1)", padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(230,120,60,.2)" }}>
                   {scaleError}
                 </div>
               )}
@@ -523,16 +523,16 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
                 {goalMotivation ? " — pensando en tu meta de arriba." : ". "}Podrás ajustarlas cuando quieras en Perfil.
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-                <div style={{ background: "#1b1e21", borderRadius: 14, padding: 12 }}>
+                <div style={{ background: "#1b1e21", borderRadius: 18, padding: 12 }}>
                   <div style={labelStyle}>BMR</div>
                   <div className="font-sora" style={{ fontSize: 15, fontWeight: 800, marginTop: 2 }}>{goals.bmr.toLocaleString()} kcal</div>
                 </div>
-                <div style={{ background: "#1b1e21", borderRadius: 14, padding: 12 }}>
+                <div style={{ background: "#1b1e21", borderRadius: 18, padding: 12 }}>
                   <div style={labelStyle}>TDEE</div>
                   <div className="font-sora" style={{ fontSize: 15, fontWeight: 800, marginTop: 2 }}>{goals.tdee.toLocaleString()} kcal</div>
                 </div>
               </div>
-              <div style={{ background: "#1b1e21", borderRadius: 16, padding: 16 }}>
+              <div style={{ background: "#1b1e21", borderRadius: 20, padding: 16 }}>
                 {[
                   { label: "Calorías", value: `${goals.metaKcal.toLocaleString()} kcal`, color: "#c7f27a" },
                   { label: "Proteína mínima", value: `${goals.metaProtein}g`, color: "oklch(72% 0.15 250)" },
@@ -572,7 +572,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
               width: 52,
               textAlign: "center",
               padding: 16,
-              borderRadius: 18,
+              borderRadius: 22,
               fontWeight: 800,
               fontSize: 15,
               cursor: "pointer",
@@ -590,7 +590,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
               flex: 1,
               textAlign: "center",
               padding: 16,
-              borderRadius: 18,
+              borderRadius: 22,
               fontWeight: 700,
               fontSize: 14,
               cursor: "pointer",
@@ -616,7 +616,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
             flex: 1,
             textAlign: "center",
             padding: 16,
-            borderRadius: 18,
+            borderRadius: 22,
             fontWeight: 800,
             fontSize: 14,
             cursor: "pointer",

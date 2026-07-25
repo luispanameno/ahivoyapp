@@ -26,7 +26,7 @@ function UserRow({ user, onSetStatus }: { user: AdminUserRow; onSetStatus: (id: 
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, height: 0 }}
-      style={{ background: "#1b1e21", borderRadius: 14, padding: "12px 14px" }}
+      style={{ background: "#1b1e21", borderRadius: 18, padding: "12px 14px" }}
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
         <div style={{ minWidth: 0 }}>
@@ -39,7 +39,7 @@ function UserRow({ user, onSetStatus }: { user: AdminUserRow; onSetStatus: (id: 
         {user.status !== "approved" && (
           <Pressable
             onClick={() => onSetStatus(user.id, "approved")}
-            style={{ flex: 1, textAlign: "center", padding: "9px 0", borderRadius: 10, fontSize: 12, fontWeight: 800, cursor: "pointer", background: "#c7f27a", color: "#10240a" }}
+            style={{ flex: 1, textAlign: "center", padding: "9px 0", borderRadius: 12, fontSize: 12, fontWeight: 800, cursor: "pointer", background: "#c7f27a", color: "#10240a" }}
           >
             Aprobar
           </Pressable>
@@ -51,7 +51,7 @@ function UserRow({ user, onSetStatus }: { user: AdminUserRow; onSetStatus: (id: 
               flex: 1,
               textAlign: "center",
               padding: "9px 0",
-              borderRadius: 10,
+              borderRadius: 12,
               fontSize: 12,
               fontWeight: 800,
               cursor: "pointer",
@@ -123,7 +123,7 @@ export default function AdminPanel() {
             SOLICITUDES PENDIENTES {pending.length > 0 && `(${pending.length})`}
           </div>
           {pending.length === 0 ? (
-            <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.4)", background: "#1b1e21", borderRadius: 14, padding: "14px 16px" }}>
+            <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.4)", background: "#1b1e21", borderRadius: 18, padding: "14px 16px" }}>
               No hay solicitudes esperando.
             </div>
           ) : (

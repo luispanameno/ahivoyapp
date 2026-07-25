@@ -36,7 +36,7 @@ interface ScaleResult {
   masa_osea_lb?: number;
 }
 
-const cardStyle: React.CSSProperties = { background: "#1b1e21", borderRadius: 14, padding: "12px 14px" };
+const cardStyle: React.CSSProperties = { background: "#1b1e21", borderRadius: 18, padding: "12px 14px" };
 const labelStyle: React.CSSProperties = { fontSize: 10.5, color: "rgba(244,243,238,.4)", fontWeight: 700 };
 const numInput: React.CSSProperties = {
   width: "100%",
@@ -53,7 +53,7 @@ const notesTextarea: React.CSSProperties = {
   width: "100%",
   background: "#1b1e21",
   border: "1px solid rgba(255,255,255,.08)",
-  borderRadius: 14,
+  borderRadius: 18,
   padding: "12px 14px",
   color: "#f4f3ee",
   fontSize: 13,
@@ -511,7 +511,7 @@ export default function Perfil() {
                 gap: 12,
                 background: active ? "rgba(199,242,122,.12)" : "#1b1e21",
                 border: active ? "1px solid rgba(199,242,122,.45)" : "1px solid rgba(255,255,255,.06)",
-                borderRadius: 14,
+                borderRadius: 18,
                 padding: "12px 14px",
                 cursor: "pointer",
               }}
@@ -540,7 +540,7 @@ export default function Perfil() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
-        <div style={{ background: "#1b1e21", borderRadius: 16, padding: 14 }}>
+        <div style={{ background: "#1b1e21", borderRadius: 20, padding: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <div style={{ fontSize: 11, color: "rgba(244,243,238,.45)", fontWeight: 700 }}>BMR</div>
             <Pressable
@@ -565,7 +565,7 @@ export default function Perfil() {
           </div>
           <div className="font-sora" style={{ fontSize: 18, fontWeight: 800, marginTop: 4 }}>{bmr.toLocaleString()} kcal</div>
         </div>
-        <div style={{ background: "#1b1e21", borderRadius: 16, padding: 14 }}>
+        <div style={{ background: "#1b1e21", borderRadius: 20, padding: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <div style={{ fontSize: 11, color: "rgba(244,243,238,.45)", fontWeight: 700 }}>TDEE</div>
             <Pressable
@@ -608,7 +608,7 @@ export default function Perfil() {
         <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em" }}>HISTORIAL DE PESO</div>
         <div style={{ fontSize: 11.5, fontWeight: 700, color: trendColor }}>{trendLabel}</div>
       </div>
-      <div style={{ background: "#1b1e21", borderRadius: 16, padding: 14 }}>
+      <div style={{ background: "#1b1e21", borderRadius: 20, padding: 14 }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           {(["days", "weeks"] as const).map((r) => (
             <div
@@ -668,7 +668,7 @@ export default function Perfil() {
           {bodyComp ? `Última captura: ${bodyComp.date.slice(8, 10)}/${bodyComp.date.slice(5, 7)}` : "Sin captura aún"}
         </div>
       </div>
-      <div style={{ background: "#1b1e21", borderRadius: 16, padding: 18 }}>
+      <div style={{ background: "#1b1e21", borderRadius: 20, padding: 18 }}>
         {bodyComp ? (
           <>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingBottom: 16, borderBottom: "1px solid rgba(255,255,255,.06)" }}>
@@ -732,7 +732,7 @@ export default function Perfil() {
               alignItems: "center",
               gap: 8,
               background: "#1b1e21",
-              borderRadius: 14,
+              borderRadius: 18,
               padding: "12px 14px",
               minHeight: 44,
               boxSizing: "border-box",
@@ -751,7 +751,7 @@ export default function Perfil() {
             </div>
           </div>
         ))}
-        <div style={{ display: "flex", justifyContent: "space-between", background: "#1b1e21", borderRadius: 14, padding: "12px 14px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", background: "#1b1e21", borderRadius: 18, padding: "12px 14px" }}>
           <span style={{ fontSize: 13, color: "rgba(244,243,238,.6)" }}>Sueño</span>
           <span style={{ fontSize: 13, fontWeight: 700 }}>7–8 h</span>
         </div>
@@ -793,7 +793,7 @@ export default function Perfil() {
       />
       <div
         onClick={() => router.push("/rutina")}
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1b1e21", borderRadius: 14, padding: "12px 14px", marginTop: 8, cursor: "pointer" }}
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1b1e21", borderRadius: 18, padding: "12px 14px", marginTop: 8, cursor: "pointer" }}
       >
         <span style={{ fontSize: 13, fontWeight: 700 }}>Ejercicios de pesas (Push / Pull / Legs)</span>
         <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)" }}>Editar ›</span>
@@ -819,7 +819,7 @@ export default function Perfil() {
           onImage={onHealthImage}
         />
         {healthError && (
-          <div style={{ fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)", background: "rgba(230,120,60,.1)", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(230,120,60,.2)" }}>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)", background: "rgba(230,120,60,.1)", padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(230,120,60,.2)" }}>
             {healthError}
           </div>
         )}
@@ -842,7 +842,7 @@ export default function Perfil() {
           onImage={onScaleImage}
         />
         {scaleError && (
-          <div style={{ fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)", background: "rgba(230,120,60,.1)", padding: "10px 12px", borderRadius: 10, border: "1px solid rgba(230,120,60,.2)" }}>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)", background: "rgba(230,120,60,.1)", padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(230,120,60,.2)" }}>
             {scaleError}
           </div>
         )}
@@ -851,7 +851,7 @@ export default function Perfil() {
       {/* Datos detectados por la báscula: preview antes de confirmar */}
       {scaleParsed && (
         <>
-          <div style={{ marginTop: 14, background: "#1b1e21", borderRadius: 14, padding: 14 }}>
+          <div style={{ marginTop: 14, background: "#1b1e21", borderRadius: 18, padding: 14 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em", marginBottom: 10 }}>
               DATOS DETECTADOS
             </div>
@@ -893,7 +893,7 @@ export default function Perfil() {
             justifyContent: "space-between",
             background: "rgba(199,242,122,.08)",
             border: "1px solid rgba(199,242,122,.25)",
-            borderRadius: 16,
+            borderRadius: 20,
             padding: "14px 16px",
             cursor: "pointer",
           }}
@@ -913,7 +913,7 @@ export default function Perfil() {
             marginTop: 24,
             textAlign: "center",
             padding: 14,
-            borderRadius: 16,
+            borderRadius: 20,
             fontWeight: 800,
             fontSize: 13,
             cursor: "pointer",

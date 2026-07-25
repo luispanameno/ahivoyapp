@@ -63,7 +63,7 @@ export default function UploadCard({
         position: "relative",
         background: "#1b1e21",
         border: "1px solid rgba(199, 242, 122, 0.2)",
-        borderRadius: 20,
+        borderRadius: 24,
         padding: "24px 20px",
         overflow: "hidden",
       }}
@@ -78,7 +78,7 @@ export default function UploadCard({
             justifyContent: "center",
             width: 56,
             height: 56,
-            borderRadius: 16,
+            borderRadius: 20,
             border: icon.startsWith("/") ? "none" : "2px solid rgba(199, 242, 122, 0.3)",
             background: icon.startsWith("/") ? "transparent" : "rgba(199, 242, 122, 0.08)",
             fontSize: 28,
@@ -181,7 +181,7 @@ export default function UploadCard({
             justifyContent: "center",
             width: 44,
             height: 44,
-            borderRadius: 14,
+            borderRadius: 18,
             cursor: busy ? "default" : "pointer",
             background: isUpdated
               ? "rgba(199, 242, 122, 0.15)"

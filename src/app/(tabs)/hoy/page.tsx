@@ -280,7 +280,7 @@ export default function Hoy() {
       </div>
 
       {/* Macros */}
-      <div style={{ borderRadius: 20, background: "#1b1e21", padding: "16px 10px", marginTop: 14, animation: "fadeUp .5s ease both" }}>
+      <div style={{ borderRadius: 24, background: "#1b1e21", padding: "16px 10px", marginTop: 14, animation: "fadeUp .5s ease both" }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".04em", marginBottom: 12, paddingLeft: 4 }}>
           MACRONUTRIENTES HOY
         </div>
@@ -325,7 +325,7 @@ export default function Hoy() {
       </div>
 
       {/* Agua */}
-      <div style={{ borderRadius: 20, background: "#1b1e21", padding: "16px 18px", marginTop: 10 }}>
+      <div style={{ borderRadius: 24, background: "#1b1e21", padding: "16px 18px", marginTop: 10 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".04em" }}>
             SEGUIMIENTO DE HIDRATACIÓN
@@ -369,7 +369,7 @@ export default function Hoy() {
                 width: 52,
                 background: "rgba(255,255,255,.06)",
                 border: "1px solid rgba(255,255,255,.1)",
-                borderRadius: 10,
+                borderRadius: 12,
                 color: "#f4f3ee",
                 fontSize: 13,
                 fontWeight: 700,
@@ -427,7 +427,7 @@ export default function Hoy() {
       <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
         <div
           onClick={() => router.push("/entrenamiento")}
-          style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, background: "#1b1e21", borderRadius: 14, padding: "10px 12px", cursor: "pointer" }}
+          style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, background: "#1b1e21", borderRadius: 18, padding: "10px 12px", cursor: "pointer" }}
         >
           <div style={{ width: 8, height: 8, borderRadius: 2, background: "#c7f27a", flex: "none" }} />
           <div style={{ flex: 1, fontSize: 11.5, fontWeight: 700, color: "rgba(244,243,238,.75)" }}>
@@ -439,7 +439,7 @@ export default function Hoy() {
         </div>
         <div
           onClick={() => router.push("/sueno")}
-          style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, background: "#1b1e21", borderRadius: 14, padding: "10px 12px", cursor: "pointer" }}
+          style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, background: "#1b1e21", borderRadius: 18, padding: "10px 12px", cursor: "pointer" }}
         >
           <Icon name="sleep" size={18} />
           <div style={{ flex: 1, fontSize: 11.5, fontWeight: 700, color: "rgba(244,243,238,.75)" }}>Anoche: {sleepLabel}</div>
@@ -458,7 +458,7 @@ export default function Hoy() {
             gap: 8,
             background: "rgba(230,120,60,.15)",
             border: "1px solid rgba(230,120,60,.35)",
-            borderRadius: 14,
+            borderRadius: 18,
             padding: "10px 12px",
             marginTop: 12,
           }}
@@ -476,7 +476,7 @@ export default function Hoy() {
           gap: 10,
           background: "rgba(199,242,122,.08)",
           border: "1px solid rgba(199,242,122,.2)",
-          borderRadius: 14,
+          borderRadius: 18,
           padding: "10px 12px",
           marginTop: 12,
         }}
@@ -487,7 +487,7 @@ export default function Hoy() {
 
       {/* Actividad de hoy (rueda estilo Samsung Health) */}
       <div style={{ marginTop: 12 }}>
-        <div style={{ borderRadius: 20, background: "#1b1e21", padding: 16, animation: "fadeUp .5s ease both" }}>
+        <div style={{ borderRadius: 24, background: "#1b1e21", padding: 16, animation: "fadeUp .5s ease both" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".04em" }}>ACTIVIDAD DE HOY</div>
             <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.35)" }}>de tu reloj</div>
@@ -561,14 +561,14 @@ export default function Hoy() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-            <div style={{ flex: 1, background: "#232527", borderRadius: 12, padding: "10px 12px" }}>
+            <div style={{ flex: 1, background: "#232527", borderRadius: 14, padding: "10px 12px" }}>
               <div style={{ fontSize: 10, color: "rgba(244,243,238,.5)", fontWeight: 600 }}>Total quemadas</div>
               <div className="font-sora" style={{ fontSize: 15, fontWeight: 800, marginTop: 2 }}>
                 {(activity?.totalKcal ?? 0).toLocaleString()}{" "}
                 <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(244,243,238,.4)" }}>kcal</span>
               </div>
             </div>
-            <div style={{ flex: 1, background: "#232527", borderRadius: 12, padding: "10px 12px" }}>
+            <div style={{ flex: 1, background: "#232527", borderRadius: 14, padding: "10px 12px" }}>
               <div style={{ fontSize: 10, color: "rgba(244,243,238,.5)", fontWeight: 600 }}>Distancia</div>
               <div className="font-sora" style={{ fontSize: 15, fontWeight: 800, marginTop: 2 }}>
                 {activity?.distance ?? 0}{" "}
@@ -581,7 +581,7 @@ export default function Hoy() {
               marginTop: 12,
               background: "rgba(199,242,122,.08)",
               border: "1px solid rgba(199,242,122,.2)",
-              borderRadius: 12,
+              borderRadius: 14,
               padding: "10px 12px",
               fontSize: 11,
               fontWeight: 600,

@@ -49,7 +49,7 @@ export default function InfoModal({
               maxWidth: 380,
               background: "#1b1e21",
               border: "1px solid rgba(255,255,255,.08)",
-              borderRadius: 20,
+              borderRadius: 24,
               padding: 20,
               boxShadow: "0 12px 40px rgba(0,0,0,.5)",
             }}

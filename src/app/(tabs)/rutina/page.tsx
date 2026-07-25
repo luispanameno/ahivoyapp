@@ -69,7 +69,7 @@ export default function RutinaEdit() {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14 }}>
         {draft[day].map((ex, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: "#1b1e21", borderRadius: 14, padding: "10px 12px" }}>
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, background: "#1b1e21", borderRadius: 18, padding: "10px 12px" }}>
             <input
               value={ex.name}
               onChange={(e) => update(i, "name", e.target.value)}
@@ -125,7 +125,7 @@ export default function RutinaEdit() {
           marginTop: 10,
           textAlign: "center",
           padding: 12,
-          borderRadius: 14,
+          borderRadius: 18,
           border: "1px dashed rgba(255,255,255,.2)",
           fontSize: 12.5,
           fontWeight: 700,
@@ -144,7 +144,7 @@ export default function RutinaEdit() {
           color: "#10240a",
           textAlign: "center",
           padding: 15,
-          borderRadius: 18,
+          borderRadius: 22,
           fontWeight: 800,
           fontSize: 13.5,
           marginTop: 16,

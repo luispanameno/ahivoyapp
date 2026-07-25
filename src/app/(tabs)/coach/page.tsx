@@ -70,7 +70,7 @@ function ClipboardIcon() {
 // etiqueta puede partirse en 2 líneas, el valor nunca se rompe.
 function ContextCard({ value, label, color, glow }: { value: string; label: string; color: string; glow: string }) {
   return (
-    <div style={{ background: "#1b1e21", borderRadius: 10, padding: "7px 3px", textAlign: "center" }}>
+    <div style={{ background: "#1b1e21", borderRadius: 12, padding: "7px 3px", textAlign: "center" }}>
       <div className="font-sora" style={{ fontSize: 12.5, fontWeight: 800, color, textShadow: `0 0 8px ${glow}`, whiteSpace: "nowrap" }}>
         {value}
       </div>
@@ -358,7 +358,9 @@ export default function Coach() {
   return (
     <div
       style={{
-        height: "calc(100dvh - 88px - env(safe-area-inset-top))",
+        // Igual al paddingBottom del Shell (110): así el total es exactamente
+        // 100dvh y no aparece un scroll fantasma bajo el dock flotante.
+        height: "calc(100dvh - 110px - env(safe-area-inset-top))",
         display: "flex",
         flexDirection: "column",
         boxSizing: "border-box",
@@ -373,7 +375,7 @@ export default function Coach() {
             width: 38,
             height: 38,
             flex: "none",
-            borderRadius: 12,
+            borderRadius: 14,
             background: "linear-gradient(135deg,#a6f06a,#39c9a3)",
             display: "flex",
             alignItems: "center",
@@ -458,7 +460,7 @@ export default function Coach() {
                   lineHeight: 1.5,
                   fontWeight: 500,
                   padding: "11px 14px",
-                  borderRadius: m.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                  borderRadius: m.role === "user" ? "20px 20px 6px 20px" : "20px 20px 20px 6px",
                   boxShadow: m.role === "user" ? "0 0 16px rgba(199,242,122,.35)" : "none",
                   ...(m.role === "user" ? { whiteSpace: "pre-wrap" as const } : {}),
                 }}
@@ -468,7 +470,7 @@ export default function Coach() {
                   <img
                     src={m.image}
                     alt="foto"
-                    style={{ width: "100%", maxWidth: 180, borderRadius: 10, display: "block", marginBottom: m.text ? 8 : 0 }}
+                    style={{ width: "100%", maxWidth: 180, borderRadius: 12, display: "block", marginBottom: m.text ? 8 : 0 }}
                   />
                 )}
                 {/* Tablero Nutricional: tarjeta de cristal flotante (glassmorphism) */}
@@ -494,7 +496,7 @@ export default function Coach() {
         })}
         {chatTyping && (
           <div style={{ display: "flex", justifyContent: "flex-start" }}>
-            <div style={{ background: "#1b1e21", padding: "12px 16px", borderRadius: "16px 16px 16px 4px", display: "flex", gap: 5 }}>
+            <div style={{ background: "#1b1e21", padding: "12px 16px", borderRadius: "20px 20px 20px 6px", display: "flex", gap: 5 }}>
               {[0, 0.2, 0.4].map((d) => (
                 <div
                   key={d}
@@ -547,7 +549,7 @@ export default function Coach() {
             padding: 8,
             background: "#1b1e21",
             border: "1px solid rgba(199,242,122,.3)",
-            borderRadius: 14,
+            borderRadius: 18,
             flex: "none",
           }}
         >
@@ -555,7 +557,7 @@ export default function Coach() {
           <img
             src={pendingPhoto}
             alt="foto pendiente"
-            style={{ width: 52, height: 52, borderRadius: 10, objectFit: "cover", flex: "none" }}
+            style={{ width: 52, height: 52, borderRadius: 12, objectFit: "cover", flex: "none" }}
           />
           <div style={{ flex: 1, fontSize: 11.5, color: "rgba(244,243,238,.6)", fontWeight: 600, lineHeight: 1.4 }}>
             Foto lista 📸 — escribe contexto si quieres (ej. &quot;dejé la mitad&quot;) y presiona enviar
@@ -641,7 +643,7 @@ export default function Coach() {
             minWidth: 0,
             background: "#1b1e21",
             border: listening ? "1px solid rgba(199,242,122,.4)" : "1px solid rgba(255,255,255,.08)",
-            borderRadius: 20,
+            borderRadius: 24,
             color: "#f4f3ee",
             fontSize: 13,
             fontWeight: 500,

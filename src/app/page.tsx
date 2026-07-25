@@ -129,7 +129,7 @@ export default function Welcome() {
           color: "#08160e",
           textAlign: "center",
           padding: 17,
-          borderRadius: 20,
+          borderRadius: 24,
           fontWeight: 800,
           fontSize: 15,
           cursor: "pointer",

@@ -51,7 +51,7 @@ export default function Historial() {
                   alignItems: "center",
                   gap: 10,
                   background: "#1b1e21",
-                  borderRadius: 14,
+                  borderRadius: 18,
                   padding: "10px 12px",
                   marginBottom: 8,
                   cursor: "pointer",
@@ -61,7 +61,7 @@ export default function Historial() {
                   style={{
                     width: 36,
                     height: 36,
-                    borderRadius: 10,
+                    borderRadius: 12,
                     background: "rgba(255,255,255,.06)",
                     flex: "none",
                     display: "flex",
@@ -101,7 +101,7 @@ export default function Historial() {
                   alignItems: "center",
                   gap: 10,
                   background: "#1b1e21",
-                  borderRadius: 14,
+                  borderRadius: 18,
                   padding: "10px 12px",
                   marginBottom: 8,
                   cursor: "pointer",
@@ -111,7 +111,7 @@ export default function Historial() {
                   style={{
                     width: 36,
                     height: 36,
-                    borderRadius: 10,
+                    borderRadius: 12,
                     overflow: "hidden",
                     background: meal.photo
                       ? `center/cover no-repeat url(${meal.photo})`

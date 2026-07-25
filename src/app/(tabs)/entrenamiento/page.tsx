@@ -92,7 +92,7 @@ export default function Entrenamiento() {
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14 }}>
         {exercises.map((ex, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: "space-between", background: "#1b1e21", borderRadius: 14, padding: "12px 14px" }}>
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", background: "#1b1e21", borderRadius: 18, padding: "12px 14px" }}>
             <span style={{ fontSize: 13, fontWeight: 600 }}>{ex.name}</span>
             <span style={{ fontSize: 12, color: "rgba(244,243,238,.45)" }}>{ex.sets}</span>
           </div>
@@ -100,7 +100,7 @@ export default function Entrenamiento() {
       </div>
 
       {workout?.done && (
-        <div style={{ marginTop: 16, background: "rgba(199,242,122,.1)", border: "1px solid rgba(199,242,122,.3)", borderRadius: 16, padding: 14 }}>
+        <div style={{ marginTop: 16, background: "rgba(199,242,122,.1)", border: "1px solid rgba(199,242,122,.3)", borderRadius: 20, padding: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#c7f27a", boxShadow: "0 0 8px #c7f27a" }} />
             <div style={{ fontSize: 13, fontWeight: 800, color: "#c7f27a" }}>Registrado hoy</div>
@@ -134,7 +134,7 @@ export default function Entrenamiento() {
           minHeight: 70,
           background: "#1b1e21",
           border: "1px solid rgba(255,255,255,.08)",
-          borderRadius: 14,
+          borderRadius: 18,
           padding: "12px 14px",
           color: "#f4f3ee",
           fontSize: 13,

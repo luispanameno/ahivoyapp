@@ -404,7 +404,7 @@ export default function DailyHistoryDashboard() {
             width: 38,
             height: 38,
             flex: "none",
-            borderRadius: 12,
+            borderRadius: 14,
             background: "linear-gradient(135deg,#a6f06a,#39c9a3)",
             display: "flex",
             alignItems: "center",
@@ -444,7 +444,7 @@ export default function DailyHistoryDashboard() {
                 flex: "none",
                 width: 46,
                 scrollSnapAlign: "center",
-                borderRadius: 14,
+                borderRadius: 18,
                 padding: "9px 0",
                 textAlign: "center",
                 cursor: "pointer",
@@ -524,7 +524,7 @@ export default function DailyHistoryDashboard() {
               justifyContent: "center",
               background: "rgba(18,20,22,.4)",
               backdropFilter: "blur(2px)",
-              borderRadius: 20,
+              borderRadius: 24,
             }}
           >
             <div

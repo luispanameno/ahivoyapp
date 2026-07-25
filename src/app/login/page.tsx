@@ -10,7 +10,7 @@ const inputStyle: React.CSSProperties = {
   width: "100%",
   background: "#1b1e21",
   border: "1px solid rgba(255,255,255,.1)",
-  borderRadius: 14,
+  borderRadius: 18,
   padding: "14px 16px",
   color: "#f4f3ee",
   fontSize: 14,
@@ -112,7 +112,7 @@ export default function Login() {
         </div>
         <div
           onClick={() => router.push("/hoy")}
-          style={{ background: "#c7f27a", color: "#10240a", textAlign: "center", padding: 15, borderRadius: 18, fontWeight: 800, fontSize: 13.5, marginTop: 24, cursor: "pointer", boxShadow: "0 0 20px rgba(199,242,122,.5)" }}
+          style={{ background: "#c7f27a", color: "#10240a", textAlign: "center", padding: 15, borderRadius: 22, fontWeight: 800, fontSize: 13.5, marginTop: 24, cursor: "pointer", boxShadow: "0 0 20px rgba(199,242,122,.5)" }}
         >
           Continuar en modo local
         </div>
@@ -250,7 +250,7 @@ export default function Login() {
           color: "#08160e",
           textAlign: "center",
           padding: 16,
-          borderRadius: 18,
+          borderRadius: 22,
           fontWeight: 800,
           fontSize: 14,
           marginTop: 18,

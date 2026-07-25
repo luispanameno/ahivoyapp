@@ -106,7 +106,8 @@ function Shell({ children }: { children: React.ReactNode }) {
           minHeight: "100dvh",
           // Respeta el notch / Dynamic Island de iPhone y la barra inferior
           paddingTop: "env(safe-area-inset-top)",
-          paddingBottom: hideNav ? 0 : 88,
+          // Deja aire para el dock flotante (68 alto + 14 de margen + respiro)
+          paddingBottom: hideNav ? 0 : 110,
           boxSizing: "border-box",
         }}
       >
