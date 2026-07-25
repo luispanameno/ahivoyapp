@@ -1,0 +1,312 @@
+"use client";
+
+// Piezas compartidas por las dos vistas del Perfil ("Mi progreso" y
+// "Ajustes"): estilos, el encabezado con la foto, y el conmutador entre
+// ambas. Viven aquí para que las dos pantallas se vean como una sola.
+
+import { useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { motion, useReducedMotion } from "motion/react";
+import AvatarEditor from "./AvatarEditor";
+import Icon from "./Icon";
+import Pressable from "./Pressable";
+import { fileToDataURL } from "@/lib/analyze";
+import { useApp } from "@/lib/store";
+import { ActivityLevel } from "@/lib/types";
+
+export const spring = { type: "spring", stiffness: 400, damping: 25 } as const;
+
+export const ACTIVITY_OPTIONS: { value: ActivityLevel; label: string; desc: string }[] = [
+  { value: "sedentario", label: "Sedentario", desc: "No haces nada de ejercicio" },
+  { value: "ligero", label: "Ligero", desc: "Por tu trabajo o rutina te mantienes caminando / en movimiento" },
+  { value: "activo", label: "Activo", desc: "Haces ejercicio 3 días a la semana o más" },
+];
+
+export interface ScaleResult {
+  peso_lb: number;
+  score?: number;
+  complexion?: string;
+  imc?: number;
+  grasa_pct?: number;
+  agua_pct?: number;
+  proteina_pct?: number;
+  bmr?: number;
+  grasa_visceral?: number;
+  musculo_lb?: number;
+  masa_osea_lb?: number;
+}
+
+export const cardStyle: React.CSSProperties = { background: "#1b1e21", borderRadius: 18, padding: "12px 14px" };
+export const labelStyle: React.CSSProperties = { fontSize: 10.5, color: "rgba(244,243,238,.4)", fontWeight: 700 };
+export const numInput: React.CSSProperties = {
+  width: "100%",
+  background: "transparent",
+  border: "none",
+  outline: "none",
+  color: "#f4f3ee",
+  fontSize: 14,
+  fontWeight: 700,
+  marginTop: 2,
+  padding: 0,
+};
+export const notesTextarea: React.CSSProperties = {
+  width: "100%",
+  background: "#1b1e21",
+  border: "1px solid rgba(255,255,255,.08)",
+  borderRadius: 18,
+  padding: "12px 14px",
+  color: "#f4f3ee",
+  fontSize: 13,
+  fontFamily: "inherit",
+  boxSizing: "border-box",
+  resize: "none",
+  outline: "none",
+};
+export const sectionTitle: React.CSSProperties = {
+  fontSize: 11,
+  fontWeight: 700,
+  color: "rgba(244,243,238,.4)",
+  letterSpacing: ".04em",
+  marginTop: 20,
+  marginBottom: 8,
+};
+
+// Redondeo a 1 decimal para mostrar (evita 55.000000000000014)
+export function r1(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+// "20/07 · 6:58 p. m." para la marca de última actualización de las tarjetas.
+export function fmtStamp(d: Date): string {
+  return (
+    d.toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit" }) +
+    " · " +
+    d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: true })
+  );
+}
+
+export function ProfileHeader() {
+  const { profile, saveProfile, showToast, userEmail } = useApp();
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [editorSrc, setEditorSrc] = useState<string | null>(null);
+
+  return (
+    <>
+      {editorSrc && (
+        <AvatarEditor
+          src={editorSrc}
+          onCancel={() => setEditorSrc(null)}
+          onSave={async (url) => {
+            await saveProfile({ ...profile, photo: url });
+            setEditorSrc(null);
+            showToast("Foto de perfil actualizada");
+          }}
+        />
+      )}
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <Pressable
+          onClick={() => {
+            if (profile.photo) setEditorSrc(profile.photo);
+            else photoInputRef.current?.click();
+          }}
+          ariaLabel="Cambiar tu foto de perfil"
+          style={{
+            width: 64,
+            height: 64,
+            flex: "none",
+            borderRadius: "50%",
+            padding: 2,
+            background: "linear-gradient(135deg,#a6f06a,#39c9a3)",
+            cursor: "pointer",
+            position: "relative",
+            boxSizing: "border-box",
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              borderRadius: "50%",
+              overflow: "hidden",
+              background: "#1b1e21",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {profile.photo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profile.photo} alt="Tu foto" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              <Icon name="user" size={26} />
+            )}
+          </div>
+          <div
+            style={{
+              position: "absolute",
+              right: -2,
+              bottom: -2,
+              width: 24,
+              height: 24,
+              borderRadius: "50%",
+              background: "#c7f27a",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 0 10px rgba(199,242,122,.5)",
+            }}
+          >
+            <Icon name="camera" size={13} />
+          </div>
+        </Pressable>
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (!file) return;
+            try {
+              setEditorSrc(await fileToDataURL(file));
+            } catch {
+              showToast("No se pudo cargar esa foto");
+            }
+          }}
+        />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <input
+            value={profile.name}
+            placeholder="Tu nombre"
+            onChange={(e) => saveProfile({ ...profile, name: e.target.value })}
+            className="font-sora"
+            style={{
+              background: "transparent",
+              border: "none",
+              borderBottom: "1px dashed rgba(244,243,238,.3)",
+              outline: "none",
+              fontSize: 19,
+              fontWeight: 700,
+              color: "#f4f3ee",
+              padding: "0 0 4px",
+              width: "100%",
+            }}
+          />
+          <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.4)", marginTop: 4, wordBreak: "break-all" }}>
+            {userEmail ?? "Toca tu nombre para editarlo · toca la foto para cambiarla"}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+export function ProfileFooter() {
+  return (
+    <>
+      <div style={{ textAlign: "center", marginTop: 24 }}>
+        <div
+          className="font-sora"
+          style={{
+            fontSize: 15,
+            fontWeight: 800,
+            letterSpacing: ".04em",
+            background: "linear-gradient(180deg,#b7f06a,#39c9a3)",
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          }}
+        >
+          AHIVOYAPP
+        </div>
+        <div style={{ fontSize: 10, color: "rgba(244,243,238,.35)", marginTop: 2, letterSpacing: ".02em" }}>
+          AI Metabolic Scanner · v1.0 · By PanaApp
+        </div>
+      </div>
+      <div style={{ height: 40 }} />
+    </>
+  );
+}
+
+// Conmutador entre las dos vistas. La píldora activa se desliza con un
+// resorte compartido (layoutId), así se lee de dónde a dónde se movió.
+export function ProfileTabs() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const reduce = useReducedMotion();
+  const tabs = [
+    { label: "Mi progreso", route: "/perfil" },
+    { label: "Ajustes", route: "/perfil/ajustes" },
+  ];
+
+  return (
+    <div
+      role="tablist"
+      style={{
+        display: "flex",
+        gap: 4,
+        background: "#1b1e21",
+        borderRadius: 100,
+        padding: 4,
+        marginTop: 18,
+      }}
+    >
+      {tabs.map((t) => {
+        const active = pathname === t.route;
+        return (
+          <motion.div
+            key={t.route}
+            role="tab"
+            aria-selected={active}
+            tabIndex={0}
+            onClick={() => router.push(t.route)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                router.push(t.route);
+              }
+            }}
+            whileTap={reduce ? undefined : { scale: 0.95 }}
+            transition={spring}
+            style={{
+              position: "relative",
+              flex: 1,
+              minHeight: 40,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: 100,
+              cursor: "pointer",
+              boxSizing: "border-box",
+            }}
+          >
+            {active && (
+              <motion.div
+                layoutId="perfil-tab-activa"
+                transition={reduce ? { duration: 0 } : spring}
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "#c7f27a",
+                  borderRadius: 100,
+                  boxShadow: "0 0 14px rgba(199,242,122,.45)",
+                }}
+              />
+            )}
+            <span
+              style={{
+                position: "relative",
+                fontSize: 12.5,
+                fontWeight: 800,
+                color: active ? "#10240a" : "rgba(244,243,238,.6)",
+              }}
+            >
+              {t.label}
+            </span>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}

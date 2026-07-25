@@ -1,89 +1,18 @@
 "use client";
 
-// Perfil: datos y metas editables, historial de peso, composición corporal,
-// actividad del reloj por captura, báscula por captura, invitar familia.
+// Perfil · Vista 1 "Mi progreso": solo lo que se MIRA — metabolismo,
+// tendencia de peso y composición corporal. Todo lo que se CONFIGURA vive
+// en /perfil/ajustes, para que esta pantalla no sea un muro de formularios.
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
-import UploadCard from "@/components/UploadCard";
-import { ActionButton } from "@/components/ImageUploadZone";
+import { useState } from "react";
 import Pressable from "@/components/Pressable";
-import AvatarEditor from "@/components/AvatarEditor";
 import Icon from "@/components/Icon";
-import { analyze, fileToDataURL } from "@/lib/analyze";
-import { useApp } from "@/lib/store";
-import { ACTIVITY_FACTORS, ActivityLevel, WeightEntry, todayISO } from "@/lib/types";
-import { computeGoals, macrosForKcal, mifflinBMR } from "@/lib/nutrition";
 import InfoModal from "@/components/InfoModal";
-
-const ACTIVITY_OPTIONS: { value: ActivityLevel; label: string; desc: string }[] = [
-  { value: "sedentario", label: "Sedentario", desc: "No haces nada de ejercicio" },
-  { value: "ligero", label: "Ligero", desc: "Por tu trabajo o rutina te mantienes caminando / en movimiento" },
-  { value: "activo", label: "Activo", desc: "Haces ejercicio 3 días a la semana o más" },
-];
-
-interface ScaleResult {
-  peso_lb: number;
-  score?: number;
-  complexion?: string;
-  imc?: number;
-  grasa_pct?: number;
-  agua_pct?: number;
-  proteina_pct?: number;
-  bmr?: number;
-  grasa_visceral?: number;
-  musculo_lb?: number;
-  masa_osea_lb?: number;
-}
-
-const cardStyle: React.CSSProperties = { background: "#1b1e21", borderRadius: 18, padding: "12px 14px" };
-const labelStyle: React.CSSProperties = { fontSize: 10.5, color: "rgba(244,243,238,.4)", fontWeight: 700 };
-const numInput: React.CSSProperties = {
-  width: "100%",
-  background: "transparent",
-  border: "none",
-  outline: "none",
-  color: "#f4f3ee",
-  fontSize: 14,
-  fontWeight: 700,
-  marginTop: 2,
-  padding: 0,
-};
-const notesTextarea: React.CSSProperties = {
-  width: "100%",
-  background: "#1b1e21",
-  border: "1px solid rgba(255,255,255,.08)",
-  borderRadius: 18,
-  padding: "12px 14px",
-  color: "#f4f3ee",
-  fontSize: 13,
-  fontFamily: "inherit",
-  boxSizing: "border-box",
-  resize: "none",
-  outline: "none",
-};
-const sectionTitle: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 700,
-  color: "rgba(244,243,238,.4)",
-  letterSpacing: ".04em",
-  marginTop: 20,
-  marginBottom: 8,
-};
-
-// Redondeo a 1 decimal para mostrar (evita 55.000000000000014)
-function r1(n: number): number {
-  return Math.round(n * 10) / 10;
-}
-
-// "20/07 · 6:58 p. m." para la marca de última actualización de las tarjetas.
-function fmtStamp(d: Date): string {
-  return (
-    d.toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit" }) +
-    " · " +
-    d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit", hour12: true })
-  );
-}
+import { ProfileFooter, ProfileHeader, ProfileTabs, sectionTitle } from "@/components/profileUi";
+import { useApp } from "@/lib/store";
+import { ACTIVITY_FACTORS, WeightEntry } from "@/lib/types";
+import { mifflinBMR } from "@/lib/nutrition";
 
 function weeklySeries(weights: WeightEntry[]): { labels: string[]; values: number[] } {
   const byWeek = new Map<string, number[]>();
@@ -103,139 +32,15 @@ function weeklySeries(weights: WeightEntry[]): { labels: string[]; values: numbe
 
 const DAY_LETTERS = ["D", "L", "M", "M", "J", "V", "S"];
 
-export default function Perfil() {
+export default function PerfilProgreso() {
   const router = useRouter();
-  const app = useApp();
-  const { profile, saveProfile, weights, bodyComp, setActivity, activity, showToast, userEmail, signOut } = app;
-
+  const { profile, weights, bodyComp } = useApp();
   const [range, setRange] = useState<"days" | "weeks">("days");
-  const photoInputRef = useRef<HTMLInputElement>(null);
-  const [editorSrc, setEditorSrc] = useState<string | null>(null);
-
-  // Borrador de datos personales: se guardan solo al tocar "Guardar"
-  const [draft, setDraft] = useState({
-    age: String(profile.age),
-    height: String(profile.height),
-    weight: String(profile.weight),
-    weightGoal: String(profile.weightGoal),
-  });
-  const dirty =
-    Number(draft.age) !== profile.age ||
-    Number(draft.height) !== profile.height ||
-    Number(draft.weight) !== profile.weight ||
-    Number(draft.weightGoal) !== profile.weightGoal;
-
-  const saveDatos = async () => {
-    const age = Number(draft.age) || profile.age;
-    const height = Number(draft.height) || profile.height;
-    const weight = Number(draft.weight) || profile.weight;
-    const weightGoal = Number(draft.weightGoal) || profile.weightGoal;
-    await saveProfile({ ...profile, age, height, weightGoal });
-    if (weight !== profile.weight && weight > 0) await app.setWeight(weight);
-    showToast("Datos guardados ✓");
-  };
-  const [healthBusy, setHealthBusy] = useState(false);
-  const [healthError, setHealthError] = useState<string | null>(null);
-
-  // Báscula inline (mismo patrón que la actividad del reloj)
-  const [scaleParsed, setScaleParsed] = useState<ScaleResult | null>(null);
-  const [scaleBusy, setScaleBusy] = useState(false);
-  const [scaleError, setScaleError] = useState<string | null>(null);
-
-  const [scaleUpdatedAt, setScaleUpdatedAt] = useState<Date | null>(null);
-
-  const readScaleCapture = async (shot: string) => {
-    setScaleBusy(true);
-    setScaleError(null);
-    try {
-      const res = await analyze<ScaleResult>({ mode: "scale", image: shot });
-      setScaleParsed(res);
-    } catch (e) {
-      setScaleError(e instanceof Error ? e.message : "No se pudo leer la captura");
-    } finally {
-      setScaleBusy(false);
-    }
-  };
-
-  const onScaleImage = (url: string) => {
-    setScaleParsed(null);
-    readScaleCapture(url);
-  };
-
-  const applyScale = async () => {
-    if (!scaleParsed) return;
-    await app.setBodyComp(
-      {
-        score: Math.round(scaleParsed.score ?? 0),
-        build: scaleParsed.complexion ?? "—",
-        bmi: scaleParsed.imc ?? 0,
-        fatPct: scaleParsed.grasa_pct ?? 0,
-        waterPct: scaleParsed.agua_pct ?? 0,
-        proteinPct: scaleParsed.proteina_pct ?? 0,
-        bmr: Math.round(scaleParsed.bmr ?? 0),
-        visceralFat: scaleParsed.grasa_visceral ?? 0,
-        muscle: scaleParsed.musculo_lb ?? 0,
-        boneMass: scaleParsed.masa_osea_lb ?? 0,
-        date: todayISO(),
-      },
-      scaleParsed.peso_lb > 0 ? scaleParsed.peso_lb : undefined
-    );
-    setScaleParsed(null);
-    setScaleUpdatedAt(new Date());
-    showToast("Perfil actualizado desde tu báscula");
-  };
-
-  const setField = (field: keyof typeof profile, value: string | number) => {
-    saveProfile({ ...profile, [field]: value });
-  };
-
-  const setNumField = (field: keyof typeof profile) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const n = Number(e.target.value);
-    if (Number.isNaN(n)) return;
-    // Al cambiar las calorías a mano, los macros se reparten de nuevo sobre
-    // ese total: si bajas las kcal y la grasa/carbos se quedan igual, el
-    // reparto deja de cuadrar (sumarían más de lo que puedes comer).
-    if (field === "metaKcal" && n > 0) {
-      saveProfile({ ...profile, metaKcal: n, ...macrosForKcal(n, profile.weightGoal) });
-      setMetasVersion((v) => v + 1);
-      showToast("Metas ajustadas a tus nuevas calorías");
-      return;
-    }
-    setField(field, n);
-  };
-
-  // Los campos de metas son "no controlados" (defaultValue): al recalcularlos
-  // por código hay que remontarlos con una key nueva para que muestren el
-  // valor nuevo en vez del que el usuario tenía escrito.
-  const [metasVersion, setMetasVersion] = useState(0);
-
-  const recalcMetas = () => {
-    const goals = computeGoals({
-      sex: profile.sex,
-      age: profile.age,
-      heightCm: profile.height,
-      weightLb: profile.weight,
-      weightGoalLb: profile.weightGoal,
-      activityLevel: profile.activityLevel,
-      bmrOverride: bodyComp?.bmr,
-    });
-    saveProfile({
-      ...profile,
-      metaKcal: goals.metaKcal,
-      metaProtein: goals.metaProtein,
-      metaCarbs: goals.metaCarbs,
-      metaFat: goals.metaFat,
-      metaWater: goals.metaWater,
-    });
-    setMetasVersion((v) => v + 1);
-    showToast("Metas recalculadas con tus datos");
-  };
+  const [infoModal, setInfoModal] = useState<"bmr" | "tdee" | null>(null);
 
   const bmr = bodyComp?.bmr || mifflinBMR(profile.weight, profile.height, profile.age, profile.sex);
   const tdee = Math.round(bmr * ACTIVITY_FACTORS[profile.activityLevel]);
-  const [infoModal, setInfoModal] = useState<"bmr" | "tdee" | null>(null);
 
-  // Serie de peso
   const daySeries = {
     labels: weights.slice(-7).map((w) => DAY_LETTERS[new Date(w.date + "T12:00:00").getDay()]),
     values: weights.slice(-7).map((w) => w.lb),
@@ -254,7 +59,6 @@ export default function Perfil() {
       : "Registra tu peso para ver tendencia";
   const trendColor = delta <= 0 ? "oklch(78% 0.15 145)" : "oklch(75% 0.15 60)";
 
-  // Badges de composición corporal
   const GREEN = { bg: "rgba(199,242,122,.15)", color: "#c7f27a" };
   const ORANGE = { bg: "rgba(230,150,60,.15)", color: "oklch(75% 0.15 60)" };
   const RED = { bg: "rgba(230,90,60,.15)", color: "oklch(72% 0.18 30)" };
@@ -297,336 +101,74 @@ export default function Perfil() {
       ]
     : [];
 
-  const [healthUpdatedAt, setHealthUpdatedAt] = useState<Date | null>(null);
-
-  const readHealthCapture = async (shot: string) => {
-    setHealthBusy(true);
-    setHealthError(null);
-    try {
-      const res = await analyze<{
-        pasos: number;
-        min_activos: number;
-        kcal_activas: number;
-        kcal_totales: number;
-        distancia_km: number;
-      }>({ mode: "activity", image: shot });
-      await setActivity({
-        steps: Math.round(res.pasos) || 0,
-        activeMin: Math.round(res.min_activos) || 0,
-        activityKcal: Math.round(res.kcal_activas) || 0,
-        totalKcal: Math.round(res.kcal_totales) || 0,
-        distance: Math.round((res.distancia_km || 0) * 100) / 100,
-        synced: true,
-      });
-      setHealthUpdatedAt(new Date());
-      showToast("Actividad actualizada desde tu captura");
-    } catch (e) {
-      setHealthError(e instanceof Error ? e.message : "No se pudo leer la captura");
-    } finally {
-      setHealthBusy(false);
-    }
-  };
-
-  const onHealthImage = (url: string) => {
-    readHealthCapture(url);
-  };
-
-
   return (
     <div style={{ boxSizing: "border-box", padding: "24px 20px 0" }}>
-      {editorSrc && (
-        <AvatarEditor
-          src={editorSrc}
-          onCancel={() => setEditorSrc(null)}
-          onSave={async (url) => {
-            await saveProfile({ ...profile, photo: url });
-            setEditorSrc(null);
-            showToast("Foto de perfil actualizada");
-          }}
-        />
-      )}
-      {/* Cabecera */}
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <div
-          onClick={() => {
-            if (profile.photo) setEditorSrc(profile.photo);
-            else photoInputRef.current?.click();
-          }}
-          style={{
-            width: 64,
-            height: 64,
-            flex: "none",
-            borderRadius: "50%",
-            padding: 2,
-            background: "linear-gradient(135deg,#a6f06a,#39c9a3)",
-            cursor: "pointer",
-            position: "relative",
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              borderRadius: "50%",
-              overflow: "hidden",
-              background: "#1b1e21",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {profile.photo ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={profile.photo} alt="Tu foto" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            ) : (
-              <Icon name="user" size={26} />
-            )}
-          </div>
-          <div
-            style={{
-              position: "absolute",
-              right: -2,
-              bottom: -2,
-              width: 22,
-              height: 22,
-              borderRadius: "50%",
-              background: "#c7f27a",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 11,
-              boxShadow: "0 0 10px rgba(199,242,122,.5)",
-            }}
-          >
-            📷
-          </div>
-          <input
-            ref={photoInputRef}
-            type="file"
-            accept="image/*"
-            style={{ display: "none" }}
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              e.target.value = "";
-              if (!file) return;
-              try {
-                setEditorSrc(await fileToDataURL(file));
-              } catch {
-                showToast("No se pudo cargar esa foto");
-              }
-            }}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <input
-            value={profile.name}
-            placeholder="Tu nombre"
-            onChange={(e) => setField("name", e.target.value)}
-            className="font-sora"
-            style={{
-              background: "transparent",
-              border: "none",
-              borderBottom: "1px dashed rgba(244,243,238,.3)",
-              outline: "none",
-              fontSize: 19,
-              fontWeight: 700,
-              color: "#f4f3ee",
-              padding: "0 0 4px",
-              width: "100%",
-            }}
-          />
-          <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.4)", marginTop: 4 }}>
-            {userEmail ?? "Toca tu nombre para editarlo · toca la foto para cambiarla"}
-          </div>
-        </div>
-      </div>
+      <ProfileHeader />
+      <ProfileTabs />
 
-      {/* Datos personales */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 22, marginBottom: 8 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em" }}>DATOS PERSONALES</div>
-        <Pressable
-          onClick={saveDatos}
-          tapScale={0.9}
-          style={{
-            fontSize: 11,
-            fontWeight: 800,
-            padding: "8px 16px",
-            borderRadius: 100,
-            cursor: "pointer",
-            background: dirty ? "#c7f27a" : "rgba(255,255,255,.08)",
-            color: dirty ? "#10240a" : "rgba(244,243,238,.5)",
-            boxShadow: dirty ? "0 0 12px rgba(199,242,122,.5)" : "none",
-          }}
-        >
-          Guardar
-        </Pressable>
-      </div>
+      {/* Atajo al resumen del día: ahí viven las barras de macros y el
+          veredicto conversacional, que es la otra mitad del progreso. */}
+      <Pressable
+        onClick={() => router.push("/resumen-dia")}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          background: "rgba(199,242,122,.08)",
+          border: "1px solid rgba(199,242,122,.25)",
+          borderRadius: 20,
+          padding: "14px 16px",
+          marginTop: 18,
+          cursor: "pointer",
+        }}
+      >
+        <Icon name="history-trends" size={22} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "#c7f27a" }}>Resumen del día</div>
+          <div style={{ fontSize: 11, color: "rgba(244,243,238,.5)", marginTop: 2 }}>Barras de macros y cómo te fue</div>
+        </div>
+        <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)", flex: "none" }}>Ver ›</span>
+      </Pressable>
+
+      {/* Metabolismo */}
+      <div style={sectionTitle}>TU METABOLISMO</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <div style={cardStyle}>
-          <div style={labelStyle}>EDAD</div>
-          <input
-            type="number"
-            inputMode="numeric"
-            value={draft.age}
-            onChange={(e) => setDraft({ ...draft, age: e.target.value })}
-            style={numInput}
-          />
-        </div>
-        <div style={cardStyle}>
-          <div style={labelStyle}>ALTURA (cm)</div>
-          <input
-            type="number"
-            inputMode="numeric"
-            value={draft.height}
-            onChange={(e) => setDraft({ ...draft, height: e.target.value })}
-            style={numInput}
-          />
-        </div>
-        <div style={cardStyle}>
-          <div style={labelStyle}>PESO ACTUAL (lb)</div>
-          <input
-            type="number"
-            inputMode="decimal"
-            value={draft.weight}
-            onChange={(e) => setDraft({ ...draft, weight: e.target.value })}
-            style={numInput}
-          />
-        </div>
-        <div style={cardStyle}>
-          <div style={labelStyle}>PESO META (lb)</div>
-          <input
-            type="number"
-            inputMode="decimal"
-            value={draft.weightGoal}
-            onChange={(e) => setDraft({ ...draft, weightGoal: e.target.value })}
-            style={numInput}
-          />
-        </div>
-        <div style={{ ...cardStyle, gridColumn: "1 / -1" }}>
-          <div style={labelStyle}>SEXO (para calcular tu metabolismo)</div>
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-            {(
-              [
-                { value: "M", label: "Hombre" },
-                { value: "F", label: "Mujer" },
-              ] as const
-            ).map((s) => (
-              <div
-                key={s.value}
-                onClick={() => saveProfile({ ...profile, sex: s.value })}
+        {(
+          [
+            { key: "bmr" as const, label: "BMR", value: bmr },
+            { key: "tdee" as const, label: "TDEE", value: tdee },
+          ]
+        ).map((m) => (
+          <div key={m.key} style={{ background: "#1b1e21", borderRadius: 20, padding: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ fontSize: 11, color: "rgba(244,243,238,.45)", fontWeight: 700 }}>{m.label}</div>
+              <Pressable
+                onClick={() => setInfoModal(m.key)}
+                tapScale={0.85}
+                ariaLabel={`Qué es el ${m.label}`}
                 style={{
-                  flex: 1,
-                  textAlign: "center",
-                  padding: "8px 0",
-                  borderRadius: 100,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  background: profile.sex === s.value ? "#c7f27a" : "rgba(255,255,255,.06)",
-                  color: profile.sex === s.value ? "#10240a" : "rgba(244,243,238,.6)",
-                }}
-              >
-                {s.label}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Nivel de actividad diaria (para el TDEE) */}
-      <div style={sectionTitle}>NIVEL DE ACTIVIDAD DIARIA</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {ACTIVITY_OPTIONS.map((opt) => {
-          const active = profile.activityLevel === opt.value;
-          return (
-            <Pressable
-              key={opt.value}
-              onClick={() => saveProfile({ ...profile, activityLevel: opt.value })}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                background: active ? "rgba(199,242,122,.12)" : "#1b1e21",
-                border: active ? "1px solid rgba(199,242,122,.45)" : "1px solid rgba(255,255,255,.06)",
-                borderRadius: 18,
-                padding: "12px 14px",
-                cursor: "pointer",
-              }}
-            >
-              <div
-                style={{
-                  width: 16,
-                  height: 16,
+                  width: 22,
+                  height: 22,
                   flex: "none",
                   borderRadius: "50%",
-                  border: active ? "5px solid #c7f27a" : "2px solid rgba(244,243,238,.3)",
-                  boxSizing: "border-box",
-                  boxShadow: active ? "0 0 10px rgba(199,242,122,.5)" : "none",
+                  border: "1.5px solid rgba(244,243,238,.35)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: "rgba(244,243,238,.5)",
+                  cursor: "pointer",
                 }}
-              />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: active ? "#c7f27a" : "#f4f3ee" }}>{opt.label}</div>
-                <div style={{ fontSize: 11, color: "rgba(244,243,238,.5)", marginTop: 2, lineHeight: 1.4 }}>{opt.desc}</div>
-              </div>
-              <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(244,243,238,.35)", flex: "none" }}>
-                ×{ACTIVITY_FACTORS[opt.value]}
-              </div>
-            </Pressable>
-          );
-        })}
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 10 }}>
-        <div style={{ background: "#1b1e21", borderRadius: 20, padding: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ fontSize: 11, color: "rgba(244,243,238,.45)", fontWeight: 700 }}>BMR</div>
-            <Pressable
-              onClick={() => setInfoModal("bmr")}
-              tapScale={0.85}
-              style={{
-                width: 18,
-                height: 18,
-                borderRadius: "50%",
-                border: "1.5px solid rgba(244,243,238,.35)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 10,
-                fontWeight: 700,
-                color: "rgba(244,243,238,.5)",
-                cursor: "pointer",
-              }}
-            >
-              ?
-            </Pressable>
+              >
+                ?
+              </Pressable>
+            </div>
+            <div className="font-sora" style={{ fontSize: 18, fontWeight: 800, marginTop: 4 }}>
+              {m.value.toLocaleString()} kcal
+            </div>
           </div>
-          <div className="font-sora" style={{ fontSize: 18, fontWeight: 800, marginTop: 4 }}>{bmr.toLocaleString()} kcal</div>
-        </div>
-        <div style={{ background: "#1b1e21", borderRadius: 20, padding: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <div style={{ fontSize: 11, color: "rgba(244,243,238,.45)", fontWeight: 700 }}>TDEE</div>
-            <Pressable
-              onClick={() => setInfoModal("tdee")}
-              tapScale={0.85}
-              style={{
-                width: 18,
-                height: 18,
-                borderRadius: "50%",
-                border: "1.5px solid rgba(244,243,238,.35)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 10,
-                fontWeight: 700,
-                color: "rgba(244,243,238,.5)",
-                cursor: "pointer",
-              }}
-            >
-              ?
-            </Pressable>
-          </div>
-          <div className="font-sora" style={{ fontSize: 18, fontWeight: 800, marginTop: 4 }}>{tdee.toLocaleString()} kcal</div>
-        </div>
+        ))}
       </div>
 
       <InfoModal open={infoModal === "bmr"} title="¿Qué es el BMR?" onClose={() => setInfoModal(null)}>
@@ -648,13 +190,16 @@ export default function Perfil() {
       <div style={{ background: "#1b1e21", borderRadius: 20, padding: 14 }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
           {(["days", "weeks"] as const).map((r) => (
-            <div
+            <Pressable
               key={r}
               onClick={() => setRange(r)}
               style={{
                 flex: 1,
-                textAlign: "center",
-                padding: "7px 0",
+                minHeight: 44,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxSizing: "border-box",
                 borderRadius: 100,
                 fontSize: 11,
                 fontWeight: 700,
@@ -664,7 +209,7 @@ export default function Perfil() {
               }}
             >
               {r === "days" ? "Días" : "Semanas"}
-            </div>
+            </Pressable>
           ))}
         </div>
         {bars.length ? (
@@ -693,7 +238,7 @@ export default function Perfil() {
           </>
         ) : (
           <div style={{ textAlign: "center", fontSize: 12, color: "rgba(244,243,238,.45)", padding: "16px 0" }}>
-            Sube tu peso (aquí o con la báscula) y verás tu progreso.
+            Sube tu peso (en Ajustes o con la báscula) y verás tu progreso.
           </div>
         )}
       </div>
@@ -743,266 +288,13 @@ export default function Perfil() {
           </>
         ) : (
           <div style={{ textAlign: "center", fontSize: 12, color: "rgba(244,243,238,.45)", lineHeight: 1.5 }}>
-            Sube una captura de tu báscula (abajo) y aquí verás tu composición corporal completa.
+            Sube una captura de tu báscula desde <b style={{ color: "#c7f27a" }}>Ajustes</b> y aquí verás tu composición
+            corporal completa.
           </div>
         )}
       </div>
 
-      {/* Metas diarias */}
-      <div style={sectionTitle}>METAS DIARIAS (EDITABLES)</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {(
-          [
-            { label: "Calorías", field: "metaKcal", suffix: " kcal" },
-            { label: "Proteína mínima", field: "metaProtein", suffix: "g" },
-            { label: "Carbs máximo", field: "metaCarbs", suffix: "g" },
-            { label: "Grasas máximo", field: "metaFat", suffix: "g" },
-            { label: "Agua", field: "metaWater", suffix: " ml" },
-          ] as const
-        ).map((m) => (
-          <div
-            key={m.field}
-            style={{
-              display: "flex",
-              flexWrap: "nowrap",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 8,
-              background: "#1b1e21",
-              borderRadius: 18,
-              padding: "12px 14px",
-              minHeight: 44,
-              boxSizing: "border-box",
-            }}
-          >
-            <span style={{ fontSize: 13, color: "rgba(244,243,238,.6)", flex: "none", whiteSpace: "nowrap" }}>{m.label}</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 2, flex: 1, justifyContent: "flex-end", minWidth: 0 }}>
-              <input
-                key={`${m.field}-${metasVersion}`}
-                type="number"
-                inputMode="numeric"
-                defaultValue={profile[m.field]}
-                onBlur={setNumField(m.field)}
-                style={{ ...numInput, width: 56, minWidth: 0, textAlign: "right", marginTop: 0, fontSize: 13, flex: "none" }}
-              />
-              <span style={{ fontSize: 13, fontWeight: 700, flex: "none", whiteSpace: "nowrap" }}>{m.suffix}</span>
-            </div>
-          </div>
-        ))}
-        <div style={{ display: "flex", justifyContent: "space-between", background: "#1b1e21", borderRadius: 18, padding: "12px 14px" }}>
-          <span style={{ fontSize: 13, color: "rgba(244,243,238,.6)" }}>Sueño</span>
-          <span style={{ fontSize: 13, fontWeight: 700 }}>7–8 h</span>
-        </div>
-        <Pressable
-          onClick={recalcMetas}
-          style={{
-            textAlign: "center",
-            padding: "12px 14px",
-            borderRadius: 18,
-            fontSize: 12.5,
-            fontWeight: 800,
-            cursor: "pointer",
-            background: "rgba(199,242,122,.1)",
-            border: "1px solid rgba(199,242,122,.3)",
-            color: "#c7f27a",
-          }}
-        >
-          Recalcular con mis datos
-        </Pressable>
-        <div style={{ fontSize: 11, color: "rgba(244,243,238,.4)", lineHeight: 1.4, padding: "0 2px" }}>
-          Vuelve a calcular calorías, macros y agua desde tu peso, altura, edad y nivel de actividad. El agua sale de tu
-          peso (~35 ml por kg), no es un número fijo.
-        </div>
-      </div>
-
-      {/* Sobre ti: le da tono al Coach y hace sus consejos más realistas */}
-      <div style={sectionTitle}>SOBRE TI</div>
-      <div style={{ ...labelStyle, marginBottom: 4 }}>TU MOTIVO</div>
-      <textarea
-        defaultValue={profile.goalMotivation}
-        onBlur={(e) => {
-          if (e.target.value !== profile.goalMotivation) saveProfile({ ...profile, goalMotivation: e.target.value });
-        }}
-        placeholder="Ej. bajar de peso"
-        rows={1}
-        style={notesTextarea}
-      />
-      <div style={{ ...labelStyle, marginTop: 8, marginBottom: 4 }}>CÓMO COMES NORMALMENTE</div>
-      <textarea
-        defaultValue={profile.foodCulture}
-        onBlur={(e) => {
-          if (e.target.value !== profile.foodCulture) saveProfile({ ...profile, foodCulture: e.target.value });
-        }}
-        placeholder="Ej. pupusas casi a diario"
-        rows={1}
-        style={notesTextarea}
-      />
-
-      {/* Rutina */}
-      <div style={{ ...sectionTitle, marginTop: 20 }}>TU PLAN DE EJERCICIO</div>
-      <textarea
-        defaultValue={profile.exercisePlan}
-        onBlur={(e) => {
-          if (e.target.value !== profile.exercisePlan) saveProfile({ ...profile, exercisePlan: e.target.value });
-        }}
-        placeholder="Ej. camino 1 hora al día"
-        rows={1}
-        style={notesTextarea}
-      />
-      <div
-        onClick={() => router.push("/rutina")}
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1b1e21", borderRadius: 18, padding: "12px 14px", marginTop: 8, cursor: "pointer" }}
-      >
-        <span style={{ fontSize: 13, fontWeight: 700 }}>Ejercicios de pesas (Push / Pull / Legs)</span>
-        <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)" }}>Editar ›</span>
-      </div>
-
-      {/* Subir datos: actividad del reloj + báscula */}
-      <div style={sectionTitle}>SUBIR DATOS</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <UploadCard
-          title="Actividad del reloj"
-          subtitle="kcal · pasos · tiempo"
-          icon="/icons/glyphs/watch-activity.png"
-          lastUpdated={
-            healthUpdatedAt
-              ? { timestamp: fmtStamp(healthUpdatedAt), label: "Actualizado" }
-              : activity?.synced
-              ? { timestamp: "hoy", label: "Actualizado" }
-              : undefined
-          }
-          isUpdated={!!healthUpdatedAt || !!activity?.synced}
-          busy={healthBusy}
-          busyMessages={["Leyendo tu captura…", "Buscando pasos y calorías…", "Recopilando todos tus datos…", "Casi listo…"]}
-          onImage={onHealthImage}
-        />
-        {healthError && (
-          <div style={{ fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)", background: "rgba(230,120,60,.1)", padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(230,120,60,.2)" }}>
-            {healthError}
-          </div>
-        )}
-
-        {/* Báscula inteligente (mismo patrón: un toque sube + analiza) */}
-        <UploadCard
-          title="Báscula inteligente"
-          subtitle="peso · grasa · IMC"
-          icon="/icons/glyphs/smart-scale.png"
-          lastUpdated={
-            scaleUpdatedAt
-              ? { timestamp: fmtStamp(scaleUpdatedAt), label: "Actualizado" }
-              : bodyComp
-              ? { timestamp: `${bodyComp.date.slice(8, 10)}/${bodyComp.date.slice(5, 7)}`, label: "Actualizado" }
-              : undefined
-          }
-          isUpdated={(!!scaleUpdatedAt || !!bodyComp) && !scaleParsed}
-          busy={scaleBusy}
-          busyMessages={["Leyendo tu captura…", "Recopilando todos tus datos…", "Extrayendo peso, IMC y composición…", "Casi listo…"]}
-          onImage={onScaleImage}
-        />
-        {scaleError && (
-          <div style={{ fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)", background: "rgba(230,120,60,.1)", padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(230,120,60,.2)" }}>
-            {scaleError}
-          </div>
-        )}
-      </div>
-
-      {/* Datos detectados por la báscula: preview antes de confirmar */}
-      {scaleParsed && (
-        <>
-          <div style={{ marginTop: 14, background: "#1b1e21", borderRadius: 18, padding: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em", marginBottom: 10 }}>
-              DATOS DETECTADOS
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12.5 }}>
-              {(
-                [
-                  ["Puntuación", scaleParsed.score != null ? String(Math.round(scaleParsed.score)) : "—"],
-                  ["Peso", `${r1(scaleParsed.peso_lb)} lb`],
-                  ["Complexión", scaleParsed.complexion ?? "—"],
-                  ["IMC", scaleParsed.imc != null ? String(r1(scaleParsed.imc)) : "—"],
-                  ["Grasa corporal", scaleParsed.grasa_pct != null ? `${r1(scaleParsed.grasa_pct)}%` : "—"],
-                  ["Nivel de agua", scaleParsed.agua_pct != null ? `${r1(scaleParsed.agua_pct)}%` : "—"],
-                  ["Proteína", scaleParsed.proteina_pct != null ? `${r1(scaleParsed.proteina_pct)}%` : "—"],
-                  ["Metab. basal", scaleParsed.bmr != null ? `${Math.round(scaleParsed.bmr).toLocaleString()} kcal` : "—"],
-                  ["Grasa visceral", scaleParsed.grasa_visceral != null ? String(Math.round(scaleParsed.grasa_visceral)) : "—"],
-                  ["Músculo", scaleParsed.musculo_lb != null ? `${r1(scaleParsed.musculo_lb)} lb` : "—"],
-                  ["Masa ósea", scaleParsed.masa_osea_lb != null ? `${r1(scaleParsed.masa_osea_lb)} lb` : "—"],
-                ] as [string, string][]
-              ).map(([label, value]) => (
-                <div key={label} style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "rgba(244,243,238,.5)" }}>{label}</span>
-                  <span style={{ fontWeight: 700 }}>{value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <ActionButton label="Actualizar mi perfil" onClick={applyScale} busy={false} />
-        </>
-      )}
-
-      {/* Control de acceso (solo admin) */}
-      {profile.isAdmin && (
-        <Pressable
-          onClick={() => router.push("/admin")}
-          style={{
-            marginTop: 24,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            background: "rgba(199,242,122,.08)",
-            border: "1px solid rgba(199,242,122,.25)",
-            borderRadius: 20,
-            padding: "14px 16px",
-            cursor: "pointer",
-          }}
-        >
-          <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 800, color: "#c7f27a" }}>
-            <Icon name="premium" size={18} /> Control de acceso
-          </span>
-          <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)" }}>Aprobar usuarios ›</span>
-        </Pressable>
-      )}
-
-      {/* Cerrar sesión */}
-      {userEmail && (
-        <Pressable
-          onClick={signOut}
-          style={{
-            marginTop: 24,
-            textAlign: "center",
-            padding: 14,
-            borderRadius: 20,
-            fontWeight: 800,
-            fontSize: 13,
-            cursor: "pointer",
-            color: "oklch(72% 0.18 25)",
-            border: "1px solid oklch(72% 0.18 25 / 0.4)",
-          }}
-        >
-          Cerrar sesión
-        </Pressable>
-      )}
-
-      <div style={{ textAlign: "center", marginTop: 24 }}>
-        <div
-          className="font-sora"
-          style={{
-            fontSize: 15,
-            fontWeight: 800,
-            letterSpacing: ".04em",
-            background: "linear-gradient(180deg,#b7f06a,#39c9a3)",
-            WebkitBackgroundClip: "text",
-            backgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          }}
-        >
-          AHIVOYAPP
-        </div>
-        <div style={{ fontSize: 10, color: "rgba(244,243,238,.35)", marginTop: 2, letterSpacing: ".02em" }}>
-          AI Metabolic Scanner · v1.0 · By PanaApp
-        </div>
-      </div>
-      <div style={{ height: 40 }} />
+      <ProfileFooter />
     </div>
   );
 }

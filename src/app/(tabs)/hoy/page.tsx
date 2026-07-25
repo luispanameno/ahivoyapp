@@ -450,9 +450,10 @@ export default function Hoy() {
 
       {/* Accesos entrenamiento / sueño */}
       <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-        <div
+        <Pressable
           onClick={() => router.push("/entrenamiento")}
-          style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, background: "#1b1e21", borderRadius: 18, padding: "10px 12px", cursor: "pointer" }}
+          hoverScale={1}
+          style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, background: "#1b1e21", borderRadius: 18, padding: "10px 12px", minHeight: 44, boxSizing: "border-box", cursor: "pointer" }}
         >
           <div style={{ width: 8, height: 8, borderRadius: 2, background: "#c7f27a", flex: "none" }} />
           <div style={{ flex: 1, fontSize: 11.5, fontWeight: 700, color: "rgba(244,243,238,.75)" }}>
@@ -461,17 +462,18 @@ export default function Hoy() {
           <div style={{ fontSize: 11, color: workout?.done ? "#c7f27a" : "rgba(244,243,238,.4)" }}>
             {workout?.done ? "✓ Hecho" : "Ver ›"}
           </div>
-        </div>
-        <div
+        </Pressable>
+        <Pressable
           onClick={() => router.push("/sueno")}
-          style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, background: "#1b1e21", borderRadius: 18, padding: "10px 12px", cursor: "pointer" }}
+          hoverScale={1}
+          style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, background: "#1b1e21", borderRadius: 18, padding: "10px 12px", minHeight: 44, boxSizing: "border-box", cursor: "pointer" }}
         >
           <Icon name="sleep" size={18} />
           <div style={{ flex: 1, fontSize: 11.5, fontWeight: 700, color: "rgba(244,243,238,.75)" }}>Anoche: {sleepLabel}</div>
           <div style={{ fontSize: 11, color: sleepOk ? "#c7f27a" : "oklch(75% 0.15 60)" }}>
             {sleep ? (sleepOk ? "✓ Meta" : "Bajo meta") : "›"}
           </div>
-        </div>
+        </Pressable>
       </div>
 
       {/* Alerta de límite */}

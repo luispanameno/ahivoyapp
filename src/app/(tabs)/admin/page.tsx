@@ -153,9 +153,9 @@ export default function AdminPanel() {
     return (
       <div style={{ padding: "80px 24px", textAlign: "center", color: "rgba(244,243,238,.5)", fontSize: 13 }}>
         No autorizado.
-        <div onClick={() => router.push("/hoy")} style={{ marginTop: 16, color: "#c7f27a", fontWeight: 700, cursor: "pointer" }}>
+        <Pressable onClick={() => router.push("/hoy")} style={{ marginTop: 16, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center", color: "#c7f27a", fontWeight: 700, cursor: "pointer" }}>
           ‹ Volver a Hoy
-        </div>
+        </Pressable>
       </div>
     );
   }
@@ -181,9 +181,9 @@ export default function AdminPanel() {
 
   return (
     <div style={{ boxSizing: "border-box", padding: "24px 20px 40px" }}>
-      <div onClick={() => router.push("/perfil")} style={{ fontSize: 13, fontWeight: 700, color: "rgba(244,243,238,.7)", cursor: "pointer" }}>
+      <Pressable onClick={() => router.push("/perfil/ajustes")} style={{ fontSize: 13, fontWeight: 700, color: "rgba(244,243,238,.7)", cursor: "pointer", minHeight: 44, display: "flex", alignItems: "center" }}>
         ‹ Volver
-      </div>
+      </Pressable>
       <div className="font-sora" style={{ fontSize: 20, fontWeight: 800, marginTop: 10 }}>
         Control de acceso
       </div>

@@ -36,9 +36,9 @@ export default function EditarComida() {
     return (
       <div style={{ padding: "80px 24px", textAlign: "center", color: "rgba(244,243,238,.5)", fontSize: 13 }}>
         Registro no encontrado.
-        <div onClick={() => router.push("/historial")} style={{ marginTop: 16, color: "#c7f27a", fontWeight: 700, cursor: "pointer" }}>
+        <Pressable onClick={() => router.push("/historial")} style={{ marginTop: 16, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center", color: "#c7f27a", fontWeight: 700, cursor: "pointer" }}>
           ‹ Volver al historial
-        </div>
+        </Pressable>
       </div>
     );
   }

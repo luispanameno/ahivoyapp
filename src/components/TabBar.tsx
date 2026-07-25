@@ -28,7 +28,8 @@ function Tab({ route, icon, label }: { route: string; icon: string; label: strin
   const pathname = usePathname();
   const router = useRouter();
   const reduce = useReducedMotion();
-  const active = pathname === route;
+  // startsWith y no ===: /perfil/ajustes también es "Perfil".
+  const active = pathname === route || pathname.startsWith(route + "/");
   return (
     <motion.div
       onClick={() => router.push(route)}
