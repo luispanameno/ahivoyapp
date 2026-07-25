@@ -4,9 +4,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import Icon from "./Icon";
 
-// Dock flotante estilo iOS: isla redondeada con blur, separada de los bordes
-// de la pantalla, con los íconos del set propio (miniaturas tipo app-icon).
-// Inactivo = escala de grises apagada; activo = color + glow del label.
+// Barra de navegación clásica anclada al borde inferior (a pedido del
+// usuario: sin isla flotante), pero con los íconos del set propio:
+// inactivo = escala de grises apagada; activo = color + glow del label.
 //
 // El botón central SOLO navega a /escanear: ahí mismo (sin cambiar de
 // página de nuevo) viven los botones "Tomar foto" / "Elegir de galería".
@@ -56,7 +56,7 @@ function Tab({ route, icon, label }: { route: string; icon: string; label: strin
       />
       <div
         style={{
-          fontSize: 9.5,
+          fontSize: 10,
           fontWeight: 700,
           color: active ? "#c7f27a" : "rgba(244,243,238,.35)",
           textShadow: active ? "0 0 8px rgba(199,242,122,.6)" : "none",
@@ -76,22 +76,20 @@ export default function TabBar() {
     <div
       style={{
         position: "fixed",
-        left: 14,
-        right: 14,
-        bottom: "max(14px, env(safe-area-inset-bottom))",
+        left: 0,
+        right: 0,
+        bottom: 0,
         margin: "0 auto",
-        maxWidth: 440,
-        height: 68,
-        background: "rgba(24,27,30,.82)",
-        backdropFilter: "blur(20px) saturate(1.5)",
-        WebkitBackdropFilter: "blur(20px) saturate(1.5)",
-        border: "1px solid rgba(255,255,255,.08)",
-        borderRadius: 30,
-        boxShadow: "0 10px 34px rgba(0,0,0,.5)",
+        maxWidth: 480,
+        height: 88,
+        background: "rgba(18,20,22,.92)",
+        backdropFilter: "blur(16px) saturate(1.4)",
+        WebkitBackdropFilter: "blur(16px) saturate(1.4)",
+        borderTop: "1px solid rgba(255,255,255,.06)",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-around",
-        padding: "0 10px",
+        paddingBottom: "max(10px, env(safe-area-inset-bottom))",
         boxSizing: "border-box",
         zIndex: 50,
       }}
@@ -115,7 +113,7 @@ export default function TabBar() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          marginTop: -30,
+          marginTop: -24,
           boxShadow: "0 6px 22px rgba(199,242,122,.55)",
           border: "1px solid rgba(255,255,255,.25)",
           cursor: "pointer",

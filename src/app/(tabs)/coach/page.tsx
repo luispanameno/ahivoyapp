@@ -358,9 +358,9 @@ export default function Coach() {
   return (
     <div
       style={{
-        // Igual al paddingBottom del Shell (110): así el total es exactamente
-        // 100dvh y no aparece un scroll fantasma bajo el dock flotante.
-        height: "calc(100dvh - 110px - env(safe-area-inset-top))",
+        // Igual al paddingBottom del Shell (88, la altura de la barra de
+        // navegación): así el total es exactamente 100dvh, sin scroll extra.
+        height: "calc(100dvh - 88px - env(safe-area-inset-top))",
         display: "flex",
         flexDirection: "column",
         boxSizing: "border-box",
