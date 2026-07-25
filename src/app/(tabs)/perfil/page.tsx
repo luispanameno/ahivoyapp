@@ -13,7 +13,7 @@ import Icon from "@/components/Icon";
 import { analyze, fileToDataURL } from "@/lib/analyze";
 import { useApp } from "@/lib/store";
 import { ACTIVITY_FACTORS, ActivityLevel, WeightEntry, todayISO } from "@/lib/types";
-import { mifflinBMR } from "@/lib/nutrition";
+import { computeGoals, macrosForKcal, mifflinBMR } from "@/lib/nutrition";
 import InfoModal from "@/components/InfoModal";
 
 const ACTIVITY_OPTIONS: { value: ActivityLevel; label: string; desc: string }[] = [
@@ -191,7 +191,44 @@ export default function Perfil() {
 
   const setNumField = (field: keyof typeof profile) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const n = Number(e.target.value);
-    if (!Number.isNaN(n)) setField(field, n);
+    if (Number.isNaN(n)) return;
+    // Al cambiar las calorías a mano, los macros se reparten de nuevo sobre
+    // ese total: si bajas las kcal y la grasa/carbos se quedan igual, el
+    // reparto deja de cuadrar (sumarían más de lo que puedes comer).
+    if (field === "metaKcal" && n > 0) {
+      saveProfile({ ...profile, metaKcal: n, ...macrosForKcal(n, profile.weightGoal) });
+      setMetasVersion((v) => v + 1);
+      showToast("Metas ajustadas a tus nuevas calorías");
+      return;
+    }
+    setField(field, n);
+  };
+
+  // Los campos de metas son "no controlados" (defaultValue): al recalcularlos
+  // por código hay que remontarlos con una key nueva para que muestren el
+  // valor nuevo en vez del que el usuario tenía escrito.
+  const [metasVersion, setMetasVersion] = useState(0);
+
+  const recalcMetas = () => {
+    const goals = computeGoals({
+      sex: profile.sex,
+      age: profile.age,
+      heightCm: profile.height,
+      weightLb: profile.weight,
+      weightGoalLb: profile.weightGoal,
+      activityLevel: profile.activityLevel,
+      bmrOverride: bodyComp?.bmr,
+    });
+    saveProfile({
+      ...profile,
+      metaKcal: goals.metaKcal,
+      metaProtein: goals.metaProtein,
+      metaCarbs: goals.metaCarbs,
+      metaFat: goals.metaFat,
+      metaWater: goals.metaWater,
+    });
+    setMetasVersion((v) => v + 1);
+    showToast("Metas recalculadas con tus datos");
   };
 
   const bmr = bodyComp?.bmr || mifflinBMR(profile.weight, profile.height, profile.age, profile.sex);
@@ -741,6 +778,7 @@ export default function Perfil() {
             <span style={{ fontSize: 13, color: "rgba(244,243,238,.6)", flex: "none", whiteSpace: "nowrap" }}>{m.label}</span>
             <div style={{ display: "flex", alignItems: "center", gap: 2, flex: 1, justifyContent: "flex-end", minWidth: 0 }}>
               <input
+                key={`${m.field}-${metasVersion}`}
                 type="number"
                 inputMode="numeric"
                 defaultValue={profile[m.field]}
@@ -754,6 +792,26 @@ export default function Perfil() {
         <div style={{ display: "flex", justifyContent: "space-between", background: "#1b1e21", borderRadius: 18, padding: "12px 14px" }}>
           <span style={{ fontSize: 13, color: "rgba(244,243,238,.6)" }}>Sueño</span>
           <span style={{ fontSize: 13, fontWeight: 700 }}>7–8 h</span>
+        </div>
+        <Pressable
+          onClick={recalcMetas}
+          style={{
+            textAlign: "center",
+            padding: "12px 14px",
+            borderRadius: 18,
+            fontSize: 12.5,
+            fontWeight: 800,
+            cursor: "pointer",
+            background: "rgba(199,242,122,.1)",
+            border: "1px solid rgba(199,242,122,.3)",
+            color: "#c7f27a",
+          }}
+        >
+          Recalcular con mis datos
+        </Pressable>
+        <div style={{ fontSize: 11, color: "rgba(244,243,238,.4)", lineHeight: 1.4, padding: "0 2px" }}>
+          Vuelve a calcular calorías, macros y agua desde tu peso, altura, edad y nivel de actividad. El agua sale de tu
+          peso (~35 ml por kg), no es un número fijo.
         </div>
       </div>
 

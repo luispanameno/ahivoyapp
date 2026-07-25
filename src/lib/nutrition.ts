@@ -44,8 +44,30 @@ export function computeGoals(input: {
   const wantsToLose = input.weightGoalLb < input.weightLb;
   const floor = input.sex === "F" ? 1200 : 1500;
   const metaKcal = wantsToLose ? Math.max(floor, Math.round(tdee - 450)) : tdee;
-  const metaProtein = Math.round(0.8 * input.weightGoalLb);
+  const macros = macrosForKcal(metaKcal, input.weightGoalLb);
+  return { metaKcal, ...macros, metaWater: waterGoalMl(input.weightLb), bmr, tdee };
+}
+
+// Reparte unas calorías dadas en proteína / grasa / carbos. Se usa tanto al
+// calcular las metas iniciales como cuando el usuario edita a mano sus
+// calorías en Perfil: si bajan las kcal, los macros tienen que bajar con
+// ellas o el reparto deja de cuadrar.
+export function macrosForKcal(
+  metaKcal: number,
+  weightGoalLb: number
+): { metaProtein: number; metaCarbs: number; metaFat: number } {
+  const metaProtein = Math.round(0.8 * weightGoalLb);
   const metaFat = Math.round((metaKcal * 0.27) / 9);
   const metaCarbs = Math.max(0, Math.round((metaKcal - metaProtein * 4 - metaFat * 9) / 4));
-  return { metaKcal, metaProtein, metaCarbs, metaFat, metaWater: 3000, bmr, tdee };
+  return { metaProtein, metaCarbs, metaFat };
+}
+
+// Agua diaria según el peso real (~35 ml por kg), redondeada a 100 ml y
+// acotada a un rango sensato — antes era un 3000 fijo para todo el mundo,
+// que se queda corto en alguien de 130 kg y sobra en alguien de 50 kg.
+export function waterGoalMl(weightLb: number): number {
+  const kg = weightLb * 0.4536;
+  const raw = kg * 35;
+  const clamped = Math.min(4000, Math.max(2000, raw));
+  return Math.round(clamped / 100) * 100;
 }

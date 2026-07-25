@@ -613,7 +613,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
               </div>
               <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.55)", marginTop: 4, marginBottom: 12, lineHeight: 1.5 }}>
                 Calculadas con tu {scaleResult?.bmr ? "báscula" : "metabolismo basal estimado"} y nivel de actividad
-                {goalMotivation ? " — pensando en tu meta de arriba." : ". "}Podrás ajustarlas cuando quieras en Perfil.
+                {goalMotivation ? " — pensando en tu meta de arriba. " : ". "}Podrás ajustarlas cuando quieras en Perfil.
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                 <div style={{ background: "#1b1e21", borderRadius: 18, padding: 12 }}>

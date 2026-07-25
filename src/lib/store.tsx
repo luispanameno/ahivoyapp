@@ -33,12 +33,20 @@ import {
 } from "./types";
 
 // El chat se guarda de forma permanente; solo se borra con el botón "Limpiar".
-const CHAT_KEY = "ahivoy:chat";
+// OJO: la clave lleva el id del usuario. En un mismo teléfono pueden entrar
+// varias cuentas (o alguien crear una nueva), y el chat es privado: sin el
+// id, la cuenta nueva heredaba la conversación de la anterior.
+const CHAT_KEY_PREFIX = "ahivoy:chat";
+const LEGACY_CHAT_KEY = "ahivoy:chat"; // clave global vieja, sin usuario
 
-function loadChat(greeting: ChatMessage): ChatMessage[] {
+function chatKey(userId: string | null): string {
+  return `${CHAT_KEY_PREFIX}:${userId ?? "local"}`;
+}
+
+function loadChat(userId: string | null, greeting: ChatMessage): ChatMessage[] {
   if (typeof window === "undefined") return [greeting];
   try {
-    const raw = localStorage.getItem(CHAT_KEY);
+    const raw = localStorage.getItem(chatKey(userId));
     if (raw) {
       const saved = JSON.parse(raw) as { messages: ChatMessage[] };
       if (saved.messages?.length) return saved.messages;
@@ -49,13 +57,24 @@ function loadChat(greeting: ChatMessage): ChatMessage[] {
   return [greeting];
 }
 
-function saveChat(messages: ChatMessage[]) {
+function saveChat(userId: string | null, messages: ChatMessage[]) {
   try {
     // Sin imágenes (pesan mucho): se reemplazan por un marcador.
     const light = messages.map((m) => (m.image ? { ...m, image: "", text: m.text || "(foto)" } : m));
-    localStorage.setItem(CHAT_KEY, JSON.stringify({ messages: light.slice(-60) }));
+    localStorage.setItem(chatKey(userId), JSON.stringify({ messages: light.slice(-60) }));
   } catch {
     // sin espacio: no pasa nada
+  }
+}
+
+// Borra el chat global de versiones anteriores. Existía una sola clave para
+// todo el dispositivo, así que se quita en el primer arranque para que nadie
+// vea la conversación de quien usó la app antes que él.
+function dropLegacyChat() {
+  try {
+    localStorage.removeItem(LEGACY_CHAT_KEY);
+  } catch {
+    // sin acceso a storage: no pasa nada
   }
 }
 
@@ -64,30 +83,40 @@ function saveChat(messages: ChatMessage[]) {
 // plano — algo que ningún estado en memoria puede evitar), al reabrir la
 // app detectamos el marcador huérfano y avisamos en vez de dejar el chat
 // en silencio para siempre.
-const PENDING_KEY = "ahivoy:chat_pending";
+const PENDING_KEY_PREFIX = "ahivoy:chat_pending";
 
-function setPendingMarker(text: string) {
+function pendingKey(userId: string | null): string {
+  return `${PENDING_KEY_PREFIX}:${userId ?? "local"}`;
+}
+
+function setPendingMarker(userId: string | null, text: string) {
   try {
-    localStorage.setItem(PENDING_KEY, JSON.stringify({ text, ts: Date.now() }));
+    localStorage.setItem(pendingKey(userId), JSON.stringify({ text, ts: Date.now() }));
   } catch {
     // sin espacio: no pasa nada
   }
 }
 
-function clearPendingMarker() {
+function clearPendingMarker(userId: string | null) {
   try {
-    localStorage.removeItem(PENDING_KEY);
+    localStorage.removeItem(pendingKey(userId));
   } catch {
     // sin acceso a storage: no pasa nada
   }
 }
 
-function takeOrphanedPending(): string | null {
+// Devuelve (y borra) la pregunta que quedó a medias. Si tiene más de 10
+// minutos la descartamos: a esas alturas reenviarla sola sería raro, el
+// usuario ya se fue hace rato.
+const PENDING_MAX_AGE_MS = 10 * 60 * 1000;
+
+function takeOrphanedPending(userId: string | null): string | null {
   try {
-    const raw = localStorage.getItem(PENDING_KEY);
+    const raw = localStorage.getItem(pendingKey(userId));
     if (!raw) return null;
-    localStorage.removeItem(PENDING_KEY);
-    const { text } = JSON.parse(raw) as { text: string; ts: number };
+    localStorage.removeItem(pendingKey(userId));
+    const { text, ts } = JSON.parse(raw) as { text: string; ts: number };
+    if (typeof ts === "number" && Date.now() - ts > PENDING_MAX_AGE_MS) return null;
     return text || null;
   } catch {
     return null;
@@ -123,7 +152,7 @@ interface AppState {
   // que la IA conteste.
   chatMessages: ChatMessage[];
   chatTyping: boolean;
-  sendChat: (text: string, image?: string) => Promise<void>;
+  sendChat: (text: string, image?: string, opts?: { resend?: boolean }) => Promise<void>;
   clearChat: () => void;
 
   // derivados
@@ -185,6 +214,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatTyping, setChatTyping] = useState(false);
   const chatHydratedRef = useRef(false);
+  // Id del usuario de la sesión: separa el chat guardado por cuenta.
+  const userIdRef = useRef<string | null>(null);
+  // Pregunta que quedó sin respuesta porque la app se recargó a media
+  // respuesta: se reenvía sola en cuanto el chat termina de hidratarse.
+  const [pendingRetry, setPendingRetry] = useState<string | null>(null);
+  const retryFiredRef = useRef(false);
 
   const date = todayISO();
 
@@ -202,8 +237,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           router.replace("/login");
           return;
         }
+        if (data.session) userIdRef.current = data.session.user.id;
         if (!cancelled && data.session) setUserEmail(data.session.user.email ?? null);
       }
+      dropLegacyChat();
       const all = await db.loadAll(date);
       if (cancelled) return;
       setProfile(all.profile);
@@ -245,26 +282,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       role: "coach",
       text: `¡Hola${firstName ? " " + firstName : ""}! 👋 Soy tu Coach IA. Conozco tus macros, tu meta y tu rutina de hoy. Pregúntame qué comer, pídeme que revise el menú de un restaurante o cuéntame cómo te sientes.`,
     };
-    const messages = loadChat(greeting);
-    // Si quedó un marcador huérfano, la app se cerró a media respuesta en
-    // la sesión anterior (nada que un estado en memoria pueda prevenir):
-    // avisamos en vez de dejar el chat en silencio para siempre.
-    const orphaned = takeOrphanedPending();
-    setChatMessages(
-      orphaned
-        ? [
-            ...messages,
-            {
-              role: "coach",
-              text: "Parece que la app se cerró justo cuando te estaba respondiendo y tu último mensaje se perdió. ¿Me lo envías de nuevo? 🙏",
-            },
-          ]
-        : messages
-    );
+    const uid = userIdRef.current;
+    const messages = loadChat(uid, greeting);
+    // Si quedó un marcador huérfano, la app se recargó a media respuesta
+    // (el SO cerró la PWA en segundo plano, se recargó la página…). Tu
+    // mensaje ya está guardado en el historial: reenviamos la pregunta sola
+    // para que la conversación siga donde iba, sin pedirte que la repitas.
+    const orphaned = takeOrphanedPending(uid);
+    setChatMessages(messages);
+    if (orphaned && orphaned !== "(foto)") {
+      setPendingRetry(orphaned);
+    } else if (orphaned === "(foto)") {
+      // Una foto no se guarda en el historial (pesa demasiado), así que
+      // esa sí hay que pedirla de nuevo.
+      setChatMessages([
+        ...messages,
+        {
+          role: "coach",
+          text: "Se me cortó la respuesta a tu foto y no la tengo guardada. ¿Me la envías de nuevo? 🙏",
+        },
+      ]);
+    }
   }, [ready, profile.name]);
 
   useEffect(() => {
-    if (chatMessages.length > 1) saveChat(chatMessages);
+    if (chatMessages.length > 1) saveChat(userIdRef.current, chatMessages);
   }, [chatMessages]);
 
   const showToast = useCallback((msg: string) => {
@@ -393,6 +435,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const signOut = useCallback(async () => {
     const sb = getSupabase();
     if (sb) await sb.auth.signOut();
+    // El chat en memoria es de la cuenta que se va: se limpia para que la
+    // siguiente que entre en este teléfono no alcance a verlo. Lo guardado
+    // en localStorage sigue ahí, pero bajo la clave de SU usuario.
+    setChatMessages([]);
+    chatHydratedRef.current = false;
+    userIdRef.current = null;
     router.replace("/login");
   }, [router]);
 
@@ -571,16 +619,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const sendChat = useCallback(
-    async (text: string, image?: string) => {
+    async (text: string, image?: string, opts?: { resend?: boolean }) => {
       const clean = text.trim();
       if (!clean && !image) return;
-      const userMsg: ChatMessage = { role: "user", text: clean, image };
-      setChatMessages((prev) => [...prev, userMsg]);
+      // En un reenvío automático el mensaje del usuario ya está en el
+      // historial guardado: volver a agregarlo lo duplicaría.
+      if (!opts?.resend) {
+        const userMsg: ChatMessage = { role: "user", text: clean, image };
+        setChatMessages((prev) => [...prev, userMsg]);
+      }
       setChatTyping(true);
       // Si la app muere antes de que esto se limpie (el SO cierra la
       // pestaña/PWA en segundo plano), el próximo arranque encuentra este
-      // marcador huérfano y avisa en vez de quedarse en silencio.
-      setPendingMarker(clean || "(foto)");
+      // marcador huérfano y reenvía la pregunta en vez de quedarse callado.
+      setPendingMarker(userIdRef.current, clean || "(foto)");
       try {
         const protLeft = Math.max(0, profile.metaProtein - derived.proteinG);
         const waterLeft = Math.max(0, profile.metaWater - derived.water);
@@ -655,12 +707,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           },
         ]);
       } finally {
-        clearPendingMarker();
+        clearPendingMarker(userIdRef.current);
         setChatTyping(false);
       }
     },
     [profile, derived, workout, sleep, routine, meals, chatMessages, date, applyChatActions]
   );
+
+  // Reenvía sola la pregunta que quedó a medias por una recarga.
+  useEffect(() => {
+    if (!pendingRetry || retryFiredRef.current) return;
+    retryFiredRef.current = true;
+    const text = pendingRetry;
+    setPendingRetry(null);
+    sendChat(text, undefined, { resend: true });
+  }, [pendingRetry, sendChat]);
 
   const clearChat = useCallback(() => {
     const firstName = profile.name ? profile.name.split(" ")[0] : "";
@@ -670,10 +731,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     setChatMessages([greeting]);
     try {
-      localStorage.removeItem(CHAT_KEY);
+      localStorage.removeItem(chatKey(userIdRef.current));
     } catch {
       // sin acceso a storage: no pasa nada
     }
+    clearPendingMarker(userIdRef.current);
     showToast("Chat limpiado");
   }, [profile.name, showToast]);
 
