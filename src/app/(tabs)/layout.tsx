@@ -1,11 +1,13 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { AppProvider, useApp } from "@/lib/store";
 import TabBar from "@/components/TabBar";
 import Toast from "@/components/Toast";
 import OnboardingWizard from "@/components/OnboardingWizard";
+import HomeSkeleton from "@/components/Skeleton";
+import Pressable from "@/components/Pressable";
 
 // Rutas donde el prototipo oculta la barra de navegación
 const HIDE_NAV = ["/escanear", "/rutina", "/comida", "/bebida"];
@@ -41,23 +43,17 @@ function CenteredMessage({
 function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { ready, profile, signOut } = useApp();
+  const reduce = useReducedMotion();
   const hideNav = HIDE_NAV.some((r) => pathname.startsWith(r));
 
+  // Mientras cargan los datos mostramos el esqueleto de la pantalla, no un
+  // texto de "Cargando…": ocupa el mismo espacio que el contenido real, así
+  // la transición se siente continua y sin salto de layout.
   if (!ready) {
     return (
-      <div style={{ height: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
-        <div
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: "50%",
-            border: "4px solid rgba(199,242,122,.2)",
-            borderTopColor: "#c7f27a",
-            animation: "spin 1s linear infinite",
-          }}
-        />
-        <div style={{ fontWeight: 700, fontSize: 13, color: "rgba(244,243,238,.6)" }}>Cargando tus datos…</div>
-      </div>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, ease: "easeOut" }}>
+        <HomeSkeleton />
+      </motion.div>
     );
   }
 
@@ -70,9 +66,12 @@ function Shell({ children }: { children: React.ReactNode }) {
         title="Tu cuenta está en revisión"
         body="El equipo de AHIVOYAPP está revisando tu solicitud. En cuanto te aprobemos vas a tener acceso completo — no debería tardar mucho."
         action={
-          <div onClick={signOut} style={{ marginTop: 10, fontSize: 12.5, fontWeight: 700, color: "rgba(244,243,238,.5)", textDecoration: "underline", cursor: "pointer" }}>
+          <Pressable
+            onClick={signOut}
+            style={{ marginTop: 10, minHeight: 44, display: "flex", alignItems: "center", padding: "0 12px", fontSize: 12.5, fontWeight: 700, color: "rgba(244,243,238,.5)", textDecoration: "underline", cursor: "pointer" }}
+          >
             Cerrar sesión
-          </div>
+          </Pressable>
         }
       />
     );
@@ -84,9 +83,12 @@ function Shell({ children }: { children: React.ReactNode }) {
         title="Acceso no autorizado"
         body="Esta cuenta no fue aprobada para usar AHIVOYAPP."
         action={
-          <div onClick={signOut} style={{ marginTop: 10, fontSize: 12.5, fontWeight: 700, color: "rgba(244,243,238,.5)", textDecoration: "underline", cursor: "pointer" }}>
+          <Pressable
+            onClick={signOut}
+            style={{ marginTop: 10, minHeight: 44, display: "flex", alignItems: "center", padding: "0 12px", fontSize: 12.5, fontWeight: 700, color: "rgba(244,243,238,.5)", textDecoration: "underline", cursor: "pointer" }}
+          >
             Cerrar sesión
-          </div>
+          </Pressable>
         }
       />
     );
@@ -110,14 +112,16 @@ function Shell({ children }: { children: React.ReactNode }) {
           boxSizing: "border-box",
         }}
       >
-        {/* Transición suave entre pantallas: desvanecimiento sin cortes bruscos */}
+        {/* Transición entre pantallas: desvanecimiento rápido, sin textos de
+            carga. La salida es más corta que la entrada — así se siente ágil
+            en vez de lenta. Con "reducir movimiento" el cambio es directo. */}
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={pathname}
-            initial={{ opacity: 0, y: 6 }}
+            initial={reduce ? false : { opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
+            exit={reduce ? { opacity: 1 } : { opacity: 0, transition: { duration: 0.1, ease: "easeIn" } }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
           >
             {children}
           </motion.div>

@@ -4,6 +4,7 @@
 
 import { useRouter } from "next/navigation";
 import Icon from "@/components/Icon";
+import Pressable from "@/components/Pressable";
 import { useApp } from "@/lib/store";
 import { MealTime } from "@/lib/types";
 
@@ -43,9 +44,10 @@ export default function Historial() {
               BEBIDAS · {water}ml
             </div>
             {drinks.map((d) => (
-              <div
+              <Pressable
                 key={d.id}
                 onClick={() => router.push(`/bebida/${d.id}`)}
+                hoverScale={1}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -83,7 +85,7 @@ export default function Historial() {
                   {d.ml > 0 ? "+" : ""}
                   {d.ml}ml
                 </div>
-              </div>
+              </Pressable>
             ))}
           </div>
         )}
@@ -93,9 +95,10 @@ export default function Historial() {
               {group.label}
             </div>
             {group.items.map((meal) => (
-              <div
+              <Pressable
                 key={meal.id}
                 onClick={() => router.push(`/comida/${meal.id}`)}
+                hoverScale={1}
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -132,7 +135,7 @@ export default function Historial() {
                   </div>
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700 }}>{meal.kcal} kcal</div>
-              </div>
+              </Pressable>
             ))}
           </div>
         ))}

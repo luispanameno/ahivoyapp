@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import Pressable from "@/components/Pressable";
 import Icon from "@/components/Icon";
+import CoachAvatar, { useCoachMood } from "@/components/CoachAvatar";
 import { useApp } from "@/lib/store";
 
 const DIAS = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
@@ -156,6 +157,8 @@ export default function Hoy() {
     kcalRemaining,
   } = app;
 
+  const { mood: coachMood, message: coachMessage } = useCoachMood();
+
   const now = new Date();
   const todayLabel = `${DIAS[now.getDay()]}, ${now.getDate()} ${MESES[now.getMonth()]}`;
   // Una frase al azar cada vez que se monta la pantalla (no en cada render).
@@ -235,12 +238,12 @@ export default function Hoy() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flex: "none" }}>
-          <div
+          <Pressable
             onClick={() => router.push("/resumen-dia")}
-            aria-label="Ver resumen diario"
+            ariaLabel="Ver resumen diario"
             style={{
-              width: 40,
-              height: 40,
+              width: 44,
+              height: 44,
               borderRadius: "50%",
               background: "#1b1e21",
               border: "1px solid rgba(255,255,255,.08)",
@@ -251,9 +254,10 @@ export default function Hoy() {
             }}
           >
             <CalendarIcon />
-          </div>
-          <div
+          </Pressable>
+          <Pressable
             onClick={() => router.push("/perfil")}
+            ariaLabel="Ir a tu perfil"
             style={{
               width: 44,
               height: 44,
@@ -263,6 +267,7 @@ export default function Hoy() {
               background: "linear-gradient(135deg,#a6f06a,#39c9a3)",
               cursor: "pointer",
               boxShadow: "0 0 14px rgba(90,220,150,.35)",
+              boxSizing: "border-box",
             }}
           >
             <div
@@ -285,8 +290,13 @@ export default function Hoy() {
                 <Icon name="user" size={20} />
               )}
             </div>
-          </div>
+          </Pressable>
         </div>
+      </div>
+
+      {/* Mascota: reacciona a lo que lleva registrado hoy y lleva al Coach */}
+      <div style={{ marginTop: 14 }}>
+        <CoachAvatar mood={coachMood} message={coachMessage} onClick={() => router.push("/coach")} />
       </div>
 
       {/* Macros */}
@@ -394,9 +404,11 @@ export default function Hoy() {
             <Pressable
               onClick={removeWaterNow}
               tapScale={0.9}
+              ariaLabel="Quitar agua"
               style={{
-                width: 34,
-                height: 34,
+                width: 44,
+                height: 44,
+                flex: "none",
                 borderRadius: "50%",
                 background: "rgba(255,255,255,.08)",
                 display: "flex",
@@ -413,9 +425,11 @@ export default function Hoy() {
             <Pressable
               onClick={addWaterNow}
               tapScale={0.9}
+              ariaLabel="Agregar agua"
               style={{
-                width: 34,
-                height: 34,
+                width: 44,
+                height: 44,
+                flex: "none",
                 borderRadius: "50%",
                 background: "rgba(199,242,122,.15)",
                 display: "flex",

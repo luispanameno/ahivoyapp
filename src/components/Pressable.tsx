@@ -11,12 +11,18 @@ export default function Pressable({
   style,
   tapScale = 0.95,
   hoverScale = 1.02,
+  ariaLabel,
+  role = "button",
 }: {
   children: React.ReactNode;
   onClick?: () => void;
   style?: React.CSSProperties;
   tapScale?: number;
   hoverScale?: number;
+  // Obligatorio cuando el control es solo un ícono: sin esto un lector de
+  // pantalla lo anuncia como "botón" a secas.
+  ariaLabel?: string;
+  role?: string;
 }) {
   const reduce = useReducedMotion();
   return (
@@ -25,6 +31,19 @@ export default function Pressable({
       whileHover={reduce ? undefined : { scale: hoverScale }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
       onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+      role={onClick ? role : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={ariaLabel}
       style={style}
     >
       {children}

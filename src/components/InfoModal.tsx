@@ -3,7 +3,7 @@
 // Modal informativo elegante con micro-animaciones (motion):
 // fondo con fade y tarjeta con spring; botón X para cerrar.
 
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 export default function InfoModal({
   open,
@@ -16,6 +16,7 @@ export default function InfoModal({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const reduce = useReducedMotion();
   return (
     <AnimatePresence>
       {open && (
@@ -57,11 +58,22 @@ export default function InfoModal({
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <div className="font-sora" style={{ fontSize: 16, fontWeight: 800, color: "#c7f27a" }}>{title}</div>
               <motion.div
-                whileTap={{ scale: 0.9 }}
+                whileTap={reduce ? undefined : { scale: 0.9 }}
                 onClick={onClose}
+                role="button"
+                aria-label="Cerrar"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onClose();
+                  }
+                }}
                 style={{
-                  width: 32,
-                  height: 32,
+                  // 44px: objetivo táctil mínimo accesible
+                  width: 44,
+                  height: 44,
+                  flex: "none",
                   borderRadius: "50%",
                   background: "rgba(255,255,255,.08)",
                   display: "flex",

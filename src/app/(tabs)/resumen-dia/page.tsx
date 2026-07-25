@@ -6,7 +6,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
+import Pressable from "@/components/Pressable";
 import * as db from "@/lib/db";
 import { useApp } from "@/lib/store";
 import { Activity, Drink, Meal, Profile, WorkoutState, todayISO } from "@/lib/types";
@@ -269,6 +270,7 @@ export default function DailyHistoryDashboard() {
   const router = useRouter();
   const app = useApp();
   const { profile } = app;
+  const reduceMotion = useReducedMotion();
   const today = todayISO();
 
   const days = useMemo(() => lastNDays(today, 21), [today]);
@@ -394,9 +396,9 @@ export default function DailyHistoryDashboard() {
     <div style={{ boxSizing: "border-box", padding: "24px 20px 32px", minHeight: "100dvh" }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div onClick={() => router.push("/hoy")} style={{ fontSize: 13, fontWeight: 700, color: "rgba(244,243,238,.7)", cursor: "pointer" }}>
+        <Pressable onClick={() => router.push("/hoy")} style={{ fontSize: 13, fontWeight: 700, color: "rgba(244,243,238,.7)", cursor: "pointer", minHeight: 44, display: "flex", alignItems: "center" }}>
           ‹ Volver
-        </div>
+        </Pressable>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
         <div
@@ -434,12 +436,18 @@ export default function DailyHistoryDashboard() {
           const selected = iso === selectedDate;
           const isTodayPill = iso === today;
           return (
-            <div
+            <motion.div
               key={iso}
               ref={(el) => {
                 if (el) dayRefs.current.set(iso, el);
               }}
               onClick={() => setSelectedDate(iso)}
+              // motion.div en vez de <Pressable> porque esta píldora necesita
+              // conservar su ref para el scroll automático al día elegido.
+              whileTap={reduceMotion ? undefined : { scale: 0.92 }}
+              transition={{ type: "spring", stiffness: 400, damping: 25 }}
+              role="button"
+              aria-pressed={selected}
               style={{
                 flex: "none",
                 width: 46,
@@ -457,7 +465,7 @@ export default function DailyHistoryDashboard() {
               <div className="font-sora" style={{ fontSize: 15, fontWeight: 800, color: selected ? "#10240a" : "#f4f3ee", marginTop: 2 }}>
                 {d}
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>

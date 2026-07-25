@@ -5,6 +5,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import ImageUploadZone, { ActionButton } from "@/components/ImageUploadZone";
+import Pressable from "@/components/Pressable";
 import { analyze } from "@/lib/analyze";
 import { useApp } from "@/lib/store";
 import { RoutineDay } from "@/lib/types";
@@ -59,20 +60,25 @@ export default function Entrenamiento() {
           <div className="font-sora" style={{ fontSize: 20, fontWeight: 700 }}>Entrenamiento</div>
           <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>Tu rutina de hoy</div>
         </div>
-        <div
+        <Pressable
           onClick={() => router.push("/rutina")}
-          style={{ fontSize: 12, fontWeight: 700, color: "#c7f27a", cursor: "pointer", padding: "6px 0" }}
+          style={{ fontSize: 12, fontWeight: 700, color: "#c7f27a", cursor: "pointer", padding: "12px 4px", minHeight: 44, display: "flex", alignItems: "center" }}
         >
           Editar ›
-        </div>
+        </Pressable>
       </div>
 
       <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
         {DAYS.map((d) => (
-          <div
+          <Pressable
             key={d}
             onClick={() => setDay(d)}
             style={{
+              minHeight: 44,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxSizing: "border-box",
               flex: 1,
               textAlign: "center",
               padding: "9px 0",
@@ -86,7 +92,7 @@ export default function Entrenamiento() {
             }}
           >
             {d}
-          </div>
+          </Pressable>
         ))}
       </div>
 
@@ -144,12 +150,12 @@ export default function Entrenamiento() {
         }}
       />
 
-      <div
+      <Pressable
         onClick={markManual}
-        style={{ textAlign: "center", marginTop: 14, fontSize: 12, fontWeight: 700, color: "rgba(244,243,238,.5)", cursor: "pointer" }}
+        style={{ textAlign: "center", marginTop: 14, fontSize: 12, fontWeight: 700, color: "rgba(244,243,238,.5)", cursor: "pointer", minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
       >
         Marcar como hecho manualmente
-      </div>
+      </Pressable>
       <div style={{ height: 20 }} />
     </div>
   );

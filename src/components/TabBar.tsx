@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import Icon from "./Icon";
 
 // Barra de navegación clásica anclada al borde inferior (a pedido del
@@ -27,11 +27,12 @@ const TABS_RIGHT: { route: string; icon: string; label: string }[] = [
 function Tab({ route, icon, label }: { route: string; icon: string; label: string }) {
   const pathname = usePathname();
   const router = useRouter();
+  const reduce = useReducedMotion();
   const active = pathname === route;
   return (
     <motion.div
       onClick={() => router.push(route)}
-      whileTap={{ scale: 0.88 }}
+      whileTap={reduce ? undefined : { scale: 0.88 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
       role="link"
       aria-label={label}
@@ -71,6 +72,7 @@ function Tab({ route, icon, label }: { route: string; icon: string; label: strin
 
 export default function TabBar() {
   const router = useRouter();
+  const reduce = useReducedMotion();
 
   return (
     <div
@@ -100,8 +102,8 @@ export default function TabBar() {
 
       <motion.div
         onClick={() => router.push("/escanear")}
-        whileTap={{ scale: 0.9 }}
-        whileHover={{ scale: 1.04 }}
+        whileTap={reduce ? undefined : { scale: 0.9 }}
+        whileHover={reduce ? undefined : { scale: 1.04 }}
         transition={{ type: "spring", stiffness: 400, damping: 25 }}
         role="link"
         aria-label="Escanear comida"

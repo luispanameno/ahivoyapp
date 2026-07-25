@@ -6,7 +6,7 @@
 // y los badges de estado queden idénticos en todas las secciones.
 
 import { useRef, useState } from "react";
-import { motion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { fileToDataURL } from "@/lib/analyze";
 
 const spring = { type: "spring", stiffness: 400, damping: 25 } as const;
@@ -26,6 +26,7 @@ export default function ImageUploadZone({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const reduce = useReducedMotion();
 
   const handleFile = async (file: File | undefined | null) => {
     if (!file) return;
@@ -36,8 +37,8 @@ export default function ImageUploadZone({
 
   return (
     <motion.div
-      whileTap={{ scale: 0.98 }}
-      whileHover={{ scale: 1.02 }}
+      whileTap={reduce ? undefined : { scale: 0.98 }}
+      whileHover={reduce ? undefined : { scale: 1.02 }}
       transition={spring}
       onClick={() => inputRef.current?.click()}
       onDragOver={(e) => e.preventDefault()}
@@ -107,10 +108,11 @@ export function ActionButton({
   onClick: () => void;
   busy?: boolean;
 }) {
+  const reduce = useReducedMotion();
   return (
     <motion.div
-      whileTap={{ scale: 0.95 }}
-      whileHover={{ scale: 1.02 }}
+      whileTap={reduce ? undefined : { scale: 0.95 }}
+      whileHover={reduce ? undefined : { scale: 1.02 }}
       transition={spring}
       onClick={onClick}
       style={{

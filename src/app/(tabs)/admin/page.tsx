@@ -7,6 +7,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import Pressable from "@/components/Pressable";
+import Accordion from "@/components/Accordion";
+import { SkeletonBox } from "@/components/Skeleton";
 import * as db from "@/lib/db";
 import { useApp } from "@/lib/store";
 import { AccessStatus, AdminUserRow } from "@/lib/types";
@@ -116,7 +118,11 @@ export default function AdminPanel() {
       <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>Decide quién puede entrar a la app.</div>
 
       {users === null ? (
-        <div style={{ textAlign: "center", padding: "60px 0", color: "rgba(244,243,238,.4)", fontSize: 13 }}>Cargando…</div>
+        <div aria-busy="true" aria-label="Cargando usuarios" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 24 }}>
+          <SkeletonBox height={11} width="45%" radius={100} style={{ marginBottom: 4 }} />
+          <SkeletonBox height={96} radius={18} />
+          <SkeletonBox height={96} radius={18} />
+        </div>
       ) : (
         <>
           <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".04em", marginTop: 24, marginBottom: 10 }}>
@@ -147,19 +153,18 @@ export default function AdminPanel() {
             </AnimatePresence>
           </div>
 
+          {/* Lista secundaria: va plegada para no competir con las
+              solicitudes pendientes, que es lo que se viene a resolver. */}
           {rejected.length > 0 && (
-            <>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".04em", marginTop: 24, marginBottom: 10 }}>
-                RECHAZADOS ({rejected.length})
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <AnimatePresence>
+            <div style={{ marginTop: 24 }}>
+              <Accordion label="Ver accesos rechazados" count={rejected.length}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {rejected.map((u) => (
                     <UserRow key={u.id} user={u} onSetStatus={setStatus} />
                   ))}
-                </AnimatePresence>
-              </div>
-            </>
+                </div>
+              </Accordion>
+            </div>
           )}
         </>
       )}
