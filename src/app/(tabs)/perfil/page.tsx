@@ -49,6 +49,19 @@ const numInput: React.CSSProperties = {
   marginTop: 2,
   padding: 0,
 };
+const notesTextarea: React.CSSProperties = {
+  width: "100%",
+  background: "#1b1e21",
+  border: "1px solid rgba(255,255,255,.08)",
+  borderRadius: 14,
+  padding: "12px 14px",
+  color: "#f4f3ee",
+  fontSize: 13,
+  fontFamily: "inherit",
+  boxSizing: "border-box",
+  resize: "none",
+  outline: "none",
+};
 const sectionTitle: React.CSSProperties = {
   fontSize: 11,
   fontWeight: 700,
@@ -744,8 +757,31 @@ export default function Perfil() {
         </div>
       </div>
 
+      {/* Sobre ti: le da tono al Coach y hace sus consejos más realistas */}
+      <div style={sectionTitle}>SOBRE TI</div>
+      <div style={{ ...labelStyle, marginBottom: 4 }}>TU MOTIVO PARA USAR LA APP</div>
+      <textarea
+        defaultValue={profile.goalMotivation}
+        onBlur={(e) => {
+          if (e.target.value !== profile.goalMotivation) saveProfile({ ...profile, goalMotivation: e.target.value });
+        }}
+        placeholder="Ej. bajar de peso, tener más energía, solo llevar el control…"
+        rows={2}
+        style={notesTextarea}
+      />
+      <div style={{ ...labelStyle, marginTop: 10, marginBottom: 4 }}>CÓMO COMES NORMALMENTE</div>
+      <textarea
+        defaultValue={profile.foodCulture}
+        onBlur={(e) => {
+          if (e.target.value !== profile.foodCulture) saveProfile({ ...profile, foodCulture: e.target.value });
+        }}
+        placeholder="Ej. como pupusas casi todos los días…"
+        rows={2}
+        style={notesTextarea}
+      />
+
       {/* Rutina */}
-      <div style={sectionTitle}>TU PLAN DE EJERCICIO</div>
+      <div style={{ ...sectionTitle, marginTop: 20 }}>TU PLAN DE EJERCICIO</div>
       <textarea
         defaultValue={profile.exercisePlan}
         onBlur={(e) => {
@@ -753,19 +789,7 @@ export default function Perfil() {
         }}
         placeholder="Ej. camino 1 hora todos los días… (lo que no hagas aquí, cuéntaselo al Coach o súbelo desde tu reloj)"
         rows={2}
-        style={{
-          width: "100%",
-          background: "#1b1e21",
-          border: "1px solid rgba(255,255,255,.08)",
-          borderRadius: 14,
-          padding: "12px 14px",
-          color: "#f4f3ee",
-          fontSize: 13,
-          fontFamily: "inherit",
-          boxSizing: "border-box",
-          resize: "none",
-          outline: "none",
-        }}
+        style={notesTextarea}
       />
       <div
         onClick={() => router.push("/rutina")}

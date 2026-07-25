@@ -9,7 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import * as db from "./db";
 import { getSupabase, isSupabaseConfigured } from "./supabase";
 import { analyze, CoachAction, CoachResult } from "./analyze";
@@ -164,6 +164,7 @@ export function useApp(): AppState {
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [ready, setReady] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE);
@@ -193,11 +194,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (isSupabaseConfigured) {
         const sb = getSupabase()!;
         const { data } = await sb.auth.getSession();
-        if (!data.session) {
+        // Excepción SOLO en desarrollo: /dev-onboarding-preview renderiza el
+        // asistente de bienvenida sin sesión real, para poder revisarlo sin
+        // tener que crear+aprobar una cuenta cada vez.
+        const isDevPreview = process.env.NODE_ENV !== "production" && pathname === "/dev-onboarding-preview";
+        if (!data.session && !isDevPreview) {
           router.replace("/login");
           return;
         }
-        if (!cancelled) setUserEmail(data.session.user.email ?? null);
+        if (!cancelled && data.session) setUserEmail(data.session.user.email ?? null);
       }
       const all = await db.loadAll(date);
       if (cancelled) return;
@@ -589,6 +594,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             sexo: profile.sex === "F" ? "mujer" : "hombre",
             nivel_actividad: profile.activityLevel,
             plan_ejercicio: profile.exercisePlan || null,
+            motivo: profile.goalMotivation || null,
+            cultura_alimentaria: profile.foodCulture || null,
           },
           metas: {
             kcal: profile.metaKcal,

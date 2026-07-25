@@ -251,6 +251,8 @@ interface CoachCtx {
     sexo?: string;
     nivel_actividad?: string;
     plan_ejercicio?: string | null;
+    motivo?: string | null;
+    cultura_alimentaria?: string | null;
   };
   metas?: { kcal?: number; proteina_g?: number; carbos_g?: number; grasa_g?: number; agua_ml?: number };
   hoy?: {
@@ -285,6 +287,8 @@ Meta Diaria: ${n(metas.kcal)} kcal.
 Macros: Mínimo ${n(metas.proteina_g)}g proteína | Máximo ${n(metas.carbos_g)}g carbs | Máximo ${n(metas.grasa_g)}g grasas (priorizando insaturadas).
 Hidratación: ${n(metas.agua_ml)} ml.
 Plan de ejercicio de ${nombre}: ${p.plan_ejercicio?.trim() || "no lo ha contado — pregúntale qué hace si sale el tema"}.
+Motivo principal de ${nombre} para usar la app: ${p.motivo?.trim() || "no lo ha contado"}. Usa esto para el TONO de tus respuestas (ej. si su motivo es "sin obsesionarme", no seas alarmista con cada detalle).
+Cómo come normalmente: ${p.cultura_alimentaria?.trim() || "no lo ha contado"}. Cuando sugieras cambios o alternativas, propone algo realista dentro de SU forma de comer (ej. una versión con menos aceite de lo que ya come, no un reemplazo genérico tipo "come quinoa").
 Consumido HOY antes de este mensaje: ${n(hoy.kcal_comidas)} kcal · ${n(hoy.carbos_g)}g carbs · ${n(hoy.proteina_g)}g proteína · ${n(hoy.grasa_g)}g grasas · ${n(hoy.agua_ml)} ml agua.
 
 REGLA OBLIGATORIA: al inicio de TODAS tus respuestas sobre comida o agua, imprime este tablero actualizado en Markdown (una línea por renglón, números YA SUMANDO lo que registras en esta misma respuesta):

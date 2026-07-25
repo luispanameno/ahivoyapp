@@ -129,6 +129,10 @@ alter table public.profiles add column if not exists nivel_actividad text defaul
 -- Plan de ejercicio en palabras del propio usuario (no todos hacen la misma
 -- rutina de pesas Push/Pull/Legs — puede ser caminar, nada por ahora, etc.)
 alter table public.profiles add column if not exists plan_ejercicio text default '';
+-- Por qué usa la app (le da tono al Coach) y qué tan seguido come comida
+-- típica (para que las sugerencias de swaps sean realistas y no genéricas).
+alter table public.profiles add column if not exists motivo text default '';
+alter table public.profiles add column if not exists cultura_alimentaria text default '';
 
 -- ============ CONTROL DE ACCESO (aprobación manual + panel admin) ============
 -- Las cuentas YA existentes quedan aprobadas y con el asistente de bienvenida

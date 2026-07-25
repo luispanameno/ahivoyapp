@@ -47,6 +47,12 @@ export interface Profile {
   // En sus propias palabras, qué plan de ejercicio sigue (no todos hacen
   // pesas Push/Pull/Legs — puede ser "camino 1 hora diaria", nada aún, etc.)
   exercisePlan: string;
+  // Por qué está usando la app (baja de peso, energía, solo control, etc.)
+  // — le da tono al Coach en vez de hablarle igual a todo el mundo.
+  goalMotivation: string;
+  // Qué tan seguido come comida típica — para que las sugerencias del Coach
+  // sean realistas (swaps de pupusas/tamales, no "cambia todo por quinoa").
+  foodCulture: string;
 }
 
 // Fila resumida de un usuario para el panel de administración (aprobar
@@ -149,6 +155,8 @@ export const DEFAULT_PROFILE: Profile = {
   isAdmin: false,
   onboarded: true,
   exercisePlan: "",
+  goalMotivation: "",
+  foodCulture: "",
 };
 
 export const DEFAULT_ROUTINE: Routine = {

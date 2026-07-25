@@ -4,7 +4,10 @@
 // usuario aprobado entra a la app (profile.onboarded === false). Recolecta
 // los datos necesarios para calcular sus metas diarias con criterio de
 // nutricionista (Mifflin-St Jeor + TDEE + déficit saludable), con la báscula
-// inteligente como atajo opcional para partir de datos más precisos.
+// inteligente como atajo opcional para partir de datos más precisas. También
+// pregunta el motivo y la cultura alimentaria de la persona — no son números,
+// pero le dan al Coach el contexto para hablarle como a alguien real y no
+// con consejos genéricos de plantilla.
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
@@ -58,7 +61,14 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 2,
 };
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 9;
+
+const MOTIVATION_PRESETS = [
+  { emoji: "🎯", label: "Bajar de peso", value: "Bajar de peso." },
+  { emoji: "🌿", label: "Comer mejor, sin obsesionarme", value: "Comer mejor, sin volverme loco/a contando cada cosa." },
+  { emoji: "⚡", label: "Tener más energía", value: "Tener más energía en el día a día." },
+  { emoji: "📋", label: "Solo llevar el control", value: "Solo quiero llevar el control de lo que como." },
+] as const;
 
 const EXERCISE_PRESETS = [
   { icon: "🏋️", label: "Pesas · Push/Pull/Legs", value: "Rutina de pesas Push/Pull/Legs, 3 días a la semana." },
@@ -66,11 +76,65 @@ const EXERCISE_PRESETS = [
   { icon: "🌱", label: "Apenas empezando", value: "Por ahora no tengo una rutina fija — voy empezando de a poco." },
 ] as const;
 
+const FOOD_CULTURE_PRESETS = [
+  { emoji: "🫓", label: "Comida típica casi a diario", value: "Como comida típica (pupusas, tamales, arroz y frijoles…) casi todos los días." },
+  { emoji: "🥗", label: "Un poco de todo", value: "Mezclo comida típica con opciones más ligeras según el día." },
+  { emoji: "🍗", label: "Prefiero algo más balanceado", value: "Casi no como comida típica, prefiero algo más balanceado." },
+] as const;
+
+function iconFor(src: string, size: number) {
+  return src.startsWith("/") ? (
+    <Icon name={src.replace("/icons/glyphs/", "").replace(".png", "")} size={size} />
+  ) : (
+    <div style={{ fontSize: size - 4, flex: "none" }}>{src}</div>
+  );
+}
+
+function PresetChips<T extends { label: string; value: string }>({
+  options,
+  selected,
+  onSelect,
+  renderIcon,
+}: {
+  options: readonly T[];
+  selected: string;
+  onSelect: (value: string) => void;
+  renderIcon: (opt: T) => React.ReactNode;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+      {options.map((opt) => {
+        const active = selected === opt.value;
+        return (
+          <Pressable
+            key={opt.label}
+            onClick={() => onSelect(opt.value)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              background: active ? "rgba(199,242,122,.12)" : "#1b1e21",
+              border: active ? "1px solid rgba(199,242,122,.45)" : "1px solid rgba(255,255,255,.06)",
+              borderRadius: 14,
+              padding: "12px 14px",
+              cursor: "pointer",
+            }}
+          >
+            {renderIcon(opt)}
+            <div style={{ flex: 1, fontSize: 13.5, fontWeight: 800, color: active ? "#c7f27a" : "#f4f3ee" }}>{opt.label}</div>
+          </Pressable>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function OnboardingWizard() {
   const { profile, saveProfile, setBodyComp, showToast } = useApp();
   const [step, setStep] = useState(0);
 
   const [name, setName] = useState(profile.name);
+  const [goalMotivation, setGoalMotivation] = useState(profile.goalMotivation || "");
   const [sex, setSex] = useState<"M" | "F">(profile.sex);
   const [age, setAge] = useState(String(profile.age === 25 ? "" : profile.age));
   const [height, setHeight] = useState(String(profile.height === 170 ? "" : profile.height));
@@ -78,6 +142,7 @@ export default function OnboardingWizard() {
   const [weightGoal, setWeightGoal] = useState(String(profile.weightGoal === 165 ? "" : profile.weightGoal));
   const [activityLevel, setActivityLevel] = useState<ActivityLevel>("ligero");
   const [exercisePlan, setExercisePlan] = useState(profile.exercisePlan || "");
+  const [foodCulture, setFoodCulture] = useState(profile.foodCulture || "");
 
   const [scaleBusy, setScaleBusy] = useState(false);
   const [scaleError, setScaleError] = useState<string | null>(null);
@@ -85,9 +150,10 @@ export default function OnboardingWizard() {
 
   const [saving, setSaving] = useState(false);
 
-  const canContinueStep0 = name.trim().length > 0;
-  const canContinueStep1 = Number(age) > 0 && Number(height) > 0 && Number(weight) > 0;
-  const canContinueStep2 = Number(weightGoal) > 0;
+  const canContinueName = name.trim().length > 0;
+  const canContinueBasics = Number(age) > 0 && Number(height) > 0 && Number(weight) > 0;
+  const canContinueWeightGoal = Number(weightGoal) > 0;
+  const displayName = name.trim();
 
   const goals = computeGoals({
     sex,
@@ -119,6 +185,7 @@ export default function OnboardingWizard() {
       await saveProfile({
         ...profile,
         name: name.trim(),
+        goalMotivation: goalMotivation.trim(),
         sex,
         age: Number(age) || 25,
         height: Number(height) || 170,
@@ -126,6 +193,7 @@ export default function OnboardingWizard() {
         weightGoal: Number(weightGoal) || 165,
         activityLevel,
         exercisePlan: exercisePlan.trim(),
+        foodCulture: foodCulture.trim(),
         metaKcal: goals.metaKcal,
         metaProtein: goals.metaProtein,
         metaCarbs: goals.metaCarbs,
@@ -181,7 +249,7 @@ export default function OnboardingWizard() {
       </div>
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout" initial={false}>
           {step === 0 && (
             <motion.div key="s0" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               <div
@@ -201,20 +269,20 @@ export default function OnboardingWizard() {
                 👋
               </div>
               <div className="font-sora" style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.25 }}>
-                ¡Bienvenido a AHIVOYAPP!
+                ¡Qué bueno tenerte por acá!
               </div>
               <div style={{ fontSize: 13, color: "rgba(244,243,238,.6)", marginTop: 8, lineHeight: 1.5 }}>
-                Antes de empezar, arma tu perfil nutricional en menos de un minuto — así te damos metas hechas a tu medida, no genéricas.
+                Antes de arrancar queremos conocerte un poco — así tus metas se sienten hechas para ti, no copiadas y pegadas. Son un par de minutos, prometido.
               </div>
               <div style={{ marginTop: 32 }}>
-                <div style={labelStyle}>¿CÓMO QUIERES QUE TE LLAMEMOS?</div>
+                <div style={labelStyle}>¿CÓMO TE GUSTA QUE TE DIGAN?</div>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Tu nombre"
+                  placeholder="Tu nombre o apodo"
                   autoFocus
                   style={{ ...fieldStyle, fontSize: 16 }}
-                  onKeyDown={(e) => e.key === "Enter" && canContinueStep0 && next()}
+                  onKeyDown={(e) => e.key === "Enter" && canContinueName && next()}
                 />
               </div>
             </motion.div>
@@ -223,10 +291,35 @@ export default function OnboardingWizard() {
           {step === 1 && (
             <motion.div key="s1" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               <div className="font-sora" style={{ fontSize: 20, fontWeight: 800 }}>
-                Datos básicos
+                {displayName ? `¿Qué te trae por acá, ${displayName}?` : "¿Qué te trae por acá?"}
+              </div>
+              <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.55)", marginTop: 4, marginBottom: 20, lineHeight: 1.5 }}>
+                No hay respuesta incorrecta — esto solo nos ayuda a hablarte como corresponde, en vez de sonar igual con todo el mundo.
+              </div>
+              <PresetChips
+                options={MOTIVATION_PRESETS}
+                selected={goalMotivation}
+                onSelect={setGoalMotivation}
+                renderIcon={(opt) => <div style={{ fontSize: 18, flex: "none" }}>{opt.emoji}</div>}
+              />
+              <div style={labelStyle}>EN TUS PALABRAS (OPCIONAL)</div>
+              <textarea
+                value={goalMotivation}
+                onChange={(e) => setGoalMotivation(e.target.value)}
+                placeholder="Ej. quiero verme y sentirme mejor para…"
+                rows={2}
+                style={{ ...fieldStyle, resize: "none", fontFamily: "inherit" }}
+              />
+            </motion.div>
+          )}
+
+          {step === 2 && (
+            <motion.div key="s2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+              <div className="font-sora" style={{ fontSize: 20, fontWeight: 800 }}>
+                Ahora hablemos de números
               </div>
               <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.55)", marginTop: 4, marginBottom: 20 }}>
-                Con esto calculamos tu metabolismo basal (BMR), como haría un nutricionista.
+                Con esto calculamos tu metabolismo basal (BMR), como haría un nutricionista — nada de fórmulas genéricas.
               </div>
               <div style={{ ...labelStyle, marginBottom: 8 }}>SEXO</div>
               <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
@@ -272,13 +365,13 @@ export default function OnboardingWizard() {
             </motion.div>
           )}
 
-          {step === 2 && (
-            <motion.div key="s2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          {step === 3 && (
+            <motion.div key="s3" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               <div className="font-sora" style={{ fontSize: 20, fontWeight: 800 }}>
                 ¿Cuál es tu meta de peso?
               </div>
               <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.55)", marginTop: 4, marginBottom: 20 }}>
-                Si es menor a tu peso actual, calculamos un déficit saludable; si es igual o mayor, mantenimiento.
+                Sin extremos — vamos a lo que de verdad podés sostener. Si es menor a tu peso actual calculamos un déficit saludable; si es igual o mayor, mantenimiento.
               </div>
               <div style={labelStyle}>PESO META (lb)</div>
               <input type="number" inputMode="decimal" value={weightGoal} onChange={(e) => setWeightGoal(e.target.value)} placeholder="165" style={{ ...fieldStyle, fontSize: 18 }} autoFocus />
@@ -294,8 +387,8 @@ export default function OnboardingWizard() {
             </motion.div>
           )}
 
-          {step === 3 && (
-            <motion.div key="s3" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          {step === 4 && (
+            <motion.div key="s4" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               <div className="font-sora" style={{ fontSize: 20, fontWeight: 800 }}>
                 Tu nivel de actividad diaria
               </div>
@@ -343,42 +436,15 @@ export default function OnboardingWizard() {
             </motion.div>
           )}
 
-          {step === 4 && (
-            <motion.div key="s4" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          {step === 5 && (
+            <motion.div key="s5" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               <div className="font-sora" style={{ fontSize: 20, fontWeight: 800 }}>
                 ¿Qué plan de ejercicio quieres seguir?
               </div>
               <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.55)", marginTop: 4, marginBottom: 20, lineHeight: 1.5 }}>
                 No tiene que ser gimnasio — cuéntanos qué vas a hacer tú. Toca una opción para empezar y edítala como quieras; también puedes registrar cualquier otra cosa que hagas desde el chat con el Coach o subiendo la captura de tu reloj.
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
-                {EXERCISE_PRESETS.map((opt) => {
-                  const active = exercisePlan === opt.value;
-                  return (
-                    <Pressable
-                      key={opt.label}
-                      onClick={() => setExercisePlan(opt.value)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 12,
-                        background: active ? "rgba(199,242,122,.12)" : "#1b1e21",
-                        border: active ? "1px solid rgba(199,242,122,.45)" : "1px solid rgba(255,255,255,.06)",
-                        borderRadius: 14,
-                        padding: "12px 14px",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {opt.icon.startsWith("/") ? (
-                        <Icon name={opt.icon.replace("/icons/glyphs/", "").replace(".png", "")} size={22} />
-                      ) : (
-                        <div style={{ fontSize: 18, flex: "none" }}>{opt.icon}</div>
-                      )}
-                      <div style={{ flex: 1, fontSize: 13.5, fontWeight: 800, color: active ? "#c7f27a" : "#f4f3ee" }}>{opt.label}</div>
-                    </Pressable>
-                  );
-                })}
-              </div>
+              <PresetChips options={EXERCISE_PRESETS} selected={exercisePlan} onSelect={setExercisePlan} renderIcon={(opt) => iconFor(opt.icon, 22)} />
               <div style={labelStyle}>EN TUS PALABRAS (OPCIONAL)</div>
               <textarea
                 value={exercisePlan}
@@ -390,8 +456,33 @@ export default function OnboardingWizard() {
             </motion.div>
           )}
 
-          {step === 5 && (
-            <motion.div key="s5" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          {step === 6 && (
+            <motion.div key="s6" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+              <div className="font-sora" style={{ fontSize: 20, fontWeight: 800 }}>
+                ¿Cómo es tu día a día comiendo?
+              </div>
+              <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.55)", marginTop: 4, marginBottom: 20, lineHeight: 1.5 }}>
+                Así tus consejos van a ser realistas — nada de cambiar tus pupusas por quinoa de la nada.
+              </div>
+              <PresetChips
+                options={FOOD_CULTURE_PRESETS}
+                selected={foodCulture}
+                onSelect={setFoodCulture}
+                renderIcon={(opt) => <div style={{ fontSize: 18, flex: "none" }}>{opt.emoji}</div>}
+              />
+              <div style={labelStyle}>EN TUS PALABRAS (OPCIONAL)</div>
+              <textarea
+                value={foodCulture}
+                onChange={(e) => setFoodCulture(e.target.value)}
+                placeholder="Ej. como pupusas casi todos los días…"
+                rows={2}
+                style={{ ...fieldStyle, resize: "none", fontFamily: "inherit" }}
+              />
+            </motion.div>
+          )}
+
+          {step === 7 && (
+            <motion.div key="s7" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               <div className="font-sora" style={{ fontSize: 20, fontWeight: 800 }}>
                 ¿Tienes báscula inteligente?
               </div>
@@ -421,13 +512,14 @@ export default function OnboardingWizard() {
             </motion.div>
           )}
 
-          {step === 6 && (
-            <motion.div key="s6" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          {step === 8 && (
+            <motion.div key="s8" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               <div className="font-sora" style={{ fontSize: 20, fontWeight: 800 }}>
-                Tus metas diarias
+                {displayName ? `Listo, ${displayName} — estas son tus metas` : "Tus metas diarias"}
               </div>
               <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.55)", marginTop: 4, marginBottom: 18, lineHeight: 1.5 }}>
-                Calculadas con tu {scaleResult?.bmr ? "báscula" : "metabolismo basal estimado"} y nivel de actividad. Podrás ajustarlas cuando quieras en Perfil.
+                Calculadas con tu {scaleResult?.bmr ? "báscula" : "metabolismo basal estimado"} y nivel de actividad
+                {goalMotivation ? " — pensando en tu meta de arriba." : ". "}Podrás ajustarlas cuando quieras en Perfil.
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
                 <div style={{ background: "#1b1e21", borderRadius: 14, padding: 12 }}>
@@ -490,7 +582,7 @@ export default function OnboardingWizard() {
             ‹
           </Pressable>
         )}
-        {step === 5 && !scaleResult && (
+        {step === 7 && !scaleResult && (
           <Pressable
             onClick={next}
             style={{
@@ -510,9 +602,9 @@ export default function OnboardingWizard() {
         )}
         <Pressable
           onClick={() => {
-            if (step === 0 && !canContinueStep0) return;
-            if (step === 1 && !canContinueStep1) return;
-            if (step === 2 && !canContinueStep2) return;
+            if (step === 0 && !canContinueName) return;
+            if (step === 2 && !canContinueBasics) return;
+            if (step === 3 && !canContinueWeightGoal) return;
             if (step === TOTAL_STEPS - 1) {
               finish();
               return;
@@ -528,7 +620,7 @@ export default function OnboardingWizard() {
             fontSize: 14,
             cursor: "pointer",
             background:
-              (step === 0 && !canContinueStep0) || (step === 1 && !canContinueStep1) || (step === 2 && !canContinueStep2) || saving
+              (step === 0 && !canContinueName) || (step === 2 && !canContinueBasics) || (step === 3 && !canContinueWeightGoal) || saving
                 ? "rgba(199,242,122,.3)"
                 : "#c7f27a",
             color: "#10240a",
