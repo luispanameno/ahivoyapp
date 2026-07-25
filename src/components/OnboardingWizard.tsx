@@ -62,6 +62,26 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 2,
 };
 
+// Cada paso ocupa el alto disponible y deja su contenido centrado a media
+// pantalla, en vez de pegado arriba con un hueco grande debajo.
+const stepStyle: React.CSSProperties = {
+  flex: 1,
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+};
+
+const titleStyle: React.CSSProperties = { fontSize: 20, fontWeight: 800, textAlign: "center" };
+const heroTitleStyle: React.CSSProperties = { fontSize: 24, fontWeight: 800, lineHeight: 1.25, textAlign: "center" };
+const subtitleStyle: React.CSSProperties = {
+  fontSize: 12.5,
+  color: "rgba(244,243,238,.55)",
+  marginTop: 6,
+  marginBottom: 20,
+  lineHeight: 1.5,
+  textAlign: "center",
+};
+
 const TOTAL_STEPS = 10;
 
 const MOTIVATION_PRESETS = [
@@ -276,14 +296,14 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
         ))}
       </div>
 
-      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+      <div style={stepStyle}>
         <AnimatePresence mode="popLayout" initial={false}>
           {step === 0 && (
-            <motion.div key="s0" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <div className="font-sora" style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.25 }}>
+            <motion.div key="s0" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
+              <div className="font-sora" style={heroTitleStyle}>
                 Antes de arrancar…
               </div>
-              <div style={{ fontSize: 13, color: "rgba(244,243,238,.6)", marginTop: 8, marginBottom: 28, lineHeight: 1.5 }}>
+              <div style={{ ...subtitleStyle, fontSize: 13, color: "rgba(244,243,238,.6)", marginTop: 8, marginBottom: 28 }}>
                 Contanos si eres hombre o mujer (lo usamos para calcular tu metabolismo) y, si querés, subí una foto de perfil.
               </div>
               <div style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
@@ -371,7 +391,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
           )}
 
           {step === 1 && (
-            <motion.div key="s1" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <motion.div key="s1" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
               <div
                 style={{
                   width: 72,
@@ -384,19 +404,20 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
                   fontSize: 34,
                   boxShadow: "0 0 30px rgba(199,242,122,.4)",
                   marginBottom: 20,
+                  alignSelf: "center",
                 }}
               >
                 {sex === "F" ? "😍" : "😎"}
               </div>
-              <div className="font-sora" style={{ fontSize: 24, fontWeight: 800, lineHeight: 1.25 }}>
+              <div className="font-sora" style={heroTitleStyle}>
                 {sex === "F" ? "¡Qué guapa eres!" : "¡Qué guapo eres!"}
               </div>
-              <div style={{ fontSize: 13, color: "rgba(244,243,238,.6)", marginTop: 8, lineHeight: 1.5 }}>
+              <div style={{ ...subtitleStyle, fontSize: 13, color: "rgba(244,243,238,.6)", marginTop: 8, marginBottom: 0 }}>
                 Si te lo propones, vas a estar {sex === "F" ? "así de guapa" : "así de guapo"} y con buena salud. Ahora
-                sí — ¿cómo te gusta que te digamos? Son un par de minutos, prometido.
+                sí — ¿cómo te gusta que te digamos?
               </div>
               <div style={{ marginTop: 32 }}>
-                <div style={labelStyle}>¿CÓMO TE GUSTA QUE TE DIGAN?</div>
+                <div style={{ ...labelStyle, textAlign: "center" }}>¿CÓMO TE GUSTA QUE TE DIGAN?</div>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -410,11 +431,11 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
           )}
 
           {step === 2 && (
-            <motion.div key="s2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <div className="font-sora" style={{ fontSize: 20, fontWeight: 800 }}>
+            <motion.div key="s2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
+              <div className="font-sora" style={titleStyle}>
                 {displayName ? `¿Qué te trae por acá, ${displayName}?` : "¿Qué te trae por acá?"}
               </div>
-              <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.55)", marginTop: 4, marginBottom: 20, lineHeight: 1.5 }}>
+              <div style={subtitleStyle}>
                 No hay respuesta incorrecta — esto solo nos ayuda a hablarte como corresponde, en vez de sonar igual con todo el mundo.
               </div>
               <PresetChips
@@ -423,7 +444,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
                 onSelect={setGoalMotivation}
                 renderIcon={(opt) => <div style={{ fontSize: 18, flex: "none" }}>{opt.emoji}</div>}
               />
-              <div style={labelStyle}>EN TUS PALABRAS (OPCIONAL)</div>
+              <div style={{ ...labelStyle, textAlign: "center" }}>EN TUS PALABRAS (OPCIONAL)</div>
               <textarea
                 value={goalMotivation}
                 onChange={(e) => setGoalMotivation(e.target.value)}
@@ -435,11 +456,11 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
           )}
 
           {step === 3 && (
-            <motion.div key="s3" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <div className="font-sora" style={{ fontSize: 20, fontWeight: 800 }}>
+            <motion.div key="s3" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
+              <div className="font-sora" style={titleStyle}>
                 Ahora hablemos de números
               </div>
-              <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.55)", marginTop: 4, marginBottom: 20 }}>
+              <div style={subtitleStyle}>
                 Con esto calculamos tu metabolismo basal (BMR), como haría un nutricionista — nada de fórmulas genéricas.
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -460,17 +481,17 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
           )}
 
           {step === 4 && (
-            <motion.div key="s4" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <div className="font-sora" style={{ fontSize: 20, fontWeight: 800 }}>
+            <motion.div key="s4" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
+              <div className="font-sora" style={titleStyle}>
                 ¿Cuál es tu meta de peso?
               </div>
-              <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.55)", marginTop: 4, marginBottom: 20 }}>
+              <div style={subtitleStyle}>
                 Sin extremos — vamos a lo que de verdad podés sostener. Si es menor a tu peso actual calculamos un déficit saludable; si es igual o mayor, mantenimiento.
               </div>
-              <div style={labelStyle}>PESO META (lb)</div>
-              <input type="number" inputMode="decimal" value={weightGoal} onChange={(e) => setWeightGoal(e.target.value)} placeholder="165" style={{ ...fieldStyle, fontSize: 18 }} autoFocus />
+              <div style={{ ...labelStyle, textAlign: "center" }}>PESO META (lb)</div>
+              <input type="number" inputMode="decimal" value={weightGoal} onChange={(e) => setWeightGoal(e.target.value)} placeholder="165" style={{ ...fieldStyle, fontSize: 18, textAlign: "center" }} autoFocus />
               {Number(weightGoal) > 0 && Number(weight) > 0 && (
-                <div style={{ marginTop: 10, fontSize: 12, color: "rgba(244,243,238,.5)" }}>
+                <div style={{ marginTop: 10, fontSize: 12, color: "rgba(244,243,238,.5)", textAlign: "center" }}>
                   {Number(weightGoal) < Number(weight)
                     ? `Meta de bajar ${r1(Number(weight) - Number(weightGoal))} lb.`
                     : Number(weightGoal) > Number(weight)
@@ -482,11 +503,11 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
           )}
 
           {step === 5 && (
-            <motion.div key="s5" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <div className="font-sora" style={{ fontSize: 20, fontWeight: 800 }}>
+            <motion.div key="s5" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
+              <div className="font-sora" style={titleStyle}>
                 Tu nivel de actividad diaria
               </div>
-              <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.55)", marginTop: 4, marginBottom: 20, lineHeight: 1.5 }}>
+              <div style={subtitleStyle}>
                 No es solo ejercicio: es qué tanto te mueves en un día normal. Esto ajusta tu gasto calórico total (TDEE) sobre tu metabolismo basal.
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -531,15 +552,15 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
           )}
 
           {step === 6 && (
-            <motion.div key="s6" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <div className="font-sora" style={{ fontSize: 20, fontWeight: 800 }}>
+            <motion.div key="s6" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
+              <div className="font-sora" style={titleStyle}>
                 ¿Qué plan de ejercicio quieres seguir?
               </div>
-              <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.55)", marginTop: 4, marginBottom: 20, lineHeight: 1.5 }}>
+              <div style={subtitleStyle}>
                 No tiene que ser gimnasio — cuéntanos qué vas a hacer tú. Toca una opción para empezar y edítala como quieras; también puedes registrar cualquier otra cosa que hagas desde el chat con el Coach o subiendo la captura de tu reloj.
               </div>
               <PresetChips options={EXERCISE_PRESETS} selected={exercisePlan} onSelect={setExercisePlan} renderIcon={(opt) => iconFor(opt.icon, 22)} />
-              <div style={labelStyle}>EN TUS PALABRAS (OPCIONAL)</div>
+              <div style={{ ...labelStyle, textAlign: "center" }}>EN TUS PALABRAS (OPCIONAL)</div>
               <textarea
                 value={exercisePlan}
                 onChange={(e) => setExercisePlan(e.target.value)}
@@ -551,11 +572,11 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
           )}
 
           {step === 7 && (
-            <motion.div key="s7" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <div className="font-sora" style={{ fontSize: 20, fontWeight: 800 }}>
+            <motion.div key="s7" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
+              <div className="font-sora" style={titleStyle}>
                 ¿Cómo es tu día a día comiendo?
               </div>
-              <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.55)", marginTop: 4, marginBottom: 20, lineHeight: 1.5 }}>
+              <div style={subtitleStyle}>
                 Así tus consejos van a ser realistas — nada de cambiar tus pupusas por quinoa de la nada.
               </div>
               <PresetChips
@@ -564,7 +585,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
                 onSelect={setFoodCulture}
                 renderIcon={(opt) => <div style={{ fontSize: 18, flex: "none" }}>{opt.emoji}</div>}
               />
-              <div style={labelStyle}>EN TUS PALABRAS (OPCIONAL)</div>
+              <div style={{ ...labelStyle, textAlign: "center" }}>EN TUS PALABRAS (OPCIONAL)</div>
               <textarea
                 value={foodCulture}
                 onChange={(e) => setFoodCulture(e.target.value)}
@@ -576,11 +597,11 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
           )}
 
           {step === 8 && (
-            <motion.div key="s8" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <div className="font-sora" style={{ fontSize: 20, fontWeight: 800 }}>
+            <motion.div key="s8" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
+              <div className="font-sora" style={titleStyle}>
                 ¿Tienes báscula inteligente?
               </div>
-              <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.55)", marginTop: 4, marginBottom: 20, lineHeight: 1.5 }}>
+              <div style={subtitleStyle}>
                 Es opcional, pero <b style={{ color: "#c7f27a" }}>muy recomendado</b>: con una captura de tu báscula (Zepp Life, Renpho, etc.) leemos tu metabolismo basal real en vez de estimarlo, y tus metas quedan más precisas.
               </div>
               <UploadCard
@@ -607,25 +628,25 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
           )}
 
           {step === 9 && (
-            <motion.div key="s9" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-              <div className="font-sora" style={{ fontSize: 20, fontWeight: 800 }}>
+            <motion.div key="s9" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
+              <div className="font-sora" style={titleStyle}>
                 {displayName ? `Listo, ${displayName} — estas son tus metas` : "Tus metas diarias"}
               </div>
-              <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.55)", marginTop: 4, marginBottom: 12, lineHeight: 1.5 }}>
+              <div style={{ ...subtitleStyle, marginBottom: 12 }}>
                 Calculadas con tu {scaleResult?.bmr ? "báscula" : "metabolismo basal estimado"} y nivel de actividad
                 {goalMotivation ? " — pensando en tu meta de arriba. " : ". "}Podrás ajustarlas cuando quieras en Perfil.
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-                <div style={{ background: "#1b1e21", borderRadius: 18, padding: 12 }}>
+                <div style={{ background: "#1b1e21", borderRadius: 18, padding: 12, textAlign: "center" }}>
                   <div style={labelStyle}>BMR</div>
                   <div className="font-sora" style={{ fontSize: 15, fontWeight: 800, marginTop: 2 }}>{goals.bmr.toLocaleString()} kcal</div>
                 </div>
-                <div style={{ background: "#1b1e21", borderRadius: 18, padding: 12 }}>
+                <div style={{ background: "#1b1e21", borderRadius: 18, padding: 12, textAlign: "center" }}>
                   <div style={labelStyle}>TDEE</div>
                   <div className="font-sora" style={{ fontSize: 15, fontWeight: 800, marginTop: 2 }}>{goals.tdee.toLocaleString()} kcal</div>
                 </div>
               </div>
-              <div style={{ fontSize: 11, color: "rgba(244,243,238,.4)", marginBottom: 12, lineHeight: 1.4 }}>
+              <div style={{ fontSize: 11, color: "rgba(244,243,238,.4)", marginBottom: 12, lineHeight: 1.4, textAlign: "center" }}>
                 {wantsToLose
                   ? `Tu meta = tu gasto total (TDEE) − 450 kcal, el déficit diario que se considera seguro (~1 lb cada 8 días).`
                   : `Tu meta = tu gasto total (TDEE), para mantener tu peso actual.`}{" "}
