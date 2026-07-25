@@ -392,7 +392,8 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
                 {sex === "F" ? "¡Qué guapa eres!" : "¡Qué guapo eres!"}
               </div>
               <div style={{ fontSize: 13, color: "rgba(244,243,238,.6)", marginTop: 8, lineHeight: 1.5 }}>
-                Ahora sí — ¿cómo te gusta que te digamos? Son un par de minutos, prometido.
+                Si te lo propones, vas a estar {sex === "F" ? "así de guapa" : "así de guapo"} y con buena salud. Ahora
+                sí — ¿cómo te gusta que te digamos? Son un par de minutos, prometido.
               </div>
               <div style={{ marginTop: 32 }}>
                 <div style={labelStyle}>¿CÓMO TE GUSTA QUE TE DIGAN?</div>
