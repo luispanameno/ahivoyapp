@@ -215,7 +215,17 @@ export default function Hoy() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
             className="font-sora"
-            style={{ fontSize: 20, fontWeight: 700, marginTop: 2 }}
+            style={{
+              fontSize: 14.5,
+              fontWeight: 800,
+              marginTop: 3,
+              color: "#c7f27a",
+              textShadow: "0 0 14px rgba(199,242,122,.45)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              maxWidth: 220,
+            }}
           >
             {heroMessage}
           </motion.div>

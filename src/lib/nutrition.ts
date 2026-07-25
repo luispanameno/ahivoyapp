@@ -32,10 +32,14 @@ export function computeGoals(input: {
   activityLevel: ActivityLevel;
   bmrOverride?: number | null; // si viene de una báscula inteligente
 }): ComputedGoals {
-  const bmr =
-    input.bmrOverride && input.bmrOverride > 0
-      ? Math.round(input.bmrOverride)
-      : mifflinBMR(input.weightLb, input.heightCm, input.age, input.sex);
+  // Rango humano plausible de BMR (~700–2600 kcal). Una báscula mal leída
+  // por la IA a veces devuelve un número fuera de este rango (p. ej. leyó
+  // otro campo por error) — mejor ignorarlo y calcularlo con la fórmula que
+  // confiar en un dato claramente absurdo que dispararía todas las metas.
+  const scaleBmrPlausible = input.bmrOverride != null && input.bmrOverride >= 700 && input.bmrOverride <= 2600;
+  const bmr = scaleBmrPlausible
+    ? Math.round(input.bmrOverride!)
+    : mifflinBMR(input.weightLb, input.heightCm, input.age, input.sex);
   const tdee = Math.round(bmr * ACTIVITY_FACTORS[input.activityLevel]);
   const wantsToLose = input.weightGoalLb < input.weightLb;
   const floor = input.sex === "F" ? 1200 : 1500;
