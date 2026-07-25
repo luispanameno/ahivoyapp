@@ -129,7 +129,7 @@ function PresetChips<T extends { label: string; value: string }>({
   );
 }
 
-export default function OnboardingWizard() {
+export default function OnboardingWizard({ onFinished }: { onFinished?: () => void } = {}) {
   const { profile, saveProfile, setBodyComp, showToast } = useApp();
   const [step, setStep] = useState(0);
 
@@ -220,6 +220,7 @@ export default function OnboardingWizard() {
         );
       }
       showToast(`¡Listo, ${name.trim() || "bienvenido"}! Tus metas ya están configuradas`);
+      onFinished?.();
     } catch {
       showToast("No se pudo guardar. Intenta de nuevo.");
       setSaving(false);
