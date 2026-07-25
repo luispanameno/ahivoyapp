@@ -78,6 +78,31 @@ function dropLegacyChat() {
   }
 }
 
+// Marcador de "ya le sugerí el ajuste por esta báscula". Sin esto, el Coach
+// repetiría la propuesta de nuevas metas en CADA mensaje del día, porque la
+// lectura sigue siendo la más reciente. Guarda la fecha ya sugerida.
+const SCALE_KEY_PREFIX = "ahivoy:scale_suggested";
+
+function scaleKey(userId: string | null): string {
+  return `${SCALE_KEY_PREFIX}:${userId ?? "local"}`;
+}
+
+function wasScaleSuggested(userId: string | null, date: string): boolean {
+  try {
+    return localStorage.getItem(scaleKey(userId)) === date;
+  } catch {
+    return false;
+  }
+}
+
+function markScaleSuggested(userId: string | null, date: string) {
+  try {
+    localStorage.setItem(scaleKey(userId), date);
+  } catch {
+    // sin espacio: como mucho, se vuelve a ofrecer el ajuste
+  }
+}
+
 // Marcador de "pregunta en curso": si el navegador mata la app a media
 // respuesta (ej. el sistema operativo cierra la pestaña/PWA en segundo
 // plano — algo que ningún estado en memoria puede evitar), al reabrir la
@@ -636,6 +661,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         const protLeft = Math.max(0, profile.metaProtein - derived.proteinG);
         const waterLeft = Math.max(0, profile.metaWater - derived.water);
+        // ¿Hay una báscula reciente (de hoy o ayer) que el Coach todavía no
+        // haya comentado? Solo entonces propone ajustar las metas.
+        const ayer = new Date(date + "T12:00:00");
+        ayer.setDate(ayer.getDate() - 1);
+        // En local, no con toISOString(): en zonas horarias al este ese
+        // método devuelve el día anterior y descuadraría la comparación.
+        const ayerISO = `${ayer.getFullYear()}-${String(ayer.getMonth() + 1).padStart(2, "0")}-${String(ayer.getDate()).padStart(2, "0")}`;
+        const scaleDate = bodyComp?.date ?? null;
+        const scaleIsFresh =
+          !!scaleDate &&
+          (scaleDate === date || scaleDate === ayerISO) &&
+          !wasScaleSuggested(userIdRef.current, scaleDate);
         const context = {
           nombre: profile.name,
           perfil: {
@@ -687,12 +724,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             texto: m.text.slice(0, 400),
           })),
           peso_actual_lb: profile.weight,
+          // Última lectura de báscula + historial de peso: sin esto el Coach
+          // no puede enterarse de una báscula subida desde Perfil (fuera del
+          // chat) ni comparar si el peso subió o bajó.
+          composicion_corporal: bodyComp
+            ? {
+                fecha: bodyComp.date,
+                es_lectura_nueva: scaleIsFresh,
+                bmr: bodyComp.bmr,
+                imc: bodyComp.bmi,
+                grasa_pct: bodyComp.fatPct,
+                agua_pct: bodyComp.waterPct,
+                proteina_pct: bodyComp.proteinPct,
+                grasa_visceral: bodyComp.visceralFat,
+                musculo_lb: bodyComp.muscle,
+              }
+            : null,
+          historial_peso: weights.slice(-6).map((w) => ({ fecha: w.date, lb: w.lb })),
           rutina: routine,
           hora_local: new Date().toTimeString().slice(0, 5),
           fecha_hoy: date,
           dia_semana: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"][new Date().getDay()],
         };
         const res = await analyze<CoachResult>({ mode: "coach", text: clean, image, context });
+        // Ya se le ofreció el ajuste por esta lectura: no repetirlo en cada
+        // mensaje siguiente del día.
+        if (scaleIsFresh && scaleDate) markScaleSuggested(userIdRef.current, scaleDate);
         setChatMessages((prev) => [...prev, { role: "coach", text: res.reply }]);
         if (res.actions?.length) await applyChatActions(res.actions);
       } catch (e) {
@@ -711,7 +768,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setChatTyping(false);
       }
     },
-    [profile, derived, workout, sleep, routine, meals, chatMessages, date, applyChatActions]
+    [profile, derived, workout, sleep, routine, meals, chatMessages, date, bodyComp, weights, applyChatActions]
   );
 
   // Reenvía sola la pregunta que quedó a medias por una recarga.

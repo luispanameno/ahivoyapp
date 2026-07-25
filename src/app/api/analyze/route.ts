@@ -255,6 +255,19 @@ interface CoachCtx {
     cultura_alimentaria?: string | null;
   };
   metas?: { kcal?: number; proteina_g?: number; carbos_g?: number; grasa_g?: number; agua_ml?: number };
+  // Última lectura de báscula (venga del chat o de Perfil) e historial de peso
+  composicion_corporal?: {
+    fecha?: string;
+    es_lectura_nueva?: boolean;
+    bmr?: number;
+    imc?: number;
+    grasa_pct?: number;
+    agua_pct?: number;
+    proteina_pct?: number;
+    grasa_visceral?: number;
+    musculo_lb?: number;
+  } | null;
+  historial_peso?: { fecha?: string; lb?: number }[];
   hoy?: {
     kcal_comidas?: number;
     proteina_g?: number;
@@ -357,7 +370,7 @@ FOTO DE BÁSCULA EN EL CHAT (flujo OBLIGATORIO): si la imagen que envía el usua
 3) Calcula la meta sugerida con estas REGLAS DE ORO (la meta actual metas.kcal la puso el usuario o SU NUTRICIONISTA — respétala como TECHO):
    - BMR = el "metabolismo basal" de la captura si aparece, si no Mifflin-St Jeor. TDEE = BMR × factor de nivel_actividad. Fórmula base = TDEE − 400-500.
    - Si el objetivo es BAJAR de peso (peso_meta_lb < peso_lb): la meta sugerida = MIN(fórmula base, metas.kcal actual). NUNCA propongas MÁS calorías que la meta actual — si la fórmula da más, la meta de kcal SE QUEDA IGUAL (su nutricionista eligió un déficit más fuerte y está bien mientras no baje del mínimo saludable: 1500 H / 1200 M).
-   - Si el peso SUBIÓ desde la última vez: NO premies la subida con más comida; mantén la meta igual (o hasta −5%) y motiva a sostener el déficit.
+   - Si el peso SUBIÓ desde la última vez (compara los dos últimos pesos de historial_peso): NO premies la subida con más comida; mantén la meta igual (o hasta −5%) y motiva a sostener el déficit. OJO: al subir de peso el BMR sube y la fórmula daría MÁS calorías — ignórala, esa subida nunca se aplica.
    - Si el peso BAJÓ: mantén o baja la meta gradualmente (la fórmula baja sola con el peso). Así el déficit se conserva mientras progresa.
    - Aunque las kcal no cambien, SÍ recalcula la distribución de macros para esas kcal: proteína = 0.8 × peso_meta_lb (g), grasa = 27% de las kcal ÷ 9 (g), carbos = kcal restantes ÷ 4 (g). Enteros.
 4) NO apliques todavía set_macros. Estructura tu "reply" así (natural, sin repetir dos veces lo mismo):
@@ -371,6 +384,12 @@ FOTO DE BÁSCULA EN EL CHAT (flujo OBLIGATORIO): si la imagen que envía el usua
    - 1-2 frases explicando el PORQUÉ (TDEE, déficit resultante, por qué las kcal se mantienen o bajan; si su meta ya es más estricta que la fórmula, dilo como algo positivo y menciona que la puso su nutricionista).
    - Cierra con: "¿Aplico el cambio o los mantenemos?"
 5) Si en el SIGUIENTE mensaje el usuario acepta ("sí", "cámbialos", "dale"), emite set_macros con esos números (kcal, p, c, f) y confírmalo. Si los quiere mantener, no cambies nada.
+
+BÁSCULA SUBIDA DESDE PERFIL (sin foto en el chat): el contexto trae "composicion_corporal" (última lectura de báscula, con su fecha y el BMR real) e "historial_peso" (últimos pesos con fecha). Si y SOLO SI composicion_corporal.es_lectura_nueva es true, entonces —sea cual sea el tema del mensaje del usuario— agrega AL FINAL de tu "reply" un bloque corto separado por una línea en blanco:
+   - 1 frase: qué registró la báscula y si subió o bajó comparando los dos últimos pesos de historial_peso (si solo hay uno, no digas que subió ni bajó).
+   - La misma mini tabla "anterior → nuevo" del punto 4, calculada con las MISMAS REGLAS DE ORO (usa composicion_corporal.bmr como BMR; NUNCA más kcal que metas.kcal; si el peso SUBIÓ las kcal se mantienen).
+   - Cierra con "¿Aplico el cambio o los mantenemos?" y NO emitas set_macros todavía (igual que el punto 5: solo al aceptar).
+Si es_lectura_nueva es false (o no hay composicion_corporal), NO agregues este bloque ni menciones la báscula por tu cuenta: ya se le ofreció antes.
 
 FOTO DE RELOJ/ACTIVIDAD EN EL CHAT: si la imagen es de actividad (pasos, calorías activas), extrae las calorías activas y regístralas con log_workout (nombre "Actividad del reloj") explicando cómo sube su presupuesto del día.
 
