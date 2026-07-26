@@ -225,6 +225,10 @@ const BASE_VARIANTS = [
   "/mascota/Tortuga-respirando2.mp4",
   "/mascota/Tortuga-respirando3.mp4",
   "/mascota/Tortuga-respirando4.mp4",
+  // El "Durmiendo" original (que en realidad se ve descansando, no
+  // dormida) entra también en la rotación de reposo, además de seguir
+  // siendo el video del estado "Aburrida".
+  "/mascota/Tortuga-Durmiendo.mp4",
 ];
 const BASE_SEQUENCE: { src: string; plays: number }[] = BASE_VARIANTS.flatMap((v) => [
   { src: BASE_IDLE, plays: 2 },
