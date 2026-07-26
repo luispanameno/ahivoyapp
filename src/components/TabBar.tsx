@@ -33,36 +33,62 @@ function Tab({ route, icon, label }: { route: string; icon: string; label: strin
   return (
     <motion.div
       onClick={() => router.push(route)}
-      whileTap={reduce ? undefined : { scale: 0.88 }}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      // Hundido corto y con rebote, como iOS: baja rápido al tocar y vuelve
+      // con un resorte firme. 0.88 se sentía flojo y "de web".
+      whileTap={reduce ? undefined : { scale: 0.92 }}
+      transition={{ type: "spring", stiffness: 600, damping: 20, mass: 0.5 }}
       role="link"
       aria-label={label}
       aria-current={active ? "page" : undefined}
       style={{
+        position: "relative",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: 3,
+        justifyContent: "center",
+        gap: 4,
         cursor: "pointer",
-        minWidth: 48,
-        padding: "6px 4px",
+        // Área táctil generosa (mínimo 48px recomendado en Android/iOS)
+        minWidth: 60,
+        minHeight: 52,
+        padding: "6px 8px",
+        borderRadius: 18,
+        WebkitTapHighlightColor: "transparent",
       }}
     >
+      {/* Pastilla que envuelve la pestaña activa: se desliza de una a otra
+          con un resorte compartido, en vez de aparecer y desaparecer. */}
+      {active && (
+        <motion.div
+          layoutId="tab-activa"
+          transition={reduce ? { duration: 0 } : { type: "spring", stiffness: 500, damping: 34 }}
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: 18,
+            background: "rgba(199,242,122,.12)",
+            border: "1px solid rgba(199,242,122,.22)",
+          }}
+        />
+      )}
       <Icon
         name={icon}
         size={26}
         style={{
-          filter: active ? "none" : "grayscale(1) brightness(.8) opacity(.5)",
-          transition: "filter .2s ease",
+          position: "relative",
+          filter: active ? "none" : "grayscale(1) brightness(.85) opacity(.55)",
+          transition: "filter .22s ease",
         }}
       />
       <div
         style={{
+          position: "relative",
           fontSize: 10,
           fontWeight: 700,
-          color: active ? "#c7f27a" : "rgba(244,243,238,.35)",
+          letterSpacing: ".01em",
+          color: active ? "#c7f27a" : "rgba(244,243,238,.42)",
           textShadow: active ? "0 0 8px rgba(199,242,122,.6)" : "none",
-          transition: "color .2s ease",
+          transition: "color .22s ease",
         }}
       >
         {label}
@@ -103,23 +129,26 @@ export default function TabBar() {
 
       <motion.div
         onClick={() => router.push("/escanear")}
-        whileTap={reduce ? undefined : { scale: 0.9 }}
-        whileHover={reduce ? undefined : { scale: 1.04 }}
-        transition={{ type: "spring", stiffness: 400, damping: 25 }}
+        whileTap={reduce ? undefined : { scale: 0.93 }}
+        whileHover={reduce ? undefined : { scale: 1.05 }}
+        transition={{ type: "spring", stiffness: 600, damping: 20, mass: 0.5 }}
         role="link"
         aria-label="Escanear comida"
         style={{
-          width: 54,
-          height: 54,
-          borderRadius: 20,
-          background: "linear-gradient(135deg,#d3f78f,#a8e35f)",
+          width: 60,
+          height: 60,
+          borderRadius: 22,
+          // Degradado con un brillo arriba: da volumen, como un botón físico
+          // iluminado desde arriba, en vez de un plano de color liso.
+          background: "linear-gradient(160deg,#e2fbaa 0%,#c7f27a 45%,#a3e055 100%)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          marginTop: -24,
-          boxShadow: "0 6px 22px rgba(199,242,122,.55)",
-          border: "1px solid rgba(255,255,255,.25)",
+          marginTop: -26,
+          boxShadow: "0 8px 26px rgba(199,242,122,.5), 0 2px 6px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.6)",
+          border: "1px solid rgba(255,255,255,.3)",
           cursor: "pointer",
+          WebkitTapHighlightColor: "transparent",
         }}
       >
         <div

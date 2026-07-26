@@ -427,13 +427,13 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
               />
               {/* La hamaca va abajo y completa: arriba quedaba apretada y
                   cortada. Sin el campo de texto libre, aquí sobra espacio. */}
-              <MascotIllustration art="motivo" height={130} glow={false} style={{ marginTop: 4 }} />
+              <MascotIllustration art="motivo" height={150} glow={false} style={{ marginTop: 6 }} />
             </motion.div>
           )}
 
           {step === 3 && (
             <motion.div key="s3" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
-              <MascotIllustration art="numeros" height={104} style={{ marginBottom: 4 }} />
+              <MascotIllustration art="numeros" height={150} style={{ marginBottom: 8 }} />
               <div className="font-sora" style={titleStyle}>
                 Ahora hablemos de números
               </div>
@@ -459,7 +459,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
 
           {step === 4 && (
             <motion.div key="s4" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
-              <MascotIllustration art="meta-peso" height={116} style={{ marginBottom: 4 }} />
+              <MascotIllustration art="meta-peso" height={172} style={{ marginBottom: 8 }} />
               <div className="font-sora" style={titleStyle}>
                 ¿Cuál es tu meta de peso?
               </div>
@@ -482,7 +482,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
 
           {step === 5 && (
             <motion.div key="s5" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
-              <MascotIllustration art="actividad" height={100} style={{ marginBottom: 4 }} />
+              <MascotIllustration art="actividad" height={150} style={{ marginBottom: 8 }} />
               <div className="font-sora" style={titleStyle}>
                 Tu nivel de actividad diaria
               </div>
@@ -552,7 +552,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
 
           {step === 7 && (
             <motion.div key="s7" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
-              <MascotIllustration art="bascula" height={108} style={{ marginBottom: 4 }} />
+              <MascotIllustration art="bascula" height={165} style={{ marginBottom: 8 }} />
               <div className="font-sora" style={titleStyle}>
                 ¿Tienes báscula inteligente?
               </div>

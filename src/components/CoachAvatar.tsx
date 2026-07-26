@@ -143,7 +143,12 @@ interface DailyProgress {
   workoutDone: boolean;
   hasAnyLog: boolean;
   hour: number; // 0-23 (+fracción)
+  /** Minutos desde el último dato registrado (agua, comida, ejercicio). */
+  minutosInactiva: number;
 }
+
+// Una hora sin registrar nada y la tortuga se duerme, sea la hora que sea.
+const SLEEP_AFTER_MIN = 60;
 
 interface ActionEvent {
   type: "celebrar" | "ejercicio" | "comida-grande";
@@ -205,9 +210,11 @@ export function getMascotState(
   // 4-5) Pulso de recordatorio activo (unos segundos, luego vuelve a base).
   if (pulse) return pulse;
 
-  // 6a) Dormir: de 23:00 a 06:00, o día sin registros ya entrada la noche.
+  // 6a) Dormir: de 23:00 a 06:00, día sin registros ya entrada la noche, o
+  // una hora entera sin que se registre nada nuevo.
   if (data.hour >= 23 || data.hour < 6) return "Durmiendo";
   if (!data.hasAnyLog && data.hour >= 20) return "Durmiendo";
+  if (data.minutosInactiva >= SLEEP_AFTER_MIN) return "Durmiendo";
 
   // 6b) Aburrida: es de día y todavía no has registrado nada.
   if (!data.hasAnyLog) return "Aburrida";
@@ -268,6 +275,28 @@ const ALL_VIDEOS = [
 
 // Si deja de tocar este rato, la mascota vuelve a decidir sola.
 const MANUAL_RESET_MS = 30_000;
+
+// Marca del último dato registrado. Vive en localStorage para que "lleva una
+// hora sin registrar nada" siga siendo cierto aunque se cierre y reabra la
+// app — si viviera solo en memoria, el contador se reiniciaría cada vez.
+const ACTIVITY_KEY = "ahivoy:ultimo_registro";
+
+function leerUltimoRegistro(): number {
+  try {
+    const v = Number(localStorage.getItem(ACTIVITY_KEY));
+    return Number.isFinite(v) && v > 0 ? v : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function guardarUltimoRegistro(ts: number) {
+  try {
+    localStorage.setItem(ACTIVITY_KEY, String(ts));
+  } catch {
+    // sin storage: como mucho, la tortuga tarda más en dormirse
+  }
+}
 
 // Frases atadas a lo que la tortuga está HACIENDO en pantalla: si sale
 // corriendo, motiva; si duerme, habla de descansar. Donde el dato ayuda
@@ -425,18 +454,42 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
     }
   }, [water, kcalEaten, proteinG, workout?.done, kcalBudget, profile.metaWater, profile.metaProtein, profile.metaKcal]);
 
-  // Re-evaluación ambiental periódica (la hora avanza aunque no pase nada).
-  const [, setTick] = useState(0);
+  // Reloj propio: se refresca cada minuto y de él salen la hora y el tiempo
+  // de inactividad. Leer Date.now() durante el render sería impuro (React
+  // puede repetir renders) y además no volvería a evaluarse solo.
+  const [ahora, setAhora] = useState(() => Date.now());
   useEffect(() => {
-    const t = setInterval(() => setTick((n) => n + 1), 60_000);
+    const t = setInterval(() => setAhora(Date.now()), 60_000);
     return () => clearInterval(t);
   }, []);
+
+  // ---- Inactividad: ¿cuánto hace que no se registra nada? ----
+  // Cada vez que cambia un dato del día se sella la hora; si pasa una hora
+  // sin cambios, la tortuga se duerme hasta que vuelva a haber movimiento.
+  const [ultimoRegistro, setUltimoRegistro] = useState<number>(() =>
+    typeof window === "undefined" ? Date.now() : leerUltimoRegistro() || Date.now()
+  );
+  const datosFirma = `${kcalEaten}|${water}|${proteinG}|${workout?.done ?? false}`;
+  const firmaPrevia = useRef<string | null>(null);
+  useEffect(() => {
+    // El primer render solo memoriza la firma: si sellara aquí, abrir la app
+    // contaría como "actividad" y nunca se dormiría.
+    if (firmaPrevia.current === null) {
+      firmaPrevia.current = datosFirma;
+      return;
+    }
+    if (firmaPrevia.current === datosFirma) return;
+    firmaPrevia.current = datosFirma;
+    const ahora = Date.now();
+    guardarUltimoRegistro(ahora);
+    setUltimoRegistro(ahora);
+  }, [datosFirma]);
 
   // ---- Pulsos de recordatorio ----
   // Cada PULSE_EVERY_MS mira si algo va atrasado (agua, ejercicio, exceso) y
   // hace el gesto PULSE_SHOW_MS segundos; el resto del tiempo, a respirar.
   const [pulse, setPulse] = useState<MascotState | null>(null);
-  const dNow = new Date();
+  const dNow = new Date(ahora);
   const data: DailyProgress = {
     kcalEaten,
     metaKcal: kcalBudget || profile.metaKcal,
@@ -447,6 +500,7 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
     workoutDone: workout?.done ?? false,
     hasAnyLog: kcalEaten > 0 || water > 0 || (workout?.done ?? false),
     hour: dNow.getHours() + dNow.getMinutes() / 60,
+    minutosInactiva: (ahora - ultimoRegistro) / 60_000,
   };
   // El intervalo del pulso lee los datos por ref para no reiniciarse en
   // cada render (se sincroniza después de cada render, nunca durante).
