@@ -83,7 +83,7 @@ const subtitleStyle: React.CSSProperties = {
   textAlign: "center",
 };
 
-const TOTAL_STEPS = 10;
+const TOTAL_STEPS = 9;
 
 const MOTIVATION_PRESETS = [
   { emoji: "🎯", label: "Bajar de peso", value: "Bajar de peso." },
@@ -96,12 +96,6 @@ const EXERCISE_PRESETS = [
   { icon: "🏋️", label: "Pesas · Push/Pull/Legs", value: "Rutina de pesas Push/Pull/Legs, 3 días a la semana." },
   { icon: "/icons/glyphs/steps.png", label: "Caminar o cardio", value: "Camino o hago cardio casi todos los días." },
   { icon: "🌱", label: "Apenas empezando", value: "Por ahora no tengo una rutina fija — voy empezando de a poco." },
-] as const;
-
-const FOOD_CULTURE_PRESETS = [
-  { emoji: "🫓", label: "Comida típica casi a diario", value: "Como comida típica (pupusas, tamales, arroz y frijoles…) casi todos los días." },
-  { emoji: "🥗", label: "Un poco de todo", value: "Mezclo comida típica con opciones más ligeras según el día." },
-  { emoji: "🍗", label: "Prefiero algo más balanceado", value: "Casi no como comida típica, prefiero algo más balanceado." },
 ] as const;
 
 function iconFor(src: string, size: number) {
@@ -168,7 +162,8 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
   const [weightGoal, setWeightGoal] = useState(String(profile.weightGoal === 165 ? "" : profile.weightGoal));
   const [activityLevel, setActivityLevel] = useState<ActivityLevel>("ligero");
   const [exercisePlan, setExercisePlan] = useState(profile.exercisePlan || "");
-  const [foodCulture, setFoodCulture] = useState(profile.foodCulture || "");
+  // Ya no se pregunta en el asistente; se conserva lo que hubiera guardado.
+  const foodCulture = profile.foodCulture || "";
 
   const [scaleBusy, setScaleBusy] = useState(false);
   const [scaleError, setScaleError] = useState<string | null>(null);
@@ -418,7 +413,6 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
 
           {step === 2 && (
             <motion.div key="s2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
-              <MascotIllustration art="motivo" height={96} glow={false} style={{ marginBottom: 6 }} />
               <div className="font-sora" style={titleStyle}>
                 {displayName ? `¿Qué te trae por acá, ${displayName}?` : "¿Qué te trae por acá?"}
               </div>
@@ -431,14 +425,9 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
                 onSelect={setGoalMotivation}
                 renderIcon={(opt) => <div style={{ fontSize: 18, flex: "none" }}>{opt.emoji}</div>}
               />
-              <div style={{ ...labelStyle, textAlign: "center" }}>EN TUS PALABRAS (OPCIONAL)</div>
-              <textarea
-                value={goalMotivation}
-                onChange={(e) => setGoalMotivation(e.target.value)}
-                placeholder="Ej. quiero verme y sentirme mejor para…"
-                rows={2}
-                style={{ ...fieldStyle, resize: "none", fontFamily: "inherit" }}
-              />
+              {/* La hamaca va abajo y completa: arriba quedaba apretada y
+                  cortada. Sin el campo de texto libre, aquí sobra espacio. */}
+              <MascotIllustration art="motivo" height={130} glow={false} style={{ marginTop: 4 }} />
             </motion.div>
           )}
 
@@ -563,31 +552,6 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
 
           {step === 7 && (
             <motion.div key="s7" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
-              <div className="font-sora" style={titleStyle}>
-                ¿Cómo es tu día a día comiendo?
-              </div>
-              <div style={subtitleStyle}>
-                Así tus consejos van a ser realistas — nada de cambiar tus pupusas por quinoa de la nada.
-              </div>
-              <PresetChips
-                options={FOOD_CULTURE_PRESETS}
-                selected={foodCulture}
-                onSelect={setFoodCulture}
-                renderIcon={(opt) => <div style={{ fontSize: 18, flex: "none" }}>{opt.emoji}</div>}
-              />
-              <div style={{ ...labelStyle, textAlign: "center" }}>EN TUS PALABRAS (OPCIONAL)</div>
-              <textarea
-                value={foodCulture}
-                onChange={(e) => setFoodCulture(e.target.value)}
-                placeholder="Ej. como pupusas casi todos los días…"
-                rows={2}
-                style={{ ...fieldStyle, resize: "none", fontFamily: "inherit" }}
-              />
-            </motion.div>
-          )}
-
-          {step === 8 && (
-            <motion.div key="s8" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
               <MascotIllustration art="bascula" height={108} style={{ marginBottom: 4 }} />
               <div className="font-sora" style={titleStyle}>
                 ¿Tienes báscula inteligente?
@@ -618,8 +582,8 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
             </motion.div>
           )}
 
-          {step === 9 && (
-            <motion.div key="s9" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
+          {step === 8 && (
+            <motion.div key="s8" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
               <div className="font-sora" style={titleStyle}>
                 {displayName ? `Listo, ${displayName} — estas son tus metas` : "Tus metas diarias"}
               </div>
@@ -694,7 +658,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
             ‹
           </Pressable>
         )}
-        {step === 8 && !scaleResult && (
+        {step === 7 && !scaleResult && (
           <Pressable
             onClick={next}
             style={{

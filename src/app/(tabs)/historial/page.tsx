@@ -31,13 +31,10 @@ export default function Historial() {
       <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>{subtitle}</div>
 
       {groups.length === 0 && drinks.length === 0 && (
-        <div style={{ marginTop: 28, display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <MascotIllustration art="historial-vacia" height={190} />
-          <div style={{ marginTop: 14, textAlign: "center", color: "rgba(244,243,238,.45)", fontSize: 13, lineHeight: 1.6 }}>
-            Aún no registras comidas hoy.
-            <br />
-            Usa el botón central para escanear tu plato.
-          </div>
+        <div style={{ marginTop: 24, textAlign: "center", color: "rgba(244,243,238,.45)", fontSize: 13, lineHeight: 1.6 }}>
+          Aún no registras comidas hoy.
+          <br />
+          Usa el botón central para escanear tu plato.
         </div>
       )}
 
@@ -144,6 +141,10 @@ export default function Historial() {
           </div>
         ))}
       </div>
+
+      {/* La tortuga va SIEMPRE al final, después de la lista: acompaña sin
+          quitarle sitio al historial, que es lo que se viene a leer. */}
+      <MascotIllustration art="historial-vacia" height={165} style={{ marginTop: 8, marginBottom: 12 }} />
     </div>
   );
 }

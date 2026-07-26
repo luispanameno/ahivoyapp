@@ -254,6 +254,21 @@ function videoFor(state: MascotState, step: number): string {
   return VIDEO[state];
 }
 
+// Los 11 clips, en el orden en que se recorren al tocar la tortuga.
+const ALL_VIDEOS = [
+  BASE_IDLE,
+  ...BASE_VARIANTS,
+  VIDEO.Durmiendo,
+  VIDEO.Despertando,
+  VIDEO.TomandoAgua,
+  VIDEO.Ejercicio,
+  VIDEO.LlenoDeComida,
+  VIDEO.Celebrando,
+];
+
+// Si deja de tocar este rato, la mascota vuelve a decidir sola.
+const MANUAL_RESET_MS = 30_000;
+
 // Frases atadas a lo que la tortuga está HACIENDO en pantalla: si sale
 // corriendo, motiva; si duerme, habla de descansar. Donde el dato ayuda
 // (agua, calorías) la frase trae el número real.
@@ -366,6 +381,12 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
     setCycleNonce((n) => n + 1);
   };
 
+  // Un toque = siguiente video + siguiente frase.
+  const onTap = () => {
+    nextVideoManual();
+    nextPhrase();
+  };
+
   // ---- Detección de eventos transitorios (comparando contra el valor previo) ----
   const [lastAction, setLastAction] = useState<ActionEvent | undefined>(undefined);
   const prevRef = useRef({ water, kcalEaten, workoutDone: workout?.done ?? false, celebrated: false });
@@ -470,7 +491,21 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
   const [step, setStep] = useState(0);
   const playsRef = useRef(0);
 
-  const onBaseEnded = (el: HTMLVideoElement) => {
+  // Capas del reproductor: 0 y 1. "front" es la que se ve.
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([null, null]);
+  const [front, setFront] = useState(0);
+  const frontRef = useRef(0);
+  const baseRef = useRef(true); // ¿el clip actual pertenece a la secuencia base?
+
+  const onLayerEnded = (layer: number, el: HTMLVideoElement) => {
+    // Solo manda la capa visible; la oculta puede terminar sin efecto.
+    if (layer !== frontRef.current) return;
+    if (!baseRef.current) {
+      // Estados de ánimo: el mismo clip se repite en bucle.
+      el.currentTime = 0;
+      el.play().catch(() => {});
+      return;
+    }
     playsRef.current += 1;
     const actual = BASE_SEQUENCE[step % BASE_SEQUENCE.length];
     if (playsRef.current >= actual.plays) {
@@ -497,8 +532,19 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
     }
   }, [baseState]);
 
+  // ---- Recorrido manual: al TOCAR, pasa al siguiente de los 11 videos ----
+  // Solo con el toque; si deja de tocar un rato, vuelve al automático.
+  const [manual, setManual] = useState<number | null>(null);
+  const manualTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const nextVideoManual = () => {
+    setManual((m) => (m === null ? 0 : m + 1));
+    if (manualTimer.current) clearTimeout(manualTimer.current);
+    manualTimer.current = setTimeout(() => setManual(null), MANUAL_RESET_MS);
+  };
+  useEffect(() => () => { if (manualTimer.current) clearTimeout(manualTimer.current); }, []);
+
   const state: MascotState = waking ? "Despertando" : baseState;
-  const videoSrc = videoFor(state, step);
+  const videoSrc = manual === null ? videoFor(state, step) : ALL_VIDEOS[manual % ALL_VIDEOS.length];
   const phrases = phrasesForState(
     state,
     {
@@ -512,18 +558,57 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
   );
   const message = pick(phrases, i);
 
+  // Carga el clip objetivo en la capa oculta y cruza SOLO cuando ya tiene
+  // imagen ("loadeddata"), para que nunca se vea el hueco negro del video
+  // sin decodificar. Como todos los clips empiezan y terminan igual, el
+  // cruce se percibe como si siguiera el mismo video.
+  useEffect(() => {
+    baseRef.current = manual === null && state === "Respirando";
+    const activo = videoRefs.current[frontRef.current];
+    const oculto = videoRefs.current[1 - frontRef.current];
+    if (!activo || !oculto) return;
+
+    // Primer montaje: arranca directo en la capa visible, sin cruce.
+    if (!activo.getAttribute("src")) {
+      activo.src = videoSrc;
+      activo.play().catch(() => {});
+      return;
+    }
+    if (activo.getAttribute("src") === videoSrc) return;
+
+    const cruzar = () => {
+      oculto.currentTime = 0;
+      oculto.play().catch(() => {});
+      const siguiente = 1 - frontRef.current;
+      const anterior = frontRef.current;
+      frontRef.current = siguiente;
+      setFront(siguiente);
+      // Al terminar el fundido, la capa que quedó atrás se pausa: dejarla
+      // corriendo invisible gasta batería sin que nadie la vea.
+      setTimeout(() => videoRefs.current[anterior]?.pause(), 600);
+    };
+    oculto.src = videoSrc;
+    oculto.load();
+    if (oculto.readyState >= 2) {
+      cruzar();
+      return;
+    }
+    oculto.addEventListener("loadeddata", cruzar, { once: true });
+    return () => oculto.removeEventListener("loadeddata", cruzar);
+  }, [videoSrc, manual, state]);
+
   return (
     <motion.div
-      onClick={nextPhrase}
+      onClick={onTap}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          nextPhrase();
+          onTap();
         }
       }}
-      aria-label={`${STATE_LABEL[state]}: ${message}. Toca para otro consejo.`}
+      aria-label={`${STATE_LABEL[state]}: ${message}. Toca para ver otra animación y otro consejo.`}
       whileTap={reduce ? undefined : { scale: 0.97 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
       className="relative w-full aspect-[1536/1024] overflow-hidden cursor-pointer"
@@ -535,37 +620,34 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
         WebkitBackdropFilter: "blur(12px)",
       }}
     >
-      {/* Crossfade entre estados: el video saliente se desvanece encima del
-          entrante (ambos absolutos), sin cortes negros. */}
-      <AnimatePresence initial={false}>
-        <motion.video
-          // key por SRC (no por estado): dentro de "Respirando" el video
-          // cambia cada 20s y cada cambio necesita su propio crossfade.
-          key={videoSrc}
-          src={videoSrc}
-          autoPlay
-          // En el estado base NO se usa loop: hace falta que termine para
-          // contar las pasadas y avanzar la secuencia. El resto sí repite.
-          loop={state !== "Respirando"}
-          onEnded={state === "Respirando" ? (e) => onBaseEnded(e.currentTarget) : undefined}
+      {/* Dos capas de video superpuestas. El siguiente clip se carga en la
+          capa OCULTA y solo cuando ya tiene imagen decodificada se cruzan
+          las opacidades. Montar un <video> nuevo y desvanecerlo de una vez
+          mostraba un frame vacío (el negro que se veía entre cambios). */}
+      {[0, 1].map((layer) => (
+        <video
+          key={layer}
+          ref={(node) => {
+            videoRefs.current[layer] = node;
+          }}
           muted
           playsInline
           preload="auto"
           aria-hidden="true"
           data-mascota
-          // autoPlay se pierde si el video carga antes de que React hidrate
-          // (o al entrar por AnimatePresence): play() explícito al montar —
-          // si aún no hay datos, la promesa espera a que los haya.
-          ref={(node) => {
-            node?.play().catch(() => {});
+          onEnded={(e) => onLayerEnded(layer, e.currentTarget)}
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            pointerEvents: "none",
+            opacity: front === layer ? 1 : 0,
+            transition: reduce ? "none" : "opacity .5s ease-out",
           }}
-          initial={reduce ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={reduce ? undefined : { opacity: 0 }}
-          transition={{ duration: 0.45, ease: "easeOut" }}
-          className="absolute inset-0 object-cover w-full h-full pointer-events-none"
         />
-      </AnimatePresence>
+      ))}
 
       {/* Burbuja de frase: aparece, se queda un rato y se va, dejando unos
           segundos la tortuga sola antes de la siguiente. */}

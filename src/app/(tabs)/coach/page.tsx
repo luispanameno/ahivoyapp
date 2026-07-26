@@ -426,6 +426,11 @@ export default function Coach() {
         ref={scrollRef}
         style={{
           flex: 1,
+          // minHeight 0 es imprescindible: sin esto, un hijo flex NO se
+          // encoge por debajo de su contenido (min-height:auto), así que al
+          // acumularse mensajes la lista empujaba el input hacia abajo hasta
+          // esconderlo debajo de la barra de navegación.
+          minHeight: 0,
           overflowY: "auto",
           overscrollBehaviorY: "contain",
           padding: "14px 20px 16px",
