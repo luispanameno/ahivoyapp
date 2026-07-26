@@ -164,32 +164,45 @@ function expectedWaterPct(hour: number): number {
   return Math.min(1, Math.max(0, (hour - 6) / 16));
 }
 
-export function getMascotState(data: DailyProgress, lastAction?: ActionEvent): MascotState {
+// Recordatorios como PULSOS, no como estados fijos: la base es la tortuga
+// respirando tranquila, y cada cierto rato (si algo va atrasado) hace su
+// gesto unos segundos y vuelve a la calma. Verla TODO el día tomando agua
+// desesperaba — un recordatorio que no para deja de ser recordatorio.
+const PULSE_EVERY_MS = 5 * 60_000; // cada cuánto puede aparecer un recordatorio
+const PULSE_SHOW_MS = 8_000; // cuánto dura el gesto antes de volver a respirar
+
+// Qué recordatorio toca (o ninguno) según los datos del momento.
+export function pendingReminder(data: DailyProgress): MascotState | null {
+  if (data.metaKcal > 0 && data.kcalEaten > data.metaKcal) return "LlenoDeComida";
+  if (data.metaWater > 0 && data.water / data.metaWater < expectedWaterPct(data.hour) - 0.15) {
+    return "TomandoAgua";
+  }
+  if (!data.workoutDone && data.hour >= 17) return "Ejercicio";
+  return null;
+}
+
+export function getMascotState(
+  data: DailyProgress,
+  lastAction?: ActionEvent,
+  pulse?: MascotState | null
+): MascotState {
   const now = Date.now();
 
-  // 1-3) Eventos transitorios (prioridad sobre lo ambiental mientras duren).
+  // 1-3) Eventos transitorios (registros recién hechos: prioridad máxima).
   if (isRecent(lastAction, now)) {
     if (lastAction!.type === "celebrar") return "Celebrando";
     if (lastAction!.type === "ejercicio") return "Ejercicio";
     return "LlenoDeComida";
   }
 
-  // 3b) Exceso sostenido de calorías → sigue lleno (ambiental).
-  if (data.metaKcal > 0 && data.kcalEaten > data.metaKcal) return "LlenoDeComida";
+  // 4-5) Pulso de recordatorio activo (unos segundos, luego vuelve a base).
+  if (pulse) return pulse;
 
   // 6a) Dormir: de 23:00 a 06:00, o día sin registros ya entrada la noche.
   if (data.hour >= 23 || data.hour < 6) return "Durmiendo";
   if (!data.hasAnyLog && data.hour >= 20) return "Durmiendo";
 
-  // 4) Recordatorio de ejercicio: nada registrado y ya es tarde.
-  if (!data.workoutDone && data.hour >= 17) return "Ejercicio";
-
-  // 5) Agua atrasada para la hora que es.
-  if (data.metaWater > 0 && data.water / data.metaWater < expectedWaterPct(data.hour) - 0.15) {
-    return "TomandoAgua";
-  }
-
-  // 6b) Idle normal.
+  // 6b) Base: respirando tranquilo.
   return "Respirando";
 }
 
@@ -219,10 +232,12 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
   const [i, setI] = useState(0);
   const message = pick(messages, i);
 
-  // Rota sola para que la mascota se sienta viva aunque no la toquen.
+  // Rota sola para que la mascota se sienta viva aunque no la toquen —
+  // con calma (20s): cambiar de frase cada pocos segundos mareaba. Tocar
+  // la tortuga sigue trayendo la siguiente frase al instante.
   useEffect(() => {
     if (messages.length < 2) return;
-    const t = setInterval(() => setI((n) => n + 1), 9000);
+    const t = setInterval(() => setI((n) => n + 1), 20_000);
     return () => clearInterval(t);
   }, [messages.length]);
 
@@ -271,6 +286,43 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
     return () => clearInterval(t);
   }, []);
 
+  // ---- Pulsos de recordatorio ----
+  // Cada PULSE_EVERY_MS mira si algo va atrasado (agua, ejercicio, exceso) y
+  // hace el gesto PULSE_SHOW_MS segundos; el resto del tiempo, a respirar.
+  const [pulse, setPulse] = useState<MascotState | null>(null);
+  const dNow = new Date();
+  const data: DailyProgress = {
+    kcalEaten,
+    metaKcal: kcalBudget || profile.metaKcal,
+    proteinG,
+    metaProtein: profile.metaProtein,
+    water,
+    metaWater: profile.metaWater,
+    workoutDone: workout?.done ?? false,
+    hasAnyLog: kcalEaten > 0 || water > 0 || (workout?.done ?? false),
+    hour: dNow.getHours() + dNow.getMinutes() / 60,
+  };
+  // El intervalo del pulso lee los datos por ref para no reiniciarse en
+  // cada render (se sincroniza después de cada render, nunca durante).
+  const dataRef = useRef<DailyProgress>(data);
+  useEffect(() => {
+    dataRef.current = data;
+  });
+  useEffect(() => {
+    let hide: ReturnType<typeof setTimeout> | null = null;
+    const t = setInterval(() => {
+      const reminder = pendingReminder(dataRef.current);
+      if (reminder) {
+        setPulse(reminder);
+        hide = setTimeout(() => setPulse(null), PULSE_SHOW_MS);
+      }
+    }, PULSE_EVERY_MS);
+    return () => {
+      clearInterval(t);
+      if (hide) clearTimeout(hide);
+    };
+  }, []);
+
   // Los navegadores no reproducen video en pestañas ocultas: cuando el PWA
   // vuelve de segundo plano, el video quedaría congelado sin esto.
   useEffect(() => {
@@ -285,21 +337,7 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
-  const d = new Date();
-  const state = getMascotState(
-    {
-      kcalEaten,
-      metaKcal: kcalBudget || profile.metaKcal,
-      proteinG,
-      metaProtein: profile.metaProtein,
-      water,
-      metaWater: profile.metaWater,
-      workoutDone: workout?.done ?? false,
-      hasAnyLog: kcalEaten > 0 || water > 0 || (workout?.done ?? false),
-      hour: d.getHours() + d.getMinutes() / 60,
-    },
-    lastAction
-  );
+  const state = getMascotState(data, lastAction, pulse);
 
   return (
     <motion.div
