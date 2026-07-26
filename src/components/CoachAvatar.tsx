@@ -216,15 +216,21 @@ export function getMascotState(
   return "Respirando";
 }
 
-// El estado base no es UN video: son cuatro que se van turnando, para que
-// la tortuga se vea haciendo cosas en vez de repetir siempre lo mismo.
-const RESPIRANDO_POOL = [
-  "/mascota/Tortuga-Respirando.mp4",
+// El estado base no es UN video: la tortuga respirando tranquila es el
+// ancla (se reproduce DOS veces seguidas) y entre medio se cuela una
+// variación distinta cada vez. Los clips duran ~5s, así que el ciclo es
+// 10s de calma → 5s de acción → 10s de calma → otra acción…
+const BASE_IDLE = "/mascota/Tortuga-Respirando.mp4";
+const BASE_VARIANTS = [
   "/mascota/Tortuga-respirando2.mp4",
   "/mascota/Tortuga-respirando3.mp4",
   "/mascota/Tortuga-respirando4.mp4",
 ];
-const RESPIRANDO_SWAP_MS = 20_000; // cada cuánto cambia de video base
+const BASE_SEQUENCE: { src: string; plays: number }[] = BASE_VARIANTS.flatMap((v) => [
+  { src: BASE_IDLE, plays: 2 },
+  { src: v, plays: 1 },
+]);
+
 const WAKE_MS = 4_000; // cuánto dura el video de despertar
 
 const VIDEO: Record<Exclude<MascotState, "Respirando">, string> = {
@@ -239,9 +245,74 @@ const VIDEO: Record<Exclude<MascotState, "Respirando">, string> = {
   Celebrando: "/mascota/Tortuga-Celebrando.mp4",
 };
 
-function videoFor(state: MascotState, poolIdx: number): string {
-  if (state === "Respirando") return RESPIRANDO_POOL[poolIdx % RESPIRANDO_POOL.length];
+function videoFor(state: MascotState, step: number): string {
+  if (state === "Respirando") return BASE_SEQUENCE[step % BASE_SEQUENCE.length].src;
   return VIDEO[state];
+}
+
+// Frases atadas a lo que la tortuga está HACIENDO en pantalla: si sale
+// corriendo, motiva; si duerme, habla de descansar. Donde el dato ayuda
+// (agua, calorías) la frase trae el número real.
+function phrasesForState(
+  state: MascotState,
+  d: { water: number; metaWater: number; kcalEaten: number; metaKcal: number; burned: number },
+  fallback: string[]
+): string[] {
+  const vasos = Math.max(1, Math.round((d.metaWater - d.water) / 250));
+  switch (state) {
+    case "Durmiendo":
+      return [
+        "Zzz… mañana seguimos.",
+        "Descansar también es progreso.",
+        "Dormir bien baja el antojo del día siguiente.",
+        "A esta hora ya no contamos calorías, contamos ovejas.",
+        "Buenas noches. Apaga el teléfono, va.",
+      ];
+    case "Despertando":
+      return [
+        "¡Buenos días! ¿Arrancamos con un vaso de agua?",
+        "Ya desperté. ¿Qué desayunamos?",
+        "Día nuevo, cuenta nueva. Vamos.",
+      ];
+    case "Aburrida":
+      return [
+        "Aquí esperando… ¿ya comiste algo?",
+        "No he anotado nada hoy. ¿Empezamos?",
+        "Me aburro. Registrame algo, ¿va?",
+        "Sin datos no puedo ayudarte. Tírame uno.",
+      ];
+    case "TomandoAgua":
+      return [
+        `Glup glup. Te faltan ~${vasos} vaso${vasos === 1 ? "" : "s"}.`,
+        `Agua ${d.water}/${d.metaWater} ml. Acompáñame.`,
+        "El agua primero, lo demás después.",
+        "Tomá agua ahorita, no cuando ya tengas sed.",
+      ];
+    case "Ejercicio":
+      return [
+        "¡Vamos! Que el sillón no quema nada.",
+        "20 minutos caminando ya cuentan. Arranca.",
+        d.burned > 0 ? `Llevas ${d.burned} kcal quemadas. Súmale más.` : "Muévete un ratito, aunque sea poquito.",
+        "Sudar hoy es sentirte bien mañana.",
+      ];
+    case "LlenoDeComida":
+      return [
+        "Uf, quedé llena. Vamos suave con la próxima.",
+        `Vas ${d.kcalEaten}/${d.metaKcal} kcal. Agua y a caminar.`,
+        "Nada de culpas — solo ajustamos la cena.",
+        "Comimos bastante. Mañana lo compensamos.",
+      ];
+    case "Celebrando":
+      return [
+        "¡Meta cumplida, crack! 🎉",
+        "Hoy sí que la rompiste.",
+        "¡Así se hace! Estoy orgullosa.",
+        "Día redondo. A dormir como campeón.",
+      ];
+    default:
+      // Respirando: se queda el sistema de frases con datos y tips de siempre.
+      return fallback;
+  }
 }
 
 const STATE_LABEL: Record<MascotState, string> = {
@@ -259,9 +330,10 @@ const STATE_LABEL: Record<MascotState, string> = {
 // calcula aquí adentro con los mismos datos del día.
 export default function CoachAvatar({ messages }: { messages: string[] }) {
   const reduce = useReducedMotion();
-  const { profile, water, kcalEaten, proteinG, kcalBudget, workout } = useApp();
+  const { profile, water, kcalEaten, proteinG, kcalBudget, burnedKcal, workout } = useApp();
   const [i, setI] = useState(0);
-  const message = pick(messages, i);
+  // La frase se decide DESPUÉS de saber el estado (más abajo): así lo que
+  // dice va a juego con lo que la tortuga está haciendo en pantalla.
 
   // Ciclo de la burbuja: la frase se queda un buen rato, luego DESAPARECE
   // unos segundos —para poder ver la tortuga completa, sin nada encima— y
@@ -388,14 +460,23 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
 
   const baseState = getMascotState(data, lastAction, pulse);
 
-  // Rotación del estado base: cada 20s cambia a otro video de "respirando",
-  // así la tortuga se ve haciendo cosas distintas y no repitiendo una sola.
-  const [poolIdx, setPoolIdx] = useState(0);
-  useEffect(() => {
-    if (baseState !== "Respirando") return;
-    const t = setInterval(() => setPoolIdx((n) => n + 1), RESPIRANDO_SWAP_MS);
-    return () => clearInterval(t);
-  }, [baseState]);
+  // Rotación del estado base por REPRODUCCIONES, no por reloj: el clip
+  // termina, se cuenta, y cuando cumplió las pasadas que le tocan (2 a la
+  // original, 1 a cada variación) avanza al siguiente.
+  const [step, setStep] = useState(0);
+  const playsRef = useRef(0);
+
+  const onBaseEnded = (el: HTMLVideoElement) => {
+    playsRef.current += 1;
+    const actual = BASE_SEQUENCE[step % BASE_SEQUENCE.length];
+    if (playsRef.current >= actual.plays) {
+      playsRef.current = 0;
+      setStep((n) => n + 1);
+    } else {
+      el.currentTime = 0;
+      el.play().catch(() => {});
+    }
+  };
 
   // Al salir de "Durmiendo" reproduce el video de despertar unos segundos,
   // en vez de saltar de golpe a la tortuga ya despierta.
@@ -413,7 +494,19 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
   }, [baseState]);
 
   const state: MascotState = waking ? "Despertando" : baseState;
-  const videoSrc = videoFor(state, poolIdx);
+  const videoSrc = videoFor(state, step);
+  const phrases = phrasesForState(
+    state,
+    {
+      water,
+      metaWater: profile.metaWater,
+      kcalEaten,
+      metaKcal: kcalBudget || profile.metaKcal,
+      burned: burnedKcal,
+    },
+    messages
+  );
+  const message = pick(phrases, i);
 
   return (
     <motion.div
@@ -447,7 +540,10 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
           key={videoSrc}
           src={videoSrc}
           autoPlay
-          loop
+          // En el estado base NO se usa loop: hace falta que termine para
+          // contar las pasadas y avanzar la secuencia. El resto sí repite.
+          loop={state !== "Respirando"}
+          onEnded={state === "Respirando" ? (e) => onBaseEnded(e.currentTarget) : undefined}
           muted
           playsInline
           preload="auto"
