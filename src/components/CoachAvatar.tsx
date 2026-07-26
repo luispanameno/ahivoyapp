@@ -171,6 +171,11 @@ function expectedWaterPct(hour: number): number {
 const PULSE_EVERY_MS = 5 * 60_000; // cada cuánto puede aparecer un recordatorio
 const PULSE_SHOW_MS = 8_000; // cuánto dura el gesto antes de volver a respirar
 
+// Ritmo de las frases: cuánto se queda una en pantalla y cuántos segundos
+// de silencio (sin burbuja) van entre una y la siguiente.
+const PHRASE_HOLD_MS = 20_000;
+const PHRASE_GAP_MS = 3_000;
+
 // Qué recordatorio toca (o ninguno) según los datos del momento.
 export function pendingReminder(data: DailyProgress): MascotState | null {
   if (data.metaKcal > 0 && data.kcalEaten > data.metaKcal) return "LlenoDeComida";
@@ -232,14 +237,32 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
   const [i, setI] = useState(0);
   const message = pick(messages, i);
 
-  // Rota sola para que la mascota se sienta viva aunque no la toquen —
-  // con calma (20s): cambiar de frase cada pocos segundos mareaba. Tocar
-  // la tortuga sigue trayendo la siguiente frase al instante.
+  // Ciclo de la burbuja: la frase se queda un buen rato, luego DESAPARECE
+  // unos segundos —para poder ver la tortuga completa, sin nada encima— y
+  // recién ahí entra la siguiente. Encadenar frases sin ese respiro tapaba
+  // el dibujo todo el tiempo.
+  const [bubbleVisible, setBubbleVisible] = useState(true);
+  const [cycleNonce, setCycleNonce] = useState(0);
+
   useEffect(() => {
     if (messages.length < 2) return;
-    const t = setInterval(() => setI((n) => n + 1), 20_000);
-    return () => clearInterval(t);
-  }, [messages.length]);
+    if (bubbleVisible) {
+      const t = setTimeout(() => setBubbleVisible(false), PHRASE_HOLD_MS);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => {
+      setI((n) => n + 1);
+      setBubbleVisible(true);
+    }, PHRASE_GAP_MS);
+    return () => clearTimeout(t);
+  }, [bubbleVisible, cycleNonce, messages.length]);
+
+  // Al tocar: siguiente frase de una vez y se reinicia el ciclo.
+  const nextPhrase = () => {
+    setI((n) => n + 1);
+    setBubbleVisible(true);
+    setCycleNonce((n) => n + 1);
+  };
 
   // ---- Detección de eventos transitorios (comparando contra el valor previo) ----
   const [lastAction, setLastAction] = useState<ActionEvent | undefined>(undefined);
@@ -341,13 +364,13 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
 
   return (
     <motion.div
-      onClick={() => setI((n) => n + 1)}
+      onClick={nextPhrase}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          setI((n) => n + 1);
+          nextPhrase();
         }
       }}
       aria-label={`${STATE_LABEL[state]}: ${message}. Toca para otro consejo.`}
@@ -389,13 +412,15 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
         />
       </AnimatePresence>
 
-      {/* Burbuja de frase: el sistema de frases de siempre, sobre el video. */}
+      {/* Burbuja de frase: aparece, se queda un rato y se va, dejando unos
+          segundos la tortuga sola antes de la siguiente. */}
       <AnimatePresence mode="wait">
+        {bubbleVisible && (
         <motion.div
           key={message}
           initial={reduce ? false : { opacity: 0, y: 8, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={reduce ? undefined : { opacity: 0, y: -6 }}
+          exit={reduce ? undefined : { opacity: 0, y: 6, scale: 0.96 }}
           transition={{ type: "spring", stiffness: 380, damping: 24 }}
           className="absolute left-3 right-3 bottom-3 pointer-events-none"
         >
@@ -417,6 +442,7 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
             {message}
           </div>
         </motion.div>
+        )}
       </AnimatePresence>
     </motion.div>
   );
