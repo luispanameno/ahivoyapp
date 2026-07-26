@@ -4,6 +4,7 @@
 
 import { useRouter } from "next/navigation";
 import Icon from "@/components/Icon";
+import MascotIllustration from "@/components/MascotIllustration";
 import Pressable from "@/components/Pressable";
 import { useApp } from "@/lib/store";
 import { MealTime } from "@/lib/types";
@@ -30,10 +31,13 @@ export default function Historial() {
       <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>{subtitle}</div>
 
       {groups.length === 0 && drinks.length === 0 && (
-        <div style={{ marginTop: 40, textAlign: "center", color: "rgba(244,243,238,.45)", fontSize: 13, lineHeight: 1.6 }}>
-          Aún no registras comidas hoy.
-          <br />
-          Usa el botón central para escanear tu plato 📸
+        <div style={{ marginTop: 28, display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <MascotIllustration art="historial-vacia" height={190} />
+          <div style={{ marginTop: 14, textAlign: "center", color: "rgba(244,243,238,.45)", fontSize: 13, lineHeight: 1.6 }}>
+            Aún no registras comidas hoy.
+            <br />
+            Usa el botón central para escanear tu plato.
+          </div>
         </div>
       )}
 

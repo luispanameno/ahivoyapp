@@ -8,6 +8,7 @@ import Toast from "@/components/Toast";
 import OnboardingWizard from "@/components/OnboardingWizard";
 import HomeSkeleton from "@/components/Skeleton";
 import Pressable from "@/components/Pressable";
+import MascotIllustration, { MascotArt } from "@/components/MascotIllustration";
 
 // Rutas donde el prototipo oculta la barra de navegación. /escanear se
 // dejó FUERA a propósito: la barra siempre visible ayuda a orientarse
@@ -27,7 +28,11 @@ function CenteredMessage({
 }) {
   return (
     <div style={{ height: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: "0 32px", textAlign: "center", boxSizing: "border-box" }}>
-      {icon.startsWith("/") ? (
+      {/* "mascota:<arte>" muestra la ilustración de la tortuga; el resto
+          sigue aceptando una ruta de ícono o un emoji. */}
+      {icon.startsWith("mascota:") ? (
+        <MascotIllustration art={icon.slice(8) as MascotArt} height={180} />
+      ) : icon.startsWith("/") ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={icon} alt="" width={56} height={56} style={{ display: "block" }} />
       ) : (
@@ -64,7 +69,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   if (profile.status === "pending") {
     return (
       <CenteredMessage
-        icon="/icons/glyphs/pending.png"
+        icon="mascota:en-revision"
         title="Tu cuenta está en revisión"
         body="El equipo de AHIVOYAPP está revisando tu solicitud. En cuanto te aprobemos vas a tener acceso completo — no debería tardar mucho."
         action={

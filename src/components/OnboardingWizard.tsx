@@ -15,6 +15,7 @@ import Pressable from "./Pressable";
 import UploadCard from "./UploadCard";
 import Icon from "./Icon";
 import AvatarEditor from "./AvatarEditor";
+import MascotIllustration from "./MascotIllustration";
 import { analyze, fileToDataURL } from "@/lib/analyze";
 import { useApp } from "@/lib/store";
 import { ACTIVITY_FACTORS, ActivityLevel } from "@/lib/types";
@@ -300,10 +301,11 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
         <AnimatePresence mode="popLayout" initial={false}>
           {step === 0 && (
             <motion.div key="s0" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
+              <MascotIllustration art="bienvenida" height={132} style={{ marginBottom: 10 }} />
               <div className="font-sora" style={heroTitleStyle}>
                 Antes de arrancar…
               </div>
-              <div style={{ ...subtitleStyle, fontSize: 13, color: "rgba(244,243,238,.6)", marginTop: 8, marginBottom: 28 }}>
+              <div style={{ ...subtitleStyle, fontSize: 13, color: "rgba(244,243,238,.6)", marginTop: 8, marginBottom: 24 }}>
                 Contanos si eres hombre o mujer (lo usamos para calcular tu metabolismo) y, si querés, subí una foto de perfil.
               </div>
               <div style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
@@ -392,23 +394,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
 
           {step === 1 && (
             <motion.div key="s1" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
-              <div
-                style={{
-                  width: 72,
-                  height: 72,
-                  borderRadius: 22,
-                  background: "linear-gradient(135deg,#a6f06a,#39c9a3)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 34,
-                  boxShadow: "0 0 30px rgba(199,242,122,.4)",
-                  marginBottom: 20,
-                  alignSelf: "center",
-                }}
-              >
-                {sex === "F" ? "😍" : "😎"}
-              </div>
+              <MascotIllustration art="saludo-guapo" height={158} style={{ marginBottom: 12 }} />
               <div className="font-sora" style={heroTitleStyle}>
                 {sex === "F" ? "¡Qué guapa eres!" : "¡Qué guapo eres!"}
               </div>
@@ -432,6 +418,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
 
           {step === 2 && (
             <motion.div key="s2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
+              <MascotIllustration art="motivo" height={96} glow={false} style={{ marginBottom: 6 }} />
               <div className="font-sora" style={titleStyle}>
                 {displayName ? `¿Qué te trae por acá, ${displayName}?` : "¿Qué te trae por acá?"}
               </div>
@@ -457,6 +444,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
 
           {step === 3 && (
             <motion.div key="s3" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
+              <MascotIllustration art="numeros" height={104} style={{ marginBottom: 4 }} />
               <div className="font-sora" style={titleStyle}>
                 Ahora hablemos de números
               </div>
@@ -482,6 +470,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
 
           {step === 4 && (
             <motion.div key="s4" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
+              <MascotIllustration art="meta-peso" height={116} style={{ marginBottom: 4 }} />
               <div className="font-sora" style={titleStyle}>
                 ¿Cuál es tu meta de peso?
               </div>
@@ -504,6 +493,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
 
           {step === 5 && (
             <motion.div key="s5" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
+              <MascotIllustration art="actividad" height={100} style={{ marginBottom: 4 }} />
               <div className="font-sora" style={titleStyle}>
                 Tu nivel de actividad diaria
               </div>
@@ -598,6 +588,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
 
           {step === 8 && (
             <motion.div key="s8" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
+              <MascotIllustration art="bascula" height={108} style={{ marginBottom: 4 }} />
               <div className="font-sora" style={titleStyle}>
                 ¿Tienes báscula inteligente?
               </div>
