@@ -17,7 +17,9 @@ export type CoachMood = "sleeping" | "alert" | "happy";
 
 export type MascotState =
   | "Respirando"
+  | "Aburrida"
   | "Durmiendo"
+  | "Despertando"
   | "TomandoAgua"
   | "Ejercicio"
   | "LlenoDeComida"
@@ -207,22 +209,46 @@ export function getMascotState(
   if (data.hour >= 23 || data.hour < 6) return "Durmiendo";
   if (!data.hasAnyLog && data.hour >= 20) return "Durmiendo";
 
-  // 6b) Base: respirando tranquilo.
+  // 6b) Aburrida: es de día y todavía no has registrado nada.
+  if (!data.hasAnyLog) return "Aburrida";
+
+  // 6c) Base: respirando tranquila (rota entre varios videos).
   return "Respirando";
 }
 
-const VIDEO: Record<MascotState, string> = {
-  Respirando: "/mascota/Tortuga-Respirando.mp4",
-  Durmiendo: "/mascota/Tortuga-Durmiendo.mp4",
+// El estado base no es UN video: son cuatro que se van turnando, para que
+// la tortuga se vea haciendo cosas en vez de repetir siempre lo mismo.
+const RESPIRANDO_POOL = [
+  "/mascota/Tortuga-Respirando.mp4",
+  "/mascota/Tortuga-respirando2.mp4",
+  "/mascota/Tortuga-respirando3.mp4",
+  "/mascota/Tortuga-respirando4.mp4",
+];
+const RESPIRANDO_SWAP_MS = 20_000; // cada cuánto cambia de video base
+const WAKE_MS = 4_000; // cuánto dura el video de despertar
+
+const VIDEO: Record<Exclude<MascotState, "Respirando">, string> = {
+  // El "Durmiendo" original no se veía dormida: ahora es la cara de
+  // aburrimiento de cuando no hay nada registrado todavía.
+  Aburrida: "/mascota/Tortuga-Durmiendo.mp4",
+  Durmiendo: "/mascota/Tortuga-durmiendo2.mp4",
+  Despertando: "/mascota/Tortuga-despertando.mp4",
   TomandoAgua: "/mascota/Tortuga-TomandoAgua.mp4",
   Ejercicio: "/mascota/Tortuga-Ejercicio.mp4",
   LlenoDeComida: "/mascota/Tortuga-LlenoDeComida.mp4",
   Celebrando: "/mascota/Tortuga-Celebrando.mp4",
 };
 
+function videoFor(state: MascotState, poolIdx: number): string {
+  if (state === "Respirando") return RESPIRANDO_POOL[poolIdx % RESPIRANDO_POOL.length];
+  return VIDEO[state];
+}
+
 const STATE_LABEL: Record<MascotState, string> = {
   Respirando: "Tu coach está tranquilo",
+  Aburrida: "Tu coach está aburrida esperándote",
   Durmiendo: "Tu coach está durmiendo",
+  Despertando: "Tu coach está despertando",
   TomandoAgua: "Tu coach te recuerda tomar agua",
   Ejercicio: "Tu coach te recuerda el ejercicio",
   LlenoDeComida: "Tu coach quedó lleno de comida",
@@ -360,7 +386,34 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
-  const state = getMascotState(data, lastAction, pulse);
+  const baseState = getMascotState(data, lastAction, pulse);
+
+  // Rotación del estado base: cada 20s cambia a otro video de "respirando",
+  // así la tortuga se ve haciendo cosas distintas y no repitiendo una sola.
+  const [poolIdx, setPoolIdx] = useState(0);
+  useEffect(() => {
+    if (baseState !== "Respirando") return;
+    const t = setInterval(() => setPoolIdx((n) => n + 1), RESPIRANDO_SWAP_MS);
+    return () => clearInterval(t);
+  }, [baseState]);
+
+  // Al salir de "Durmiendo" reproduce el video de despertar unos segundos,
+  // en vez de saltar de golpe a la tortuga ya despierta.
+  const [waking, setWaking] = useState(false);
+  const prevSleepRef = useRef(baseState === "Durmiendo");
+  useEffect(() => {
+    const wasSleeping = prevSleepRef.current;
+    const isSleeping = baseState === "Durmiendo";
+    prevSleepRef.current = isSleeping;
+    if (wasSleeping && !isSleeping) {
+      setWaking(true);
+      const t = setTimeout(() => setWaking(false), WAKE_MS);
+      return () => clearTimeout(t);
+    }
+  }, [baseState]);
+
+  const state: MascotState = waking ? "Despertando" : baseState;
+  const videoSrc = videoFor(state, poolIdx);
 
   return (
     <motion.div
@@ -389,8 +442,10 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
           entrante (ambos absolutos), sin cortes negros. */}
       <AnimatePresence initial={false}>
         <motion.video
-          key={state}
-          src={VIDEO[state]}
+          // key por SRC (no por estado): dentro de "Respirando" el video
+          // cambia cada 20s y cada cambio necesita su propio crossfade.
+          key={videoSrc}
+          src={videoSrc}
           autoPlay
           loop
           muted
