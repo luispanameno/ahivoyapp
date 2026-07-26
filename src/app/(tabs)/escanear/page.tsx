@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import Pressable from "@/components/Pressable";
 import Icon from "@/components/Icon";
+import ScannerViewfinder from "@/components/ScannerViewfinder";
 import { analyze, fileToDataURL, FoodResult } from "@/lib/analyze";
 import { resizeDataURL } from "@/lib/img";
 import { useApp, currentMealTime } from "@/lib/store";
@@ -122,24 +123,66 @@ export default function Escanear() {
           padding: "calc(16px + env(safe-area-inset-top)) 28px calc(20px + env(safe-area-inset-bottom))",
         }}
       >
+        {/* Halo verde de fondo: reemplaza el rayado diagonal, que competía
+            visualmente con la rejilla del visor. */}
         <div
           style={{
             position: "absolute",
             inset: 0,
-            background: "repeating-linear-gradient(45deg,#14161a,#14161a 10px,#101214 10px,#101214 20px)",
-            opacity: 0.6,
+            background: "radial-gradient(90% 50% at 50% 42%, rgba(199,242,122,.08) 0%, rgba(8,9,10,0) 70%)",
           }}
         />
-        <div style={{ position: "relative", display: "flex", alignItems: "center", flex: "none" }}>
+        {/* Cabecera: volver + título + estado de la IA */}
+        <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 14, flex: "none" }}>
           <Pressable
             onClick={() => router.push("/hoy")}
-            style={{ fontSize: 13, fontWeight: 700, color: "rgba(244,243,238,.7)", cursor: "pointer", minHeight: 44, display: "flex", alignItems: "center" }}
+            ariaLabel="Volver a Hoy"
+            style={{
+              width: 44,
+              height: 44,
+              flex: "none",
+              borderRadius: "50%",
+              background: "#1b1e21",
+              border: "1px solid rgba(255,255,255,.08)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              boxSizing: "border-box",
+            }}
           >
-            ‹ Volver
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M19 12H5M11 18l-6-6 6-6" stroke="#c7f27a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </Pressable>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="font-sora" style={{ fontSize: 19, fontWeight: 800, lineHeight: 1.15 }}>
+              Escáner de Comida
+            </div>
+            <div style={{ fontSize: 12, color: "rgba(244,243,238,.55)", marginTop: 2 }}>
+              Analiza tu comida con <span style={{ color: "#c7f27a", fontWeight: 700 }}>IA</span>
+            </div>
+          </div>
         </div>
-        <div style={{ position: "relative", textAlign: "center", fontSize: 12, fontWeight: 600, color: "rgba(244,243,238,.7)", flex: "none", marginTop: -8 }}>
-          Toca para tomar o elegir la foto de tu plato
+
+        <div style={{ position: "relative", display: "flex", justifyContent: "center", flex: "none", marginTop: 12 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "7px 14px",
+              borderRadius: 100,
+              background: "rgba(199,242,122,.08)",
+              border: "1px solid rgba(199,242,122,.22)",
+              fontSize: 11.5,
+              fontWeight: 700,
+              color: "rgba(244,243,238,.8)",
+            }}
+          >
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#c7f27a", boxShadow: "0 0 8px #c7f27a" }} />
+            IA lista para analizar
+          </div>
         </div>
         {error && (
           <div
@@ -160,37 +203,10 @@ export default function Escanear() {
             {error}
           </div>
         )}
-        {/* Visor centrado: crece con el espacio disponible pero nunca empuja
-            los botones fuera de la pantalla (minHeight en vez de un alto fijo). */}
-        <div
-          style={{
-            position: "relative",
-            flex: 1,
-            minHeight: 90,
-            maxHeight: 320,
-            margin: "16px 0",
-            borderRadius: 24,
-            border: "1.5px dashed rgba(255,255,255,.25)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: "50%",
-              background: "#f4f3ee",
-              border: "4px solid rgba(244,243,238,.4)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 26,
-            }}
-          >
-            📷
-          </div>
+        {/* Visor: crece con el espacio disponible pero nunca empuja los
+            botones fuera de la pantalla (minHeight en vez de alto fijo). */}
+        <div style={{ position: "relative", flex: 1, minHeight: 150, maxHeight: 360, margin: "14px 0", display: "flex" }}>
+          <ScannerViewfinder />
         </div>
         {/* Botones: en flujo normal, nunca posicionados a ciegas — así
             siempre caben, incluso en pantallas cortas. */}
@@ -202,17 +218,22 @@ export default function Escanear() {
               alignItems: "center",
               justifyContent: "center",
               gap: 10,
-              background: "#c7f27a",
+              background: "linear-gradient(180deg,#d4f78a,#b4e85f)",
               color: "#10240a",
-              borderRadius: 20,
-              padding: "15px 18px",
+              borderRadius: 100,
+              padding: "16px 18px",
               fontWeight: 800,
-              fontSize: 14.5,
+              fontSize: 15,
               cursor: "pointer",
-              boxShadow: "0 0 16px rgba(199,242,122,.4)",
+              boxShadow: "0 0 28px rgba(199,242,122,.55)",
             }}
           >
-            <span style={{ fontSize: 20 }}>📷</span> Tomar foto
+            <svg width="21" height="21" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+              <path d="M4 13V7a3 3 0 0 1 3-3h6M36 13V7a3 3 0 0 0-3-3h-6M4 27v6a3 3 0 0 0 3 3h6M36 27v6a3 3 0 0 1-3 3h-6"
+                stroke="#10240a" strokeWidth="3" strokeLinecap="round" />
+              <path d="M20 13v14M13 20h14" stroke="#10240a" strokeWidth="3" strokeLinecap="round" />
+            </svg>
+            Escanear comida
           </Pressable>
           <Pressable
             onClick={() => galleryInputRef.current?.click()}
@@ -223,7 +244,7 @@ export default function Escanear() {
               gap: 10,
               background: "#1b1e21",
               color: "#f4f3ee",
-              borderRadius: 20,
+              borderRadius: 100,
               padding: "15px 18px",
               fontWeight: 700,
               fontSize: 14.5,
