@@ -601,11 +601,10 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
                   <div className="font-sora" style={{ fontSize: 15, fontWeight: 800, marginTop: 2 }}>{goals.tdee.toLocaleString()} kcal</div>
                 </div>
               </div>
-              <div style={{ fontSize: 11, color: "rgba(244,243,238,.4)", marginBottom: 12, lineHeight: 1.4, textAlign: "center" }}>
+              <div style={{ fontSize: 11, color: "rgba(244,243,238,.4)", marginBottom: 10, lineHeight: 1.4, textAlign: "center" }}>
                 {wantsToLose
-                  ? `Tu meta = tu gasto total (TDEE) − 450 kcal, el déficit diario que se considera seguro (~1 lb cada 8 días).`
-                  : `Tu meta = tu gasto total (TDEE), para mantener tu peso actual.`}{" "}
-                Si prefieres otro ritmo, edita las calorías cuando quieras en Perfil.
+                  ? "Tu meta = TDEE − 450 kcal, el déficit diario que se considera seguro (~1 lb cada 8 días)."
+                  : "Tu meta = tu gasto total (TDEE), para mantener tu peso actual."}
               </div>
               <div style={{ background: "#1b1e21", borderRadius: 20, padding: 16 }}>
                 {[
@@ -632,6 +631,10 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
                   </div>
                 ))}
               </div>
+              {/* Cierra celebrando. Va con el borde inferior recortado para
+                  que asome por detrás del botón "Empezar" sin taparlo, pero
+                  con la cabeza siempre completa a la vista. */}
+              <MascotIllustration art="bienvenida" height={112} style={{ marginTop: 6, marginBottom: -14 }} />
             </motion.div>
           )}
         </AnimatePresence>
