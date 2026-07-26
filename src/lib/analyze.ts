@@ -33,11 +33,14 @@ export interface CoachAction {
     | "set_meta_kcal"
     | "log_meal"
     | "log_sleep"
+    | "delete_sleep"
     | "log_workout"
+    | "delete_workout"
     | "delete_meal"
     | "update_meal"
     | "set_macros"
-    | "set_body_comp";
+    | "set_body_comp"
+    | "set_activity";
   ml?: number;
   lb?: number;
   kcal?: number;
@@ -61,6 +64,12 @@ export interface CoachAction {
   grasa_visceral?: number;
   musculo_lb?: number;
   masa_osea_lb?: number;
+  // set_activity (reloj: pasos/calorías, del chat o de un registro manual)
+  pasos?: number;
+  min_activos?: number;
+  kcal_activas?: number;
+  kcal_totales?: number;
+  distancia_km?: number;
 }
 
 export interface CoachResult {

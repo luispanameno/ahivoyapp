@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "motion/react";
 import Pressable from "@/components/Pressable";
 import Icon from "@/components/Icon";
 import CoachAvatar, { useCoachMood } from "@/components/CoachAvatar";
+import ActivityDetailModal from "@/components/ActivityDetailModal";
 import { useApp } from "@/lib/store";
 
 const DIAS = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
@@ -134,6 +135,7 @@ export default function Hoy() {
   const app = useApp();
   const [waterStep, setWaterStep] = useState("250");
   const [showRemaining, setShowRemaining] = useState(false);
+  const [activityModalOpen, setActivityModalOpen] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -148,6 +150,7 @@ export default function Hoy() {
     activity,
     workout,
     sleep,
+    routine,
     kcalEaten,
     proteinG,
     carbsG,
@@ -173,6 +176,16 @@ export default function Hoy() {
   const sleepLabel = sleep
     ? `${Math.floor(sleepMins / 60)}h ${String(sleepMins % 60).padStart(2, "0")}m`
     : "sin registro";
+
+  // Resumen dinámico de la tarjeta de actividad: distingue rutina de pesas
+  // marcada como hecha de solo actividad general del reloj (caminata, etc.)
+  const activitySummary = workout?.done
+    ? `Rutina hecha · ${workout.day}`
+    : (activity?.steps ?? 0) > 3000
+    ? "Solo caminata"
+    : activity
+    ? "Actividad ligera"
+    : "Sin registrar aún";
 
   let limitAlertText: string | null = null;
   if (kcalEaten > kcalBudget)
@@ -448,33 +461,50 @@ export default function Hoy() {
         </div>
       </div>
 
-      {/* Accesos entrenamiento / sueño */}
-      <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-        <Pressable
-          onClick={() => router.push("/entrenamiento")}
-          hoverScale={1}
-          style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, background: "#1b1e21", borderRadius: 18, padding: "10px 12px", minHeight: 44, boxSizing: "border-box", cursor: "pointer" }}
-        >
-          <div style={{ width: 8, height: 8, borderRadius: 2, background: "#c7f27a", flex: "none" }} />
-          <div style={{ flex: 1, fontSize: 11.5, fontWeight: 700, color: "rgba(244,243,238,.75)" }}>
-            {workout?.done ? `${workout.day} · ${workout.kcal} kcal` : "Tu rutina de hoy"}
+      {/* Tarjeta Sueño: total grande + barra horizontal de fases (solo lectura,
+          revelación progresiva — el detalle completo vive en /sueno). El
+          acceso a la rutina ya no vive aquí: se ve completo al tocar la
+          tarjeta "Actividad de hoy" más abajo (evita el mismo dato dos veces). */}
+      <Pressable
+        onClick={() => router.push("/sueno")}
+        hoverScale={1}
+        style={{ display: "block", background: "#1b1e21", borderRadius: 24, padding: 16, marginTop: 12, cursor: "pointer" }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <Icon name="sleep" size={16} />
+            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".04em" }}>SUEÑO</div>
           </div>
-          <div style={{ fontSize: 11, color: workout?.done ? "#c7f27a" : "rgba(244,243,238,.4)" }}>
-            {workout?.done ? "✓ Hecho" : "Ver ›"}
+          {sleep && (
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: sleepOk ? "#c7f27a" : "oklch(75% 0.15 60)" }}>
+              {sleepOk ? "Dentro de tu meta" : "Bajo tu meta de 7–8h"}
+            </div>
+          )}
+        </div>
+        <div className="font-sora" style={{ fontSize: 26, fontWeight: 800, textShadow: "0 0 12px oklch(72% 0.15 300 / 0.4)" }}>
+          {sleepLabel}
+        </div>
+        {sleep?.phases ? (
+          <>
+            <div style={{ display: "flex", height: 10, borderRadius: 100, overflow: "hidden", marginTop: 12 }}>
+              <div style={{ width: `${sleep.phases.deep}%`, background: "oklch(55% 0.18 290)" }} />
+              <div style={{ width: `${sleep.phases.light}%`, background: "oklch(68% 0.14 260)" }} />
+              <div style={{ width: `${sleep.phases.rem}%`, background: "oklch(78% 0.12 220)" }} />
+              <div style={{ width: `${sleep.phases.awake}%`, background: "rgba(255,255,255,.15)" }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 9.5, color: "rgba(244,243,238,.45)" }}>
+              <span>Profundo {sleep.phases.deep}%</span>
+              <span>Ligero {sleep.phases.light}%</span>
+              <span>REM {sleep.phases.rem}%</span>
+              <span>Despierto {sleep.phases.awake}%</span>
+            </div>
+          </>
+        ) : (
+          <div style={{ fontSize: 11, color: "rgba(244,243,238,.4)", marginTop: 10 }}>
+            {sleep ? "Sin datos de fases — solo duración" : "Toca para anotar tus horas"}
           </div>
-        </Pressable>
-        <Pressable
-          onClick={() => router.push("/sueno")}
-          hoverScale={1}
-          style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, background: "#1b1e21", borderRadius: 18, padding: "10px 12px", minHeight: 44, boxSizing: "border-box", cursor: "pointer" }}
-        >
-          <Icon name="sleep" size={18} />
-          <div style={{ flex: 1, fontSize: 11.5, fontWeight: 700, color: "rgba(244,243,238,.75)" }}>Anoche: {sleepLabel}</div>
-          <div style={{ fontSize: 11, color: sleepOk ? "#c7f27a" : "oklch(75% 0.15 60)" }}>
-            {sleep ? (sleepOk ? "✓ Meta" : "Bajo meta") : "›"}
-          </div>
-        </Pressable>
-      </div>
+        )}
+      </Pressable>
 
       {/* Alerta de límite */}
       {limitAlertText && (
@@ -512,12 +542,30 @@ export default function Hoy() {
         <div style={{ flex: 1, fontSize: 11, fontWeight: 600, color: "rgba(244,243,238,.7)", lineHeight: 1.4 }}>{menuSuggestion}</div>
       </div>
 
-      {/* Actividad de hoy (rueda estilo Samsung Health) */}
+      {/* Actividad de hoy (rueda estilo Samsung Health) — interactiva: al
+          tocarla se abre el detalle completo (revelación progresiva). */}
       <div style={{ marginTop: 12 }}>
-        <div style={{ borderRadius: 24, background: "#1b1e21", padding: 16, animation: "fadeUp .5s ease both" }}>
+        <motion.div
+          onClick={() => setActivityModalOpen(true)}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: "spring", stiffness: 400, damping: 25 }}
+          role="button"
+          tabIndex={0}
+          aria-label="Ver detalle de actividad"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setActivityModalOpen(true);
+            }
+          }}
+          style={{ borderRadius: 24, background: "#1b1e21", padding: 16, animation: "fadeUp .5s ease both", cursor: "pointer" }}
+        >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".04em" }}>ACTIVIDAD DE HOY</div>
-            <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.35)" }}>de tu reloj</div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".04em" }}>ACTIVIDAD DE HOY</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#c7f27a", marginTop: 2 }}>{activitySummary}</div>
+            </div>
+            <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.35)" }}>Ver detalle ›</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
             <div style={{ position: "relative", width: 132, height: 132, flex: "none" }}>
@@ -619,8 +667,17 @@ export default function Hoy() {
             🔥 {burnedKcal} kcal quemadas suman a tu meta →{" "}
             <span style={{ color: "#c7f27a", fontWeight: 800 }}>{kcalRemaining} kcal disponibles</span> hoy
           </div>
-        </div>
+        </motion.div>
       </div>
+
+      <ActivityDetailModal
+        open={activityModalOpen}
+        onClose={() => setActivityModalOpen(false)}
+        activity={activity}
+        workout={workout}
+        exercises={workout?.done ? routine[workout.day] : []}
+        burnedKcal={burnedKcal}
+      />
     </div>
   );
 }

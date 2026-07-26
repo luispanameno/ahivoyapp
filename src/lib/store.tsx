@@ -13,6 +13,7 @@ import { usePathname, useRouter } from "next/navigation";
 import * as db from "./db";
 import { getSupabase, isSupabaseConfigured } from "./supabase";
 import { analyze, CoachAction, CoachResult } from "./analyze";
+import { resizeDataURL } from "./img";
 import {
   Activity,
   BodyComp,
@@ -59,9 +60,10 @@ function loadChat(userId: string | null, greeting: ChatMessage): ChatMessage[] {
 
 function saveChat(userId: string | null, messages: ChatMessage[]) {
   try {
-    // Sin imágenes (pesan mucho): se reemplazan por un marcador.
-    const light = messages.map((m) => (m.image ? { ...m, image: "", text: m.text || "(foto)" } : m));
-    localStorage.setItem(chatKey(userId), JSON.stringify({ messages: light.slice(-60) }));
+    // Las imágenes que llegan aquí ya son miniaturas chicas (ver sendChat):
+    // se guardan tal cual, así las fotos del historial siguen visibles
+    // después de cerrar y reabrir la app, en vez de perderse.
+    localStorage.setItem(chatKey(userId), JSON.stringify({ messages: messages.slice(-60) }));
   } catch {
     // sin espacio: no pasa nada
   }
@@ -525,6 +527,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             else if (a.type === "set_goal_weight" && a.lb) await setWeightGoal(a.lb);
             else if (a.type === "set_meta_kcal" && a.kcal) await saveProfile({ ...profile, metaKcal: a.kcal });
             else if (a.type === "log_sleep" && a.minutos) await setSleep({ minutes: a.minutos, phases: sleep?.phases ?? null });
+            else if (a.type === "delete_sleep") await setSleep({ minutes: 0, phases: null });
             else if (a.type === "log_workout")
               await setWorkout({
                 day: workout?.day ?? "Push",
@@ -532,6 +535,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 kcal: a.kcal ?? 300,
                 name: a.nombre ?? "Entrenamiento",
                 notes: workout?.notes ?? "",
+              });
+            else if (a.type === "delete_workout")
+              await setWorkout({ day: workout?.day ?? "Push", done: false, kcal: 0, name: "", notes: workout?.notes ?? "" });
+            else if (a.type === "set_activity")
+              await setActivity({
+                steps: Math.round(a.pasos ?? 0),
+                activeMin: Math.round(a.min_activos ?? 0),
+                activityKcal: Math.round(a.kcal_activas ?? 0),
+                totalKcal: Math.round(a.kcal_totales ?? 0),
+                distance: a.distancia_km ?? 0,
+                synced: true,
               });
             else if (a.type === "log_meal" && a.desc)
               await addMeal({
@@ -604,6 +618,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 });
             } else if (a.type === "log_sleep" && a.minutos) {
               await db.setSleep(fecha, { minutes: a.minutos, phases: null });
+            } else if (a.type === "delete_sleep") {
+              await db.setSleep(fecha, { minutes: 0, phases: null });
             } else if (a.type === "log_workout") {
               await db.setWorkout(fecha, {
                 day: (workout?.day ?? "Push") as RoutineDay,
@@ -611,6 +627,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 kcal: a.kcal ?? 300,
                 name: a.nombre ?? "Entrenamiento",
                 notes: "",
+              });
+            } else if (a.type === "delete_workout") {
+              await db.setWorkout(fecha, { day: (workout?.day ?? "Push") as RoutineDay, done: false, kcal: 0, name: "", notes: "" });
+            } else if (a.type === "set_activity") {
+              await db.setActivity(fecha, {
+                steps: Math.round(a.pasos ?? 0),
+                activeMin: Math.round(a.min_activos ?? 0),
+                activityKcal: Math.round(a.kcal_activas ?? 0),
+                totalKcal: Math.round(a.kcal_totales ?? 0),
+                distance: a.distancia_km ?? 0,
+                synced: true,
               });
             } else if (a.type === "set_weight" && a.lb) {
               await db.addWeight({ date: fecha, lb: a.lb });
@@ -637,6 +664,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveProfile,
       setSleep,
       setWorkout,
+      setActivity,
       addMeal,
       setBodyComp,
       showToast,
@@ -650,7 +678,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // En un reenvío automático el mensaje del usuario ya está en el
       // historial guardado: volver a agregarlo lo duplicaría.
       if (!opts?.resend) {
-        const userMsg: ChatMessage = { role: "user", text: clean, image };
+        // La miniatura (chica) es lo que se MUESTRA y se GUARDA — así la foto
+        // sigue visible en el historial después de cerrar la app. La imagen
+        // ORIGINAL (más grande) es la que se manda a analizar más abajo, para
+        // no perder calidad en la lectura de báscula/reloj.
+        let thumb = image;
+        if (image) {
+          try {
+            thumb = await resizeDataURL(image, 480, 0.8);
+          } catch {
+            // si falla el redimensionado, se muestra la original tal cual
+          }
+        }
+        const userMsg: ChatMessage = { role: "user", text: clean, image: thumb };
         setChatMessages((prev) => [...prev, userMsg]);
       }
       setChatTyping(true);

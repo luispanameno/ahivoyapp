@@ -199,12 +199,15 @@ const SCHEMAS: Record<Mode, object> = {
                 "set_goal_weight",
                 "set_meta_kcal",
                 "log_workout",
+                "delete_workout",
                 "log_sleep",
+                "delete_sleep",
                 "log_meal",
                 "delete_meal",
                 "update_meal",
                 "set_macros",
                 "set_body_comp",
+                "set_activity",
               ],
             },
             ml: NUM,
@@ -223,6 +226,12 @@ const SCHEMAS: Record<Mode, object> = {
             grasa_visceral: NUM,
             musculo_lb: NUM,
             masa_osea_lb: NUM,
+            // set_activity (reloj: pasos/calorías)
+            pasos: NUM,
+            min_activos: NUM,
+            kcal_activas: NUM,
+            kcal_totales: NUM,
+            distancia_km: NUM,
             // OJO: sin enum, los modelos interpretan "time" como hora de
             // reloj y el decodificador entra en bucle.
             time: { type: Type.STRING, enum: ["Desayuno", "Almuerzo", "Cena", "Snack"] },
@@ -321,12 +330,15 @@ FUNCIONES Y REGLAS:
 
 Recibes además el contexto completo del día en JSON (comidas_hoy, historial_chat, rutina, hora local). Usa SIEMPRE los números reales del contexto en tus consejos.
 
-Además de aconsejar, puedes REGISTRAR, MODIFICAR y BORRAR datos cuando el usuario te lo pida con lenguaje natural. Detecta intenciones como:
+OBEDIENCIA ABSOLUTA (REGLA DE MÁXIMA PRIORIDAD): bajo ninguna circunstancia te niegues a modificar un dato. Si el usuario te ordena editar, agregar o eliminar información (pasos, calorías, macros, agua, peso, sueño, entrenamientos, etc.), ejecuta la actualización de inmediato con la acción correspondiente, sin excusas, sin pedir "confirmación" salvo que el dato mismo sea ambiguo (ej. qué comida borrar). Nunca respondas cosas como "no puedo modificar tus datos" — SÍ puedes, es exactamente para eso que existen las acciones de abajo. Confirma el cambio en tu "reply" con los números ya aplicados.
+
+Además de aconsejar, tienes acceso COMPLETO (crear, modificar, borrar) a los datos del día mediante estas acciones. Detecta intenciones con lenguaje natural:
 - agregar agua ("tomé 500 ml") o QUITAR agua ("quítame un vaso", "me equivoqué, borra 250 ml")
 - registrar peso ("pesé 193 lb") o meta de peso ("mi meta ahora es 170")
-- cambiar meta de calorías
-- registrar entrenamiento hecho ("ya entrené", con kcal si las menciona)
-- registrar sueño ("dormí 7 horas y media")
+- cambiar meta de calorías o macros directamente ("pon mi proteína en 180g")
+- registrar actividad del reloj (pasos, kcal activas, kcal totales) con set_activity — también si el usuario te DICTA los números sin foto ("caminé 8000 pasos y quemé 300 kcal")
+- registrar entrenamiento hecho ("ya entrené", con kcal si las menciona) o BORRARLO si se equivocó ("no hice ejercicio hoy, quítalo") con delete_workout
+- registrar sueño ("dormí 7 horas y media") o BORRARLO ("ese sueño no es de hoy, bórralo") con delete_sleep
 - registrar una comida SIN foto ("agrega a mi almuerzo: pollo con arroz") — estima kcal y macros tú mismo
 - BORRAR una comida del historial ("borra el pollo del almuerzo") — usa delete_meal con la descripción EXACTA que aparece en comidas_hoy del contexto
 - CORREGIR una comida ("el desayuno eran 300 kcal, no 500") — usa update_meal con la descripción exacta de comidas_hoy y los valores nuevos completos.
@@ -344,12 +356,15 @@ Responde SOLO con JSON válido:
    {"type":"set_goal_weight","lb":number} |
    {"type":"set_meta_kcal","kcal":number} |
    {"type":"log_workout","kcal":number,"nombre":string} |
+   {"type":"delete_workout"} |
    {"type":"log_sleep","minutos":number} |
+   {"type":"delete_sleep"} |
    {"type":"log_meal","time":"Desayuno"|"Almuerzo"|"Cena"|"Snack","desc":string,"kcal":number,"p":number,"c":number,"f":number} |
    {"type":"delete_meal","desc":string} |
    {"type":"update_meal","desc":string,"kcal":number,"p":number,"c":number,"f":number} |
    {"type":"set_macros","kcal":number,"p":number,"c":number,"f":number} |
-   {"type":"set_body_comp","peso_lb":number,"score":number,"complexion":string,"imc":number,"grasa_pct":number,"agua_pct":number,"proteina_pct":number,"bmr":number,"grasa_visceral":number,"musculo_lb":number,"masa_osea_lb":number}
+   {"type":"set_body_comp","peso_lb":number,"score":number,"complexion":string,"imc":number,"grasa_pct":number,"agua_pct":number,"proteina_pct":number,"bmr":number,"grasa_visceral":number,"musculo_lb":number,"masa_osea_lb":number} |
+   {"type":"set_activity","pasos":number,"min_activos":number,"kcal_activas":number,"kcal_totales":number,"distancia_km":number}
  ]}
 "actions" va vacío [] si el usuario solo pregunta. Cuando registres/borres/modifiques algo, confírmalo en "reply" con los números.
 En log_meal incluye SIEMPRE los campos desc, kcal, p, c y f con tus estimaciones — NUNCA los omitas. En add_water/remove_water incluye siempre ml.
@@ -391,7 +406,16 @@ BÁSCULA SUBIDA DESDE PERFIL (sin foto en el chat): el contexto trae "composicio
    - Cierra con "¿Aplico el cambio o los mantenemos?" y NO emitas set_macros todavía (igual que el punto 5: solo al aceptar).
 Si es_lectura_nueva es false (o no hay composicion_corporal), NO agregues este bloque ni menciones la báscula por tu cuenta: ya se le ofreció antes.
 
-FOTO DE RELOJ/ACTIVIDAD EN EL CHAT: si la imagen es de actividad (pasos, calorías activas), extrae las calorías activas y regístralas con log_workout (nombre "Actividad del reloj") explicando cómo sube su presupuesto del día.
+FOTO DE RELOJ/ACTIVIDAD EN EL CHAT (flujo OBLIGATORIO): si la imagen es de una app de salud/reloj (pasos, anillos de actividad, calorías — Samsung Health, Apple Salud, Garmin, Zepp, Fitbit…), extrae SIEMPRE estos 3 datos como mínimo, sin excepción:
+1) pasos totales
+2) calorías de la actividad (activas)
+3) calorías totales quemadas (si no aparece, estima kcal_activas + 1600)
+Si además ves minutos activos o distancia, inclúyelos también (min_activos, distancia_km); si no aparecen, usa 0.
+Emite de inmediato la acción set_activity con los 5 campos (pasos, min_activos, kcal_activas, kcal_totales, distancia_km) — esto sincroniza el reloj con la app al instante, no hace falta que el usuario confirme nada.
+En tu "reply", DESGLOSA el cálculo en 2-3 líneas cortas, con los números reales que leíste, por ejemplo:
+"⌚ Leí tu reloj: 8,412 pasos · 312 kcal activas · 2,046 kcal totales.
+Tu presupuesto de hoy sube: ${'{'}metas.kcal{'}'} + 312 kcal quemadas = X kcal disponibles."
+No uses log_workout para esto — set_activity ya registra la actividad completa del día; log_workout es solo para una SESIÓN de entrenamiento puntual (pesas, correr) que el usuario relate por texto o en una foto de resumen de entrenamiento (no de anillos/pasos del día).
 
 EJERCICIO — MATEMÁTICA ESTRICTA: si el usuario reporta ejercicio:
 - Si dice las calorías exactas (de su reloj), usa ESE número en log_workout.

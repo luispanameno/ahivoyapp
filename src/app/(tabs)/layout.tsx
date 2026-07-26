@@ -9,8 +9,10 @@ import OnboardingWizard from "@/components/OnboardingWizard";
 import HomeSkeleton from "@/components/Skeleton";
 import Pressable from "@/components/Pressable";
 
-// Rutas donde el prototipo oculta la barra de navegación
-const HIDE_NAV = ["/escanear", "/rutina", "/comida", "/bebida"];
+// Rutas donde el prototipo oculta la barra de navegación. /escanear se
+// dejó FUERA a propósito: la barra siempre visible ayuda a orientarse
+// (hoy, historial, cámara, coach, perfil siempre a mano).
+const HIDE_NAV = ["/rutina", "/comida", "/bebida"];
 
 function CenteredMessage({
   icon,

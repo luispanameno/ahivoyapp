@@ -1,13 +1,13 @@
 "use client";
 
-// Perfil · Vista 2 "Ajustes": todo lo que se CONFIGURA — datos personales,
-// nivel de actividad, metas, contexto para el Coach, plan de ejercicio y la
-// conexión con reloj/báscula. Lo que solo se mira vive en /perfil.
+// Perfil · Vista "Ajustes": datos personales, nivel de actividad, metas
+// diarias, control de acceso y cerrar sesión. El contexto para el Coach
+// (motivo, cultura alimentaria, plan de ejercicio) se recoge una sola vez en
+// el asistente de bienvenida y ya no se repite aquí; el registro de
+// reloj/sueño/báscula/rutina vive en /perfil/sincronizacion.
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import UploadCard from "@/components/UploadCard";
-import { ActionButton } from "@/components/ImageUploadZone";
 import Pressable from "@/components/Pressable";
 import Icon from "@/components/Icon";
 import {
@@ -15,24 +15,19 @@ import {
   ProfileFooter,
   ProfileHeader,
   ProfileTabs,
-  ScaleResult,
   cardStyle,
-  fmtStamp,
   labelStyle,
-  notesTextarea,
   numInput,
-  r1,
   sectionTitle,
 } from "@/components/profileUi";
-import { analyze } from "@/lib/analyze";
 import { useApp } from "@/lib/store";
-import { ACTIVITY_FACTORS, todayISO } from "@/lib/types";
+import { ACTIVITY_FACTORS } from "@/lib/types";
 import { computeGoals, macrosForKcal } from "@/lib/nutrition";
 
 export default function PerfilAjustes() {
   const router = useRouter();
   const app = useApp();
-  const { profile, saveProfile, bodyComp, setActivity, activity, showToast, userEmail, signOut } = app;
+  const { profile, saveProfile, bodyComp, showToast, userEmail, signOut } = app;
 
   // Borrador de datos personales: se guardan solo al tocar "Guardar"
   const [draft, setDraft] = useState({
@@ -57,88 +52,10 @@ export default function PerfilAjustes() {
     showToast("Datos guardados ✓");
   };
 
-  const [healthBusy, setHealthBusy] = useState(false);
-  const [healthError, setHealthError] = useState<string | null>(null);
-  const [healthUpdatedAt, setHealthUpdatedAt] = useState<Date | null>(null);
-
-  const [scaleParsed, setScaleParsed] = useState<ScaleResult | null>(null);
-  const [scaleBusy, setScaleBusy] = useState(false);
-  const [scaleError, setScaleError] = useState<string | null>(null);
-  const [scaleUpdatedAt, setScaleUpdatedAt] = useState<Date | null>(null);
-
   // Los campos de metas son "no controlados" (defaultValue): al recalcularlos
   // por código hay que remontarlos con una key nueva para que muestren el
   // valor nuevo en vez del que el usuario tenía escrito.
   const [metasVersion, setMetasVersion] = useState(0);
-
-  const readScaleCapture = async (shot: string) => {
-    setScaleBusy(true);
-    setScaleError(null);
-    try {
-      const res = await analyze<ScaleResult>({ mode: "scale", image: shot });
-      setScaleParsed(res);
-    } catch (e) {
-      setScaleError(e instanceof Error ? e.message : "No se pudo leer la captura");
-    } finally {
-      setScaleBusy(false);
-    }
-  };
-
-  const onScaleImage = (url: string) => {
-    setScaleParsed(null);
-    readScaleCapture(url);
-  };
-
-  const applyScale = async () => {
-    if (!scaleParsed) return;
-    await app.setBodyComp(
-      {
-        score: Math.round(scaleParsed.score ?? 0),
-        build: scaleParsed.complexion ?? "—",
-        bmi: scaleParsed.imc ?? 0,
-        fatPct: scaleParsed.grasa_pct ?? 0,
-        waterPct: scaleParsed.agua_pct ?? 0,
-        proteinPct: scaleParsed.proteina_pct ?? 0,
-        bmr: Math.round(scaleParsed.bmr ?? 0),
-        visceralFat: scaleParsed.grasa_visceral ?? 0,
-        muscle: scaleParsed.musculo_lb ?? 0,
-        boneMass: scaleParsed.masa_osea_lb ?? 0,
-        date: todayISO(),
-      },
-      scaleParsed.peso_lb > 0 ? scaleParsed.peso_lb : undefined
-    );
-    setScaleParsed(null);
-    setScaleUpdatedAt(new Date());
-    showToast("Perfil actualizado desde tu báscula");
-  };
-
-  const readHealthCapture = async (shot: string) => {
-    setHealthBusy(true);
-    setHealthError(null);
-    try {
-      const res = await analyze<{
-        pasos: number;
-        min_activos: number;
-        kcal_activas: number;
-        kcal_totales: number;
-        distancia_km: number;
-      }>({ mode: "activity", image: shot });
-      await setActivity({
-        steps: Math.round(res.pasos) || 0,
-        activeMin: Math.round(res.min_activos) || 0,
-        activityKcal: Math.round(res.kcal_activas) || 0,
-        totalKcal: Math.round(res.kcal_totales) || 0,
-        distance: Math.round((res.distancia_km || 0) * 100) / 100,
-        synced: true,
-      });
-      setHealthUpdatedAt(new Date());
-      showToast("Actividad actualizada desde tu captura");
-    } catch (e) {
-      setHealthError(e instanceof Error ? e.message : "No se pudo leer la captura");
-    } finally {
-      setHealthBusy(false);
-    }
-  };
 
   const setField = (field: keyof typeof profile, value: string | number) => {
     saveProfile({ ...profile, [field]: value });
@@ -366,130 +283,6 @@ export default function PerfilAjustes() {
           peso (~35 ml por kg), no es un número fijo.
         </div>
       </div>
-
-      {/* Sobre ti: le da tono al Coach y hace sus consejos más realistas */}
-      <div style={sectionTitle}>SOBRE TI</div>
-      <div style={{ ...labelStyle, marginBottom: 4 }}>TU MOTIVO</div>
-      <textarea
-        defaultValue={profile.goalMotivation}
-        onBlur={(e) => {
-          if (e.target.value !== profile.goalMotivation) saveProfile({ ...profile, goalMotivation: e.target.value });
-        }}
-        placeholder="Ej. bajar de peso"
-        rows={1}
-        style={notesTextarea}
-      />
-      <div style={{ ...labelStyle, marginTop: 8, marginBottom: 4 }}>CÓMO COMES NORMALMENTE</div>
-      <textarea
-        defaultValue={profile.foodCulture}
-        onBlur={(e) => {
-          if (e.target.value !== profile.foodCulture) saveProfile({ ...profile, foodCulture: e.target.value });
-        }}
-        placeholder="Ej. pupusas casi a diario"
-        rows={1}
-        style={notesTextarea}
-      />
-
-      {/* Plan de ejercicio */}
-      <div style={{ ...sectionTitle, marginTop: 20 }}>TU PLAN DE EJERCICIO</div>
-      <textarea
-        defaultValue={profile.exercisePlan}
-        onBlur={(e) => {
-          if (e.target.value !== profile.exercisePlan) saveProfile({ ...profile, exercisePlan: e.target.value });
-        }}
-        placeholder="Ej. camino 1 hora al día"
-        rows={1}
-        style={notesTextarea}
-      />
-      <Pressable
-        onClick={() => router.push("/rutina")}
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1b1e21", borderRadius: 18, padding: "12px 14px", marginTop: 8, minHeight: 44, boxSizing: "border-box", cursor: "pointer" }}
-      >
-        <span style={{ fontSize: 13, fontWeight: 700 }}>Ejercicios de pesas (Push / Pull / Legs)</span>
-        <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)" }}>Editar ›</span>
-      </Pressable>
-
-      {/* Conexión con reloj y báscula */}
-      <div style={sectionTitle}>RELOJ Y BÁSCULA</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <UploadCard
-          title="Actividad del reloj"
-          subtitle="kcal · pasos · tiempo"
-          icon="/icons/glyphs/watch-activity.png"
-          lastUpdated={
-            healthUpdatedAt
-              ? { timestamp: fmtStamp(healthUpdatedAt), label: "Actualizado" }
-              : activity?.synced
-              ? { timestamp: "hoy", label: "Actualizado" }
-              : undefined
-          }
-          isUpdated={!!healthUpdatedAt || !!activity?.synced}
-          busy={healthBusy}
-          busyMessages={["Leyendo tu captura…", "Buscando pasos y calorías…", "Recopilando todos tus datos…", "Casi listo…"]}
-          onImage={readHealthCapture}
-        />
-        {healthError && (
-          <div style={{ fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)", background: "rgba(230,120,60,.1)", padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(230,120,60,.2)" }}>
-            {healthError}
-          </div>
-        )}
-
-        <UploadCard
-          title="Báscula inteligente"
-          subtitle="peso · grasa · IMC"
-          icon="/icons/glyphs/smart-scale.png"
-          lastUpdated={
-            scaleUpdatedAt
-              ? { timestamp: fmtStamp(scaleUpdatedAt), label: "Actualizado" }
-              : bodyComp
-              ? { timestamp: `${bodyComp.date.slice(8, 10)}/${bodyComp.date.slice(5, 7)}`, label: "Actualizado" }
-              : undefined
-          }
-          isUpdated={(!!scaleUpdatedAt || !!bodyComp) && !scaleParsed}
-          busy={scaleBusy}
-          busyMessages={["Leyendo tu captura…", "Recopilando todos tus datos…", "Extrayendo peso, IMC y composición…", "Casi listo…"]}
-          onImage={onScaleImage}
-        />
-        {scaleError && (
-          <div style={{ fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)", background: "rgba(230,120,60,.1)", padding: "10px 12px", borderRadius: 12, border: "1px solid rgba(230,120,60,.2)" }}>
-            {scaleError}
-          </div>
-        )}
-      </div>
-
-      {/* Datos detectados por la báscula: preview antes de confirmar */}
-      {scaleParsed && (
-        <>
-          <div style={{ marginTop: 14, background: "#1b1e21", borderRadius: 18, padding: 14 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em", marginBottom: 10 }}>
-              DATOS DETECTADOS
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12.5 }}>
-              {(
-                [
-                  ["Puntuación", scaleParsed.score != null ? String(Math.round(scaleParsed.score)) : "—"],
-                  ["Peso", `${r1(scaleParsed.peso_lb)} lb`],
-                  ["Complexión", scaleParsed.complexion ?? "—"],
-                  ["IMC", scaleParsed.imc != null ? String(r1(scaleParsed.imc)) : "—"],
-                  ["Grasa corporal", scaleParsed.grasa_pct != null ? `${r1(scaleParsed.grasa_pct)}%` : "—"],
-                  ["Nivel de agua", scaleParsed.agua_pct != null ? `${r1(scaleParsed.agua_pct)}%` : "—"],
-                  ["Proteína", scaleParsed.proteina_pct != null ? `${r1(scaleParsed.proteina_pct)}%` : "—"],
-                  ["Metab. basal", scaleParsed.bmr != null ? `${Math.round(scaleParsed.bmr).toLocaleString()} kcal` : "—"],
-                  ["Grasa visceral", scaleParsed.grasa_visceral != null ? String(Math.round(scaleParsed.grasa_visceral)) : "—"],
-                  ["Músculo", scaleParsed.musculo_lb != null ? `${r1(scaleParsed.musculo_lb)} lb` : "—"],
-                  ["Masa ósea", scaleParsed.masa_osea_lb != null ? `${r1(scaleParsed.masa_osea_lb)} lb` : "—"],
-                ] as [string, string][]
-              ).map(([label, value]) => (
-                <div key={label} style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "rgba(244,243,238,.5)" }}>{label}</span>
-                  <span style={{ fontWeight: 700 }}>{value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <ActionButton label="Actualizar mi perfil" onClick={applyScale} busy={false} />
-        </>
-      )}
 
       {/* Control de acceso (solo admin) */}
       {profile.isAdmin && (

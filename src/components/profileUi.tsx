@@ -229,7 +229,18 @@ export function ProfileFooter() {
   );
 }
 
-// Conmutador entre las dos vistas. La píldora activa se desliza con un
+// Ícono de tuerca (ajustes) — SVG propio, sin depender del set de glifos
+// extraído (ese set no incluye uno de configuración).
+function GearIcon({ color }: { color: string }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+
+// Conmutador entre las tres vistas. La píldora activa se desliza con un
 // resorte compartido (layoutId), así se lee de dónde a dónde se movió.
 export function ProfileTabs() {
   const pathname = usePathname();
@@ -237,7 +248,8 @@ export function ProfileTabs() {
   const reduce = useReducedMotion();
   const tabs = [
     { label: "Mi progreso", route: "/perfil" },
-    { label: "Ajustes", route: "/perfil/ajustes" },
+    { label: "Sincronización", route: "/perfil/sincronizacion" },
+    { label: "Ajustes", route: "/perfil/ajustes", gear: true },
   ];
 
   return (
@@ -294,16 +306,27 @@ export function ProfileTabs() {
                 }}
               />
             )}
-            <span
-              style={{
-                position: "relative",
-                fontSize: 12.5,
-                fontWeight: 800,
-                color: active ? "#10240a" : "rgba(244,243,238,.6)",
-              }}
-            >
-              {t.label}
-            </span>
+            {t.gear ? (
+              <span
+                aria-label={t.label}
+                style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <GearIcon color={active ? "#10240a" : "rgba(244,243,238,.6)"} />
+              </span>
+            ) : (
+              <span
+                style={{
+                  position: "relative",
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: active ? "#10240a" : "rgba(244,243,238,.6)",
+                  whiteSpace: "nowrap",
+                  padding: "0 2px",
+                }}
+              >
+                {t.label}
+              </span>
+            )}
           </motion.div>
         );
       })}

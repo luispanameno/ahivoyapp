@@ -106,9 +106,22 @@ export default function Escanear() {
   };
 
   // ---------- Captura (entrada de respaldo) ----------
+  // Layout compacto y centrado con flexbox (nada de posiciones absolutas
+  // con offsets fijos en px): así el botón de captura SIEMPRE queda visible
+  // sin necesidad de hacer scroll, sin importar el alto real de la pantalla.
   if (step === "capture") {
     return (
-      <div style={{ height: "100dvh", position: "relative", background: "#08090a" }}>
+      <div
+        style={{
+          height: "calc(100dvh - 88px)",
+          position: "relative",
+          background: "#08090a",
+          boxSizing: "border-box",
+          display: "flex",
+          flexDirection: "column",
+          padding: "calc(16px + env(safe-area-inset-top)) 28px calc(20px + env(safe-area-inset-bottom))",
+        }}
+      >
         <div
           style={{
             position: "absolute",
@@ -117,23 +130,23 @@ export default function Escanear() {
             opacity: 0.6,
           }}
         />
-        <div
-          onClick={() => router.push("/hoy")}
-          style={{ position: "absolute", top: "calc(24px + env(safe-area-inset-top))", left: 20, zIndex: 2, fontSize: 13, fontWeight: 700, color: "rgba(244,243,238,.7)", cursor: "pointer" }}
-        >
-          ‹ Volver
+        <div style={{ position: "relative", display: "flex", alignItems: "center", flex: "none" }}>
+          <Pressable
+            onClick={() => router.push("/hoy")}
+            style={{ fontSize: 13, fontWeight: 700, color: "rgba(244,243,238,.7)", cursor: "pointer", minHeight: 44, display: "flex", alignItems: "center" }}
+          >
+            ‹ Volver
+          </Pressable>
         </div>
-        <div style={{ position: "absolute", top: "calc(24px + env(safe-area-inset-top))", left: 0, right: 0, textAlign: "center", fontSize: 12, fontWeight: 600, color: "rgba(244,243,238,.7)" }}>
+        <div style={{ position: "relative", textAlign: "center", fontSize: 12, fontWeight: 600, color: "rgba(244,243,238,.7)", flex: "none", marginTop: -8 }}>
           Toca para tomar o elegir la foto de tu plato
         </div>
         {error && (
           <div
             style={{
-              position: "absolute",
-              top: 56,
-              left: 32,
-              right: 32,
-              zIndex: 2,
+              position: "relative",
+              marginTop: 12,
+              flex: "none",
               background: "rgba(230,120,60,.15)",
               border: "1px solid rgba(230,120,60,.35)",
               borderRadius: 18,
@@ -147,16 +160,15 @@ export default function Escanear() {
             {error}
           </div>
         )}
-        {/* Zona ilustrativa + dos botones claros. Damos las dos opciones por
-            separado porque Android a veces manda el input directo a la galería
-            y no ofrece la cámara; con capture="environment" la forzamos. */}
+        {/* Visor centrado: crece con el espacio disponible pero nunca empuja
+            los botones fuera de la pantalla (minHeight en vez de un alto fijo). */}
         <div
           style={{
-            position: "absolute",
-            left: 32,
-            right: 32,
-            top: 110,
-            bottom: 150,
+            position: "relative",
+            flex: 1,
+            minHeight: 90,
+            maxHeight: 320,
+            margin: "16px 0",
             borderRadius: 24,
             border: "1.5px dashed rgba(255,255,255,.25)",
             display: "flex",
@@ -180,7 +192,9 @@ export default function Escanear() {
             📷
           </div>
         </div>
-        <div style={{ position: "absolute", left: 32, right: 32, bottom: 40, display: "flex", flexDirection: "column", gap: 10 }}>
+        {/* Botones: en flujo normal, nunca posicionados a ciegas — así
+            siempre caben, incluso en pantallas cortas. */}
+        <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 10, flex: "none" }}>
           <Pressable
             onClick={() => cameraInputRef.current?.click()}
             style={{
@@ -249,7 +263,7 @@ export default function Escanear() {
   // ---------- Vista previa + contexto obligatorio ("Filtro de Precisión") ----------
   if (step === "preview") {
     return (
-      <div style={{ height: "100dvh", boxSizing: "border-box", padding: "calc(24px + env(safe-area-inset-top)) 20px 24px", display: "flex", flexDirection: "column" }}>
+      <div style={{ height: "calc(100dvh - 88px)", boxSizing: "border-box", padding: "calc(24px + env(safe-area-inset-top)) 20px 24px", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div className="font-sora" style={{ fontSize: 18, fontWeight: 700 }}>Antes de analizar</div>
           <div
@@ -341,7 +355,7 @@ export default function Escanear() {
   // ---------- Analizando ----------
   if (step === "analyzing") {
     return (
-      <div style={{ height: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+      <div style={{ height: "calc(100dvh - 88px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
         <div
           style={{
             width: 52,
@@ -363,7 +377,7 @@ export default function Escanear() {
   // ---------- Aclaración (la IA aún tiene una duda) ----------
   if (step === "clarify") {
     return (
-      <div style={{ height: "100dvh", boxSizing: "border-box", padding: "calc(40px + env(safe-area-inset-top)) 24px 24px", display: "flex", flexDirection: "column" }}>
+      <div style={{ height: "calc(100dvh - 88px)", boxSizing: "border-box", padding: "calc(40px + env(safe-area-inset-top)) 24px 24px", display: "flex", flexDirection: "column" }}>
         <div className="font-sora" style={{ fontSize: 18, fontWeight: 700 }}>Una pregunta rápida</div>
         <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 4 }}>Para afinar el cálculo de macros</div>
         <div style={{ marginTop: 20, fontSize: 14, fontWeight: 600 }}>{result?.pregunta}</div>
@@ -422,7 +436,7 @@ export default function Escanear() {
 
   // ---------- Confirmar ----------
   return (
-    <div style={{ minHeight: "100dvh", boxSizing: "border-box", padding: "calc(40px + env(safe-area-inset-top)) 20px 0", display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "calc(100dvh - 88px)", boxSizing: "border-box", padding: "calc(40px + env(safe-area-inset-top)) 20px 0", display: "flex", flexDirection: "column" }}>
       <div className="font-sora" style={{ fontSize: 18, fontWeight: 700 }}>Confirma tu comida</div>
       <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>
         Detectado por foto · ajusta si algo no cuadra

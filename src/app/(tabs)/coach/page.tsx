@@ -428,7 +428,7 @@ export default function Coach() {
           flex: 1,
           overflowY: "auto",
           overscrollBehaviorY: "contain",
-          padding: "14px 20px 8px",
+          padding: "14px 20px 16px",
           display: "flex",
           flexDirection: "column",
           gap: 10,
@@ -584,8 +584,10 @@ export default function Coach() {
         </div>
       )}
 
-      {/* Input */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 16px 10px", flex: "none" }}>
+      {/* Input — el padding inferior deja siempre un colchón por si el
+          cálculo de alto (100dvh - barra) no cuadra exacto en algún
+          navegador/teclado móvil, para que la barra nunca la tape. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 16px calc(12px + env(safe-area-inset-bottom))", flex: "none" }}>
         <label
           style={{
             width: 46,
