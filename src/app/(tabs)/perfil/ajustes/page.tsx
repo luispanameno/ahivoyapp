@@ -22,12 +22,12 @@ import {
 } from "@/components/profileUi";
 import { useApp } from "@/lib/store";
 import { ACTIVITY_FACTORS } from "@/lib/types";
-import { computeGoals, macrosForKcal } from "@/lib/nutrition";
+import { macrosForKcal } from "@/lib/nutrition";
 
 export default function PerfilAjustes() {
   const router = useRouter();
   const app = useApp();
-  const { profile, saveProfile, bodyComp, showToast, userEmail, signOut } = app;
+  const { profile, saveProfile, showToast, userEmail, signOut } = app;
 
   // Borrador de datos personales: se guardan solo al tocar "Guardar"
   const [draft, setDraft] = useState({
@@ -74,28 +74,6 @@ export default function PerfilAjustes() {
       return;
     }
     setField(field, n);
-  };
-
-  const recalcMetas = () => {
-    const goals = computeGoals({
-      sex: profile.sex,
-      age: profile.age,
-      heightCm: profile.height,
-      weightLb: profile.weight,
-      weightGoalLb: profile.weightGoal,
-      activityLevel: profile.activityLevel,
-      bmrOverride: bodyComp?.bmr,
-    });
-    saveProfile({
-      ...profile,
-      metaKcal: goals.metaKcal,
-      metaProtein: goals.metaProtein,
-      metaCarbs: goals.metaCarbs,
-      metaFat: goals.metaFat,
-      metaWater: goals.metaWater,
-    });
-    setMetasVersion((v) => v + 1);
-    showToast("Metas recalculadas con tus datos");
   };
 
   return (
@@ -262,25 +240,22 @@ export default function PerfilAjustes() {
           <span style={{ fontSize: 13, color: "rgba(244,243,238,.6)" }}>Sueño</span>
           <span style={{ fontSize: 13, fontWeight: 700 }}>7–8 h</span>
         </div>
-        <Pressable
-          onClick={recalcMetas}
+        {/* Antes había un botón "Recalcular con mis datos" — se quitó: un
+            toque sin querer sobrescribía metas que el usuario había puesto
+            a mano, sin avisar ni pedir confirmación. Esto es solo lectura. */}
+        <div
           style={{
-            textAlign: "center",
-            padding: "13px 14px",
+            background: "rgba(199,242,122,.06)",
+            border: "1px solid rgba(199,242,122,.18)",
             borderRadius: 18,
-            fontSize: 12.5,
-            fontWeight: 800,
-            cursor: "pointer",
-            background: "rgba(199,242,122,.1)",
-            border: "1px solid rgba(199,242,122,.3)",
-            color: "#c7f27a",
+            padding: "12px 14px",
+            fontSize: 11.5,
+            color: "rgba(244,243,238,.55)",
+            lineHeight: 1.5,
           }}
         >
-          Recalcular con mis datos
-        </Pressable>
-        <div style={{ fontSize: 11, color: "rgba(244,243,238,.4)", lineHeight: 1.4, padding: "0 2px" }}>
-          Vuelve a calcular calorías, macros y agua desde tu peso, altura, edad y nivel de actividad. El agua sale de tu
-          peso (~35 ml por kg), no es un número fijo.
+          Estos datos están calculados según tu edad, altura, peso, meta de peso y nivel de actividad — y con tu báscula
+          inteligente, si la has subido. Puedes editarlos arriba cuando quieras; no se recalculan solos.
         </div>
       </div>
 

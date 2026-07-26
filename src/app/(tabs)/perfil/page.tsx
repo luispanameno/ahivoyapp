@@ -4,10 +4,8 @@
 // tendencia de peso y composición corporal. Todo lo que se CONFIGURA vive
 // en /perfil/ajustes, para que esta pantalla no sea un muro de formularios.
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Pressable from "@/components/Pressable";
-import Icon from "@/components/Icon";
 import InfoModal from "@/components/InfoModal";
 import { ProfileFooter, ProfileHeader, ProfileTabs, sectionTitle } from "@/components/profileUi";
 import { useApp } from "@/lib/store";
@@ -33,7 +31,6 @@ function weeklySeries(weights: WeightEntry[]): { labels: string[]; values: numbe
 const DAY_LETTERS = ["D", "L", "M", "M", "J", "V", "S"];
 
 export default function PerfilProgreso() {
-  const router = useRouter();
   const { profile, weights, bodyComp } = useApp();
   const [range, setRange] = useState<"days" | "weeks">("days");
   const [infoModal, setInfoModal] = useState<"bmr" | "tdee" | null>(null);
@@ -106,32 +103,11 @@ export default function PerfilProgreso() {
       <ProfileHeader />
       <ProfileTabs />
 
-      {/* Atajo al resumen del día: ahí viven las barras de macros y el
-          veredicto conversacional, que es la otra mitad del progreso. */}
-      <Pressable
-        onClick={() => router.push("/resumen-dia")}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          background: "rgba(199,242,122,.08)",
-          border: "1px solid rgba(199,242,122,.25)",
-          borderRadius: 20,
-          padding: "14px 16px",
-          marginTop: 18,
-          cursor: "pointer",
-        }}
-      >
-        <Icon name="history-trends" size={22} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "#c7f27a" }}>Resumen del día</div>
-          <div style={{ fontSize: 11, color: "rgba(244,243,238,.5)", marginTop: 2 }}>Barras de macros y cómo te fue</div>
-        </div>
-        <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)", flex: "none" }}>Ver ›</span>
-      </Pressable>
+      {/* El atajo al resumen del día se movió a Hoy — tiene más sentido ahí,
+          junto al resto de lo que pasa hoy, que en Perfil. */}
 
       {/* Metabolismo */}
-      <div style={sectionTitle}>TU METABOLISMO</div>
+      <div style={{ ...sectionTitle, marginTop: 18 }}>TU METABOLISMO</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         {(
           [

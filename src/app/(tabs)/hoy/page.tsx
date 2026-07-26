@@ -542,6 +542,30 @@ export default function Hoy() {
         <div style={{ flex: 1, fontSize: 11, fontWeight: 600, color: "rgba(244,243,238,.7)", lineHeight: 1.4 }}>{menuSuggestion}</div>
       </div>
 
+      {/* Atajo al resumen del día: barras de macros y el veredicto del día
+          completo. Vivía en Perfil, pero tiene más sentido aquí en Hoy. */}
+      <Pressable
+        onClick={() => router.push("/resumen-dia")}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          background: "rgba(199,242,122,.08)",
+          border: "1px solid rgba(199,242,122,.25)",
+          borderRadius: 18,
+          padding: "12px 14px",
+          marginTop: 12,
+          cursor: "pointer",
+        }}
+      >
+        <Icon name="history-trends" size={20} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 800, color: "#c7f27a" }}>Resumen del día</div>
+          <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.5)", marginTop: 1 }}>Barras de macros y cómo te fue</div>
+        </div>
+        <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)", flex: "none" }}>Ver ›</span>
+      </Pressable>
+
       {/* Actividad de hoy (rueda estilo Samsung Health) — interactiva: al
           tocarla se abre el detalle completo (revelación progresiva). */}
       <div style={{ marginTop: 12 }}>
