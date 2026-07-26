@@ -160,7 +160,7 @@ export default function Hoy() {
     kcalRemaining,
   } = app;
 
-  const { mood: coachMood, messages: coachMessages } = useCoachMood();
+  const { messages: coachMessages } = useCoachMood();
 
   const now = new Date();
   const todayLabel = `${DIAS[now.getDay()]}, ${now.getDate()} ${MESES[now.getMonth()]}`;
@@ -310,7 +310,7 @@ export default function Hoy() {
 
       {/* Mascota: reacciona a lo registrado hoy. Al tocarla cambia de consejo. */}
       <div style={{ marginTop: 14 }}>
-        <CoachAvatar mood={coachMood} messages={coachMessages} />
+        <CoachAvatar messages={coachMessages} />
       </div>
 
       {/* Macros */}

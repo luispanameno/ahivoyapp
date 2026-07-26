@@ -1,26 +1,27 @@
 "use client";
 
-// Mascota del Coach: un robot amigable dibujado en SVG (nada de emoji, así
-// escala limpio y hereda los colores del tema) que reacciona a los datos del
-// día con tres estados — durmiendo, con un consejo, o feliz.
+// Mascota del Coach: la tortuga de AHIVOYAPP en video (public/mascota/*.mp4),
+// con 6 estados que reaccionan a los datos del día. Los eventos transitorios
+// (celebrar, post-entrenamiento, comida grande) duran unos segundos y luego
+// caen al estado ambiental (agua pendiente, ejercicio pendiente, dormir,
+// respirar).
 //
-// Cada estado tiene VARIAS frases, no una sola: se rotan solas cada ~9s y
-// también al tocar la mascota, así no se vuelve repetitiva. Cuando hay un
-// número de por medio (agua, proteína, calorías) la frase trae el dato real
-// y un tip concreto para cerrar la brecha.
-//
-// La animación es el único elemento vivo de la pantalla a propósito: animar
-// varias cosas a la vez cansa la vista. Con "reducir movimiento" activado se
-// queda quieto y solo cambia de expresión.
+// El sistema de frases se conserva tal cual (rotan cada ~9s y al tocar la
+// tortuga): el video comunica el ánimo, la frase da el dato y el tip.
 
-import { useEffect, useState } from "react";
-import { motion, useReducedMotion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useApp } from "@/lib/store";
 
 export type CoachMood = "sleeping" | "alert" | "happy";
 
-const ACCENT = "#c7f27a";
-const SLEEP = "oklch(72% 0.15 300)";
+export type MascotState =
+  | "Respirando"
+  | "Durmiendo"
+  | "TomandoAgua"
+  | "Ejercicio"
+  | "LlenoDeComida"
+  | "Celebrando";
 
 const DORMIDO = [
   "Zzz… despiértame con un vaso de agua.",
@@ -41,6 +42,11 @@ const FELIZ = [
   "Perfecto. Mañana repetimos, ¿va?",
   "Nada que corregir hoy. Raro y hermoso.",
   "Tu yo de enero estaría orgulloso.",
+  // Frases de celebración (estado Celebrando)
+  "¡Meta cumplida, crack! 🎉",
+  "Hoy sí que la rompiste.",
+  "¡Así se hace! La tortuga está orgullosa.",
+  "Victoria total. A dormir como campeón.",
 ];
 
 const ANIMO = [
@@ -122,50 +128,95 @@ export function useCoachMood(): { mood: CoachMood; messages: string[] } {
   return { mood: "alert", messages: msgs.length ? msgs : ANIMO };
 }
 
-const MOOD_LABEL: Record<CoachMood, string> = {
-  sleeping: "Tu coach está descansando",
-  alert: "Tu coach tiene un consejo",
-  happy: "Tu coach está feliz",
-};
+// ---------------------------------------------------------------------------
+// Máquina de estados de la tortuga
 
-function RobotFace({ mood, color }: { mood: CoachMood; color: string }) {
-  return (
-    <svg width="62" height="62" viewBox="0 0 64 64" fill="none" aria-hidden="true">
-      <line x1="32" y1="6" x2="32" y2="13" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
-      <circle cx="32" cy="4.5" r="3" fill={color} />
-      <rect x="9" y="13" width="46" height="40" rx="14" stroke={color} strokeWidth="2.5" fill="rgba(255,255,255,.04)" />
-      <rect x="3.5" y="27" width="4.5" height="11" rx="2.2" fill={color} opacity="0.75" />
-      <rect x="56" y="27" width="4.5" height="11" rx="2.2" fill={color} opacity="0.75" />
-
-      {mood === "sleeping" ? (
-        <>
-          <path d="M18 31c2.4 2.6 5.6 2.6 8 0" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
-          <path d="M38 31c2.4 2.6 5.6 2.6 8 0" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
-          <path d="M28 42h8" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
-        </>
-      ) : mood === "happy" ? (
-        <>
-          <path d="M18 33c2.4-3.4 5.6-3.4 8 0" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
-          <path d="M38 33c2.4-3.4 5.6-3.4 8 0" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
-          <circle cx="16.5" cy="40" r="3" fill={color} opacity="0.35" />
-          <circle cx="47.5" cy="40" r="3" fill={color} opacity="0.35" />
-          <path d="M25 40c3.6 4.6 10.4 4.6 14 0" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
-        </>
-      ) : (
-        <>
-          <circle cx="22" cy="31.5" r="3.6" fill={color} />
-          <circle cx="42" cy="31.5" r="3.6" fill={color} />
-          <path d="M26 41.5c3 3 9 3 12 0" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
-        </>
-      )}
-    </svg>
-  );
+interface DailyProgress {
+  kcalEaten: number;
+  metaKcal: number;
+  proteinG: number;
+  metaProtein: number;
+  water: number;
+  metaWater: number;
+  workoutDone: boolean;
+  hasAnyLog: boolean;
+  hour: number; // 0-23 (+fracción)
 }
 
-export default function CoachAvatar({ mood, messages }: { mood: CoachMood; messages: string[] }) {
+interface ActionEvent {
+  type: "celebrar" | "ejercicio" | "comida-grande";
+  ts: number;
+}
+
+const TRANSIENT_MS: Record<ActionEvent["type"], number> = {
+  celebrar: 4000,
+  ejercicio: 4000,
+  "comida-grande": 3000,
+};
+
+function isRecent(ev: ActionEvent | undefined, now: number): boolean {
+  return !!ev && now - ev.ts < TRANSIENT_MS[ev.type];
+}
+
+// % de la meta de agua que "deberías llevar" según la hora: lineal de
+// 6 am (0%) a 10 pm (100%) — a las 6 pm da ~75%.
+function expectedWaterPct(hour: number): number {
+  return Math.min(1, Math.max(0, (hour - 6) / 16));
+}
+
+export function getMascotState(data: DailyProgress, lastAction?: ActionEvent): MascotState {
+  const now = Date.now();
+
+  // 1-3) Eventos transitorios (prioridad sobre lo ambiental mientras duren).
+  if (isRecent(lastAction, now)) {
+    if (lastAction!.type === "celebrar") return "Celebrando";
+    if (lastAction!.type === "ejercicio") return "Ejercicio";
+    return "LlenoDeComida";
+  }
+
+  // 3b) Exceso sostenido de calorías → sigue lleno (ambiental).
+  if (data.metaKcal > 0 && data.kcalEaten > data.metaKcal) return "LlenoDeComida";
+
+  // 6a) Dormir: de 23:00 a 06:00, o día sin registros ya entrada la noche.
+  if (data.hour >= 23 || data.hour < 6) return "Durmiendo";
+  if (!data.hasAnyLog && data.hour >= 20) return "Durmiendo";
+
+  // 4) Recordatorio de ejercicio: nada registrado y ya es tarde.
+  if (!data.workoutDone && data.hour >= 17) return "Ejercicio";
+
+  // 5) Agua atrasada para la hora que es.
+  if (data.metaWater > 0 && data.water / data.metaWater < expectedWaterPct(data.hour) - 0.15) {
+    return "TomandoAgua";
+  }
+
+  // 6b) Idle normal.
+  return "Respirando";
+}
+
+const VIDEO: Record<MascotState, string> = {
+  Respirando: "/mascota/Tortuga-Respirando.mp4",
+  Durmiendo: "/mascota/Tortuga-Durmiendo.mp4",
+  TomandoAgua: "/mascota/Tortuga-TomandoAgua.mp4",
+  Ejercicio: "/mascota/Tortuga-Ejercicio.mp4",
+  LlenoDeComida: "/mascota/Tortuga-LlenoDeComida.mp4",
+  Celebrando: "/mascota/Tortuga-Celebrando.mp4",
+};
+
+const STATE_LABEL: Record<MascotState, string> = {
+  Respirando: "Tu coach está tranquilo",
+  Durmiendo: "Tu coach está durmiendo",
+  TomandoAgua: "Tu coach te recuerda tomar agua",
+  Ejercicio: "Tu coach te recuerda el ejercicio",
+  LlenoDeComida: "Tu coach quedó lleno de comida",
+  Celebrando: "¡Tu coach está celebrando!",
+};
+
+// El ánimo (mood) ya no llega por prop: el estado del video lo comunica y se
+// calcula aquí adentro con los mismos datos del día.
+export default function CoachAvatar({ messages }: { messages: string[] }) {
   const reduce = useReducedMotion();
+  const { profile, water, kcalEaten, proteinG, kcalBudget, workout } = useApp();
   const [i, setI] = useState(0);
-  const color = mood === "sleeping" ? SLEEP : ACCENT;
   const message = pick(messages, i);
 
   // Rota sola para que la mascota se sienta viva aunque no la toquen.
@@ -175,16 +226,80 @@ export default function CoachAvatar({ mood, messages }: { mood: CoachMood; messa
     return () => clearInterval(t);
   }, [messages.length]);
 
-  const loop =
-    reduce || mood === "alert"
-      ? {}
-      : mood === "sleeping"
-      ? { scale: [1, 1.035, 1] }
-      : { y: [0, -7, 0] };
-  const loopTransition =
-    mood === "sleeping"
-      ? { duration: 3.6, repeat: Infinity, ease: "easeInOut" as const }
-      : { duration: 1.5, repeat: Infinity, ease: "easeInOut" as const };
+  // ---- Detección de eventos transitorios (comparando contra el valor previo) ----
+  const [lastAction, setLastAction] = useState<ActionEvent | undefined>(undefined);
+  const prevRef = useRef({ water, kcalEaten, workoutDone: workout?.done ?? false, celebrated: false });
+
+  useEffect(() => {
+    const prev = prevRef.current;
+    const metaKcal = kcalBudget || profile.metaKcal;
+    const kcalPct = metaKcal > 0 ? kcalEaten / metaKcal : 0;
+    const prevKcalPct = metaKcal > 0 ? prev.kcalEaten / metaKcal : 0;
+    const waterPct = profile.metaWater > 0 ? water / profile.metaWater : 0;
+    const prevWaterPct = profile.metaWater > 0 ? prev.water / profile.metaWater : 0;
+
+    let ev: ActionEvent | undefined;
+
+    // 1) Celebrar: metas del día en rango, o el agua cruza el 90% por primera vez.
+    const metasOk = kcalPct >= 0.9 && kcalPct <= 1.05 && proteinG >= profile.metaProtein && water >= profile.metaWater;
+    const crossedWater = prevWaterPct < 0.9 && waterPct >= 0.9;
+    if ((metasOk && !prev.celebrated) || crossedWater) {
+      ev = { type: "celebrar", ts: Date.now() };
+      prev.celebrated = prev.celebrated || metasOk;
+    }
+    // 2) Post-entrenamiento: workout pasó de pendiente a hecho.
+    const workoutDone = workout?.done ?? false;
+    if (!ev && workoutDone && !prev.workoutDone) ev = { type: "ejercicio", ts: Date.now() };
+    // 3) Comida grande: el % de calorías del día sube >30 puntos de golpe.
+    if (!ev && kcalPct - prevKcalPct > 0.3 && prev.kcalEaten > 0) ev = { type: "comida-grande", ts: Date.now() };
+
+    prev.water = water;
+    prev.kcalEaten = kcalEaten;
+    prev.workoutDone = workoutDone;
+    if (ev) {
+      setLastAction(ev);
+      // Al expirar la ventana, un re-render re-evalúa el estado ambiental.
+      const t = setTimeout(() => setLastAction(undefined), TRANSIENT_MS[ev.type] + 100);
+      return () => clearTimeout(t);
+    }
+  }, [water, kcalEaten, proteinG, workout?.done, kcalBudget, profile.metaWater, profile.metaProtein, profile.metaKcal]);
+
+  // Re-evaluación ambiental periódica (la hora avanza aunque no pase nada).
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Los navegadores no reproducen video en pestañas ocultas: cuando el PWA
+  // vuelve de segundo plano, el video quedaría congelado sin esto.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        document.querySelectorAll<HTMLVideoElement>("video[data-mascota]").forEach((v) => {
+          v.play().catch(() => {});
+        });
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
+  const d = new Date();
+  const state = getMascotState(
+    {
+      kcalEaten,
+      metaKcal: kcalBudget || profile.metaKcal,
+      proteinG,
+      metaProtein: profile.metaProtein,
+      water,
+      metaWater: profile.metaWater,
+      workoutDone: workout?.done ?? false,
+      hasAnyLog: kcalEaten > 0 || water > 0 || (workout?.done ?? false),
+      hour: d.getHours() + d.getMinutes() / 60,
+    },
+    lastAction
+  );
 
   return (
     <motion.div
@@ -197,92 +312,74 @@ export default function CoachAvatar({ mood, messages }: { mood: CoachMood; messa
           setI((n) => n + 1);
         }
       }}
-      aria-label={`${MOOD_LABEL[mood]}: ${message}. Toca para otro consejo.`}
-      whileTap={reduce ? undefined : { scale: 0.96 }}
+      aria-label={`${STATE_LABEL[state]}: ${message}. Toca para otro consejo.`}
+      whileTap={reduce ? undefined : { scale: 0.97 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      className="relative w-full aspect-[1536/1024] overflow-hidden cursor-pointer"
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        padding: "14px 16px",
         borderRadius: 24,
+        border: "1px solid rgba(199,242,122,.22)",
         background: "rgba(255,255,255,.045)",
-        border: `1px solid ${mood === "sleeping" ? "rgba(190,150,255,.22)" : "rgba(199,242,122,.22)"}`,
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
-        cursor: "pointer",
-        boxSizing: "border-box",
       }}
     >
-      <div style={{ position: "relative", flex: "none" }}>
-        <motion.div
-          // key: al cambiar de frase da un respingo, como si reaccionara.
-          key={i}
-          animate={loop}
-          transition={loopTransition}
-          style={{ filter: `drop-shadow(0 0 14px ${mood === "sleeping" ? "rgba(190,150,255,.4)" : "rgba(199,242,122,.4)"})` }}
-        >
-          <RobotFace mood={mood} color={color} />
-        </motion.div>
-
-        {mood === "sleeping" && !reduce && (
-          <div aria-hidden="true" style={{ position: "absolute", top: -6, right: -10 }}>
-            {[0, 1, 2].map((z) => (
-              <motion.span
-                key={z}
-                animate={{ opacity: [0, 1, 0], y: [0, -12], scale: [0.7, 1] }}
-                transition={{ duration: 2.4, repeat: Infinity, delay: z * 0.8, ease: "easeOut" }}
-                style={{
-                  position: "absolute",
-                  fontSize: 10 + z * 2,
-                  fontWeight: 800,
-                  color: SLEEP,
-                  left: z * 7,
-                }}
-              >
-                z
-              </motion.span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <motion.div
-        key={message}
-        initial={reduce ? false : { opacity: 0, scale: 0.92, x: -6 }}
-        animate={{ opacity: 1, scale: 1, x: 0 }}
-        transition={{ type: "spring", stiffness: 380, damping: 24 }}
-        style={{ position: "relative", flex: 1, minWidth: 0 }}
-      >
-        <div
-          style={{
-            position: "relative",
-            background: "#232527",
-            borderRadius: 16,
-            padding: "10px 13px",
-            fontSize: 12.5,
-            fontWeight: 700,
-            lineHeight: 1.35,
-            color: "#f4f3ee",
-            overflowWrap: "anywhere",
+      {/* Crossfade entre estados: el video saliente se desvanece encima del
+          entrante (ambos absolutos), sin cortes negros. */}
+      <AnimatePresence initial={false}>
+        <motion.video
+          key={state}
+          src={VIDEO[state]}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          aria-hidden="true"
+          data-mascota
+          // autoPlay se pierde si el video carga antes de que React hidrate
+          // (o al entrar por AnimatePresence): play() explícito al montar —
+          // si aún no hay datos, la promesa espera a que los haya.
+          ref={(node) => {
+            node?.play().catch(() => {});
           }}
+          initial={reduce ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={reduce ? undefined : { opacity: 0 }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
+          className="absolute inset-0 object-cover w-full h-full pointer-events-none"
+        />
+      </AnimatePresence>
+
+      {/* Burbuja de frase: el sistema de frases de siempre, sobre el video. */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={message}
+          initial={reduce ? false : { opacity: 0, y: 8, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={reduce ? undefined : { opacity: 0, y: -6 }}
+          transition={{ type: "spring", stiffness: 380, damping: 24 }}
+          className="absolute left-3 right-3 bottom-3 pointer-events-none"
         >
-          {message}
           <div
-            aria-hidden="true"
             style={{
-              position: "absolute",
-              left: -5,
-              top: "50%",
-              transform: "translateY(-50%) rotate(45deg)",
-              width: 10,
-              height: 10,
-              background: "#232527",
-              borderRadius: 2,
+              background: "rgba(18,20,22,.72)",
+              backdropFilter: "blur(10px)",
+              WebkitBackdropFilter: "blur(10px)",
+              border: "1px solid rgba(255,255,255,.12)",
+              borderRadius: 16,
+              padding: "10px 13px",
+              fontSize: 12.5,
+              fontWeight: 700,
+              lineHeight: 1.35,
+              color: "#f4f3ee",
+              overflowWrap: "anywhere",
             }}
-          />
-        </div>
-      </motion.div>
+          >
+            {message}
+          </div>
+        </motion.div>
+      </AnimatePresence>
     </motion.div>
   );
 }
