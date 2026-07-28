@@ -12,7 +12,7 @@ const DAYS: RoutineDay[] = ["Push", "Pull", "Legs"];
 
 export default function RutinaEdit() {
   const router = useRouter();
-  const { routine, saveRoutine, showToast } = useApp();
+  const { routine, saveRoutine, showToast, t } = useApp();
   const [draft, setDraft] = useState<Routine>(() => JSON.parse(JSON.stringify(routine)));
   const [day, setDay] = useState<RoutineDay>("Push");
 
@@ -28,20 +28,20 @@ export default function RutinaEdit() {
   };
 
   const add = () => {
-    setDraft((prev) => ({ ...prev, [day]: [...prev[day], { name: "Nuevo ejercicio", sets: "3x10" }] }));
+    setDraft((prev) => ({ ...prev, [day]: [...prev[day], { name: t("rutina.newExercise"), sets: "3x10" }] }));
   };
 
   const save = async () => {
     await saveRoutine(draft);
-    showToast("Rutina guardada");
+    showToast(t("rutina.toastSaved"));
     router.push("/entrenamiento");
   };
 
   return (
     <div style={{ minHeight: "100dvh", boxSizing: "border-box", padding: "24px 20px 24px", display: "flex", flexDirection: "column" }}>
-      <div className="font-sora" style={{ fontSize: 20, fontWeight: 700 }}>Editar rutina</div>
+      <div className="font-sora" style={{ fontSize: 20, fontWeight: 700 }}>{t("rutina.title")}</div>
       <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>
-        Cada usuario tiene la suya — cambia días y ejercicios
+        {t("rutina.subtitle")}
       </div>
 
       <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
@@ -133,7 +133,7 @@ export default function RutinaEdit() {
           cursor: "pointer",
         }}
       >
-        + Agregar ejercicio
+        {t("rutina.addExercise")}
       </Pressable>
 
       <div style={{ flex: 1 }} />
@@ -152,7 +152,7 @@ export default function RutinaEdit() {
           boxShadow: "0 0 20px rgba(199,242,122,.5)",
         }}
       >
-        Guardar rutina
+        {t("rutina.saveRoutine")}
       </Pressable>
     </div>
   );

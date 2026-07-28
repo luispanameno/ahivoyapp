@@ -14,7 +14,7 @@ const DAYS: RoutineDay[] = ["Push", "Pull", "Legs"];
 
 export default function Entrenamiento() {
   const router = useRouter();
-  const { routine, workout, setWorkout, showToast } = useApp();
+  const { routine, workout, setWorkout, showToast, t } = useApp();
 
   const [day, setDay] = useState<RoutineDay>(workout?.day ?? "Push");
   const [notes, setNotes] = useState(workout?.notes ?? "");
@@ -26,17 +26,17 @@ export default function Entrenamiento() {
 
   const readCapture = async () => {
     if (!shot) {
-      setError("Primero sube la captura de tu entrenamiento.");
+      setError(t("entrenamiento.errNoCapture"));
       return;
     }
     setBusy(true);
     setError(null);
     try {
       const res = await analyze<{ nombre: string; kcal: number }>({ mode: "workout", image: shot });
-      await setWorkout({ day, done: true, kcal: Math.round(res.kcal) || 300, name: res.nombre || "Entrenamiento", notes });
-      showToast(`Entrenamiento leído · ${Math.round(res.kcal)} kcal quemadas`);
+      await setWorkout({ day, done: true, kcal: Math.round(res.kcal) || 300, name: res.nombre || t("sync.defaultWorkoutName"), notes });
+      showToast(t("entrenamiento.toastRead", { kcal: Math.round(res.kcal) }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo leer la captura");
+      setError(e instanceof Error ? e.message : t("entrenamiento.errCaptureFailed"));
     } finally {
       setBusy(false);
     }
@@ -44,8 +44,8 @@ export default function Entrenamiento() {
 
   const markManual = async () => {
     const kcal = workout?.kcal || 300;
-    await setWorkout({ day, done: true, kcal, name: workout?.name || `Rutina ${day}`, notes });
-    showToast("Marcado como hecho");
+    await setWorkout({ day, done: true, kcal, name: workout?.name || t("entrenamiento.defaultName", { day }), notes });
+    showToast(t("entrenamiento.toastManual"));
   };
 
   const saveNotes = async (text: string) => {
@@ -57,14 +57,14 @@ export default function Entrenamiento() {
     <div style={{ boxSizing: "border-box", padding: "24px 20px 24px", display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <div className="font-sora" style={{ fontSize: 20, fontWeight: 700 }}>Entrenamiento</div>
-          <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>Tu rutina de hoy</div>
+          <div className="font-sora" style={{ fontSize: 20, fontWeight: 700 }}>{t("entrenamiento.title")}</div>
+          <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>{t("entrenamiento.subtitle")}</div>
         </div>
         <Pressable
           onClick={() => router.push("/rutina")}
           style={{ fontSize: 12, fontWeight: 700, color: "#c7f27a", cursor: "pointer", padding: "12px 4px", minHeight: 44, display: "flex", alignItems: "center" }}
         >
-          Editar ›
+          {t("entrenamiento.edit")}
         </Pressable>
       </div>
 
@@ -109,32 +109,32 @@ export default function Entrenamiento() {
         <div style={{ marginTop: 16, background: "rgba(199,242,122,.1)", border: "1px solid rgba(199,242,122,.3)", borderRadius: 20, padding: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#c7f27a", boxShadow: "0 0 8px #c7f27a" }} />
-            <div style={{ fontSize: 13, fontWeight: 800, color: "#c7f27a" }}>Registrado hoy</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#c7f27a" }}>{t("entrenamiento.loggedToday")}</div>
           </div>
           <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.85)", marginTop: 6 }}>
-            {workout.name} · <span style={{ fontWeight: 800 }}>{workout.kcal} kcal quemadas</span>
+            {workout.name} · <span style={{ fontWeight: 800 }}>{workout.kcal} {t("entrenamiento.kcalBurned")}</span>
           </div>
-          <div style={{ fontSize: 11, color: "rgba(244,243,238,.5)", marginTop: 2 }}>Ya sumadas a tu conteo de calorías del día.</div>
+          <div style={{ fontSize: 11, color: "rgba(244,243,238,.5)", marginTop: 2 }}>{t("entrenamiento.alreadyCounted")}</div>
         </div>
       )}
 
       <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".03em", marginTop: 18, marginBottom: 8 }}>
-        SUBE LA CAPTURA DE TU ENTRENAMIENTO
+        {t("entrenamiento.uploadTitle")}
       </div>
       <div style={{ fontSize: 11, color: "rgba(244,243,238,.5)", marginBottom: 10, lineHeight: 1.4 }}>
-        De tu reloj o app (Samsung Health, etc.). La leemos y marcamos la rutina como hecha con las calorías reales.
+        {t("entrenamiento.uploadHint")}
       </div>
-      <ImageUploadZone placeholder="Toca para subir la captura de tu entrenamiento" icon="🏋️" height={130} radius={14} onImage={setShot} />
+      <ImageUploadZone placeholder={t("entrenamiento.uploadPlaceholder")} icon="🏋️" height={130} radius={14} onImage={setShot} />
       {error && <div style={{ marginTop: 8, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)" }}>{error}</div>}
-      <ActionButton label={busy ? "Leyendo captura…" : "Leer captura y marcar hecho"} onClick={readCapture} busy={busy} />
+      <ActionButton label={busy ? t("entrenamiento.readingCapture") : t("entrenamiento.readAndMark")} onClick={readCapture} busy={busy} />
 
       <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".03em", marginTop: 18, marginBottom: 8 }}>
-        NOTAS (OPCIONAL)
+        {t("entrenamiento.notesTitle")}
       </div>
       <textarea
         value={notes}
         onChange={(e) => saveNotes(e.target.value)}
-        placeholder="Ej. subí peso en press banca, sentí molestia en hombro…"
+        placeholder={t("entrenamiento.notesPlaceholder")}
         style={{
           width: "100%",
           minHeight: 70,
@@ -154,7 +154,7 @@ export default function Entrenamiento() {
         onClick={markManual}
         style={{ textAlign: "center", marginTop: 14, fontSize: 12, fontWeight: 700, color: "rgba(244,243,238,.5)", cursor: "pointer", minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
       >
-        Marcar como hecho manualmente
+        {t("entrenamiento.markManual")}
       </Pressable>
       <div style={{ height: 20 }} />
     </div>
