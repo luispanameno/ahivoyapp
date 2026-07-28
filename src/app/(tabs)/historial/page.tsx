@@ -8,33 +8,32 @@ import MascotIllustration from "@/components/MascotIllustration";
 import Pressable from "@/components/Pressable";
 import { useApp } from "@/lib/store";
 import { MealTime } from "@/lib/types";
+import { MEAL_TIME_LABEL, MONTHS_SHORT, WEEKDAYS_LONG } from "@/lib/i18n";
 
-const DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const ORDER: MealTime[] = ["Desayuno", "Almuerzo", "Cena", "Snack"];
 
 export default function Historial() {
   const router = useRouter();
-  const { meals, drinks, kcalEaten, water } = useApp();
+  const { meals, drinks, kcalEaten, water, lang, t } = useApp();
 
   const now = new Date();
-  const subtitle = `${DIAS[now.getDay()]}, ${now.getDate()} ${MESES[now.getMonth()]} · ${kcalEaten.toLocaleString()} kcal totales`;
+  const subtitle = `${WEEKDAYS_LONG[lang][now.getDay()]}, ${now.getDate()} ${MONTHS_SHORT[lang][now.getMonth()]} · ${kcalEaten.toLocaleString()} ${t("historial.kcalTotal")}`;
 
-  const groups = ORDER.map((t) => ({
-    label: t.toUpperCase(),
-    items: meals.filter((m) => m.time === t),
+  const groups = ORDER.map((time) => ({
+    label: MEAL_TIME_LABEL[lang][time].toUpperCase(),
+    items: meals.filter((m) => m.time === time),
   })).filter((g) => g.items.length);
 
   return (
     <div style={{ boxSizing: "border-box", padding: "24px 20px 0" }}>
-      <div className="font-sora" style={{ fontSize: 20, fontWeight: 700 }}>Historial</div>
+      <div className="font-sora" style={{ fontSize: 20, fontWeight: 700 }}>{t("historial.title")}</div>
       <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>{subtitle}</div>
 
       {groups.length === 0 && drinks.length === 0 && (
         <div style={{ marginTop: 24, textAlign: "center", color: "rgba(244,243,238,.45)", fontSize: 13, lineHeight: 1.6 }}>
-          Aún no registras comidas hoy.
+          {t("historial.emptyLine1")}
           <br />
-          Usa el botón central para escanear tu plato.
+          {t("historial.emptyLine2")}
         </div>
       )}
 
@@ -42,7 +41,7 @@ export default function Historial() {
         {drinks.length > 0 && (
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em", marginBottom: 8 }}>
-              BEBIDAS · {water}ml
+              {t("historial.drinks")} · {water}ml
             </div>
             {drinks.map((d) => (
               <Pressable
@@ -132,7 +131,7 @@ export default function Historial() {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 700 }}>{meal.desc}</div>
                   <div style={{ fontSize: 11, color: "rgba(244,243,238,.45)" }}>
-                    P {meal.p}g · C {meal.c}g · G {meal.f}g
+                    {t("historial.macrosShort", { p: meal.p, c: meal.c, f: meal.f })}
                   </div>
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700 }}>{meal.kcal} kcal</div>

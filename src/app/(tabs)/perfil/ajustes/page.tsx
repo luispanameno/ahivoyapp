@@ -11,7 +11,7 @@ import { useState } from "react";
 import Pressable from "@/components/Pressable";
 import Icon from "@/components/Icon";
 import {
-  ACTIVITY_OPTIONS,
+  getActivityOptions,
   ProfileFooter,
   ProfileHeader,
   ProfileTabs,
@@ -190,7 +190,7 @@ export default function PerfilAjustes() {
       {/* Nivel de actividad diaria (para el TDEE) */}
       <div style={sectionTitle}>NIVEL DE ACTIVIDAD DIARIA</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {ACTIVITY_OPTIONS.map((opt) => {
+        {getActivityOptions(t).map((opt) => {
           const active = profile.activityLevel === opt.value;
           return (
             <Pressable

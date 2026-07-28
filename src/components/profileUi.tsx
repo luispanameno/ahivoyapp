@@ -16,11 +16,13 @@ import { ActivityLevel } from "@/lib/types";
 
 export const spring = { type: "spring", stiffness: 400, damping: 25 } as const;
 
-export const ACTIVITY_OPTIONS: { value: ActivityLevel; label: string; desc: string }[] = [
-  { value: "sedentario", label: "Sedentario", desc: "No haces nada de ejercicio" },
-  { value: "ligero", label: "Ligero", desc: "Por tu trabajo o rutina te mantienes caminando / en movimiento" },
-  { value: "activo", label: "Activo", desc: "Haces ejercicio 3 días a la semana o más" },
-];
+export function getActivityOptions(t: (key: string) => string): { value: ActivityLevel; label: string; desc: string }[] {
+  return [
+    { value: "sedentario", label: t("perfil.activitySedentary"), desc: t("perfil.activitySedentaryDesc") },
+    { value: "ligero", label: t("perfil.activityLight"), desc: t("perfil.activityLightDesc") },
+    { value: "activo", label: t("perfil.activityActive"), desc: t("perfil.activityActiveDesc") },
+  ];
+}
 
 export interface ScaleResult {
   peso_lb: number;
@@ -86,7 +88,7 @@ export function fmtStamp(d: Date): string {
 }
 
 export function ProfileHeader() {
-  const { profile, saveProfile, showToast, userEmail } = useApp();
+  const { profile, saveProfile, showToast, userEmail, t } = useApp();
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [editorSrc, setEditorSrc] = useState<string | null>(null);
 
@@ -99,7 +101,7 @@ export function ProfileHeader() {
           onSave={async (url) => {
             await saveProfile({ ...profile, photo: url });
             setEditorSrc(null);
-            showToast("Foto de perfil actualizada");
+            showToast(t("perfil.photoUpdated"));
           }}
         />
       )}
@@ -109,7 +111,7 @@ export function ProfileHeader() {
             if (profile.photo) setEditorSrc(profile.photo);
             else photoInputRef.current?.click();
           }}
-          ariaLabel="Cambiar tu foto de perfil"
+          ariaLabel={t("perfil.changePhoto")}
           style={{
             width: 64,
             height: 64,
@@ -136,7 +138,7 @@ export function ProfileHeader() {
           >
             {profile.photo ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={profile.photo} alt="Tu foto" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src={profile.photo} alt={t("perfil.yourPhoto")} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             ) : (
               <Icon name="user" size={26} />
             )}
@@ -171,14 +173,14 @@ export function ProfileHeader() {
             try {
               setEditorSrc(await fileToDataURL(file));
             } catch {
-              showToast("No se pudo cargar esa foto");
+              showToast(t("perfil.photoLoadError"));
             }
           }}
         />
         <div style={{ flex: 1, minWidth: 0 }}>
           <input
             value={profile.name}
-            placeholder="Tu nombre"
+            placeholder={t("perfil.namePlaceholder")}
             onChange={(e) => saveProfile({ ...profile, name: e.target.value })}
             className="font-sora"
             style={{
@@ -194,7 +196,7 @@ export function ProfileHeader() {
             }}
           />
           <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.4)", marginTop: 4, wordBreak: "break-all" }}>
-            {userEmail ?? "Toca tu nombre para editarlo · toca la foto para cambiarla"}
+            {userEmail ?? t("perfil.editHint")}
           </div>
         </div>
       </div>
@@ -246,10 +248,11 @@ export function ProfileTabs() {
   const pathname = usePathname();
   const router = useRouter();
   const reduce = useReducedMotion();
+  const { t } = useApp();
   const tabs = [
-    { label: "Mi progreso", route: "/perfil" },
-    { label: "Sincronización", route: "/perfil/sincronizacion" },
-    { label: "Ajustes", route: "/perfil/ajustes", gear: true },
+    { label: t("perfil.tabProgress"), route: "/perfil" },
+    { label: t("perfil.tabSync"), route: "/perfil/sincronizacion" },
+    { label: t("perfil.tabSettings"), route: "/perfil/ajustes", gear: true },
   ];
 
   return (
@@ -264,19 +267,19 @@ export function ProfileTabs() {
         marginTop: 18,
       }}
     >
-      {tabs.map((t) => {
-        const active = pathname === t.route;
+      {tabs.map((tab) => {
+        const active = pathname === tab.route;
         return (
           <motion.div
-            key={t.route}
+            key={tab.route}
             role="tab"
             aria-selected={active}
             tabIndex={0}
-            onClick={() => router.push(t.route)}
+            onClick={() => router.push(tab.route)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
-                router.push(t.route);
+                router.push(tab.route);
               }
             }}
             whileTap={reduce ? undefined : { scale: 0.95 }}
@@ -306,9 +309,9 @@ export function ProfileTabs() {
                 }}
               />
             )}
-            {t.gear ? (
+            {tab.gear ? (
               <span
-                aria-label={t.label}
+                aria-label={tab.label}
                 style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}
               >
                 <GearIcon color={active ? "#10240a" : "rgba(244,243,238,.6)"} />
@@ -324,7 +327,7 @@ export function ProfileTabs() {
                   padding: "0 2px",
                 }}
               >
-                {t.label}
+                {tab.label}
               </span>
             )}
           </motion.div>

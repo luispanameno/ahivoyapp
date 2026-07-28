@@ -11,16 +11,19 @@ import { ProfileFooter, ProfileHeader, ProfileTabs, sectionTitle } from "@/compo
 import { useApp } from "@/lib/store";
 import { ACTIVITY_FACTORS, MeasurementEntry, WeightEntry } from "@/lib/types";
 import { mifflinBMR } from "@/lib/nutrition";
+import { WEEKDAY_LETTERS } from "@/lib/i18n";
 
 type MeasureField = "armCm" | "waistCm" | "chestCm" | "legCm" | "gluteCm";
 
-const MEASURE_FIELDS: { field: MeasureField; label: string }[] = [
-  { field: "armCm", label: "Brazo" },
-  { field: "waistCm", label: "Cintura" },
-  { field: "chestCm", label: "Pecho" },
-  { field: "legCm", label: "Pierna" },
-  { field: "gluteCm", label: "Glúteos" },
-];
+function measureFields(t: (key: string) => string): { field: MeasureField; label: string }[] {
+  return [
+    { field: "armCm", label: t("perfil.measureArm") },
+    { field: "waistCm", label: t("perfil.measureWaist") },
+    { field: "chestCm", label: t("perfil.measureChest") },
+    { field: "legCm", label: t("perfil.measureLeg") },
+    { field: "gluteCm", label: t("perfil.measureGlute") },
+  ];
+}
 
 // Serie de una sola medida (solo las anotaciones QUE TRAEN ese campo — una
 // entrada puede venir con solo alguna de las 5). Se ordena por fecha, sin
@@ -37,13 +40,20 @@ function measureSeries(measurements: MeasurementEntry[], field: MeasureField): {
 // Mini tarjeta de UNA medida: valor actual + si subió/bajó + una barrita
 // por cada anotación real (sin fechas debajo — a esta escala no caben, el
 // número grande y la flecha ya dicen lo que hace falta).
-function MeasureMiniCard({ label, values }: { label: string; values: number[] }) {
+function MeasureMiniCard({ label, values, t }: { label: string; values: number[]; t: (key: string) => string }) {
   const max = Math.max(...values, 1);
   const min = Math.min(...values, max);
   const heights = values.map((v) => Math.round(20 + ((v - min) / Math.max(0.1, max - min)) * 80));
   const latest = values[values.length - 1];
   const delta = values.length >= 2 ? Math.round((latest - values[values.length - 2]) * 10) / 10 : 0;
-  const trendLabel = values.length >= 2 ? (delta === 0 ? "Sin cambio" : `${delta > 0 ? "↑" : "↓"} ${Math.abs(delta)} cm`) : values.length === 1 ? "Primera medida" : "Sin datos";
+  const trendLabel =
+    values.length >= 2
+      ? delta === 0
+        ? t("perfil.noChange")
+        : `${delta > 0 ? "↑" : "↓"} ${Math.abs(delta)} cm`
+      : values.length === 1
+      ? t("perfil.firstMeasurement")
+      : t("perfil.noData");
 
   return (
     <div style={{ background: "#232527", borderRadius: 16, padding: "11px 12px" }}>
@@ -72,7 +82,7 @@ function MeasureMiniCard({ label, values }: { label: string; values: number[] })
           </div>
         </>
       ) : (
-        <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.35)", marginTop: 8 }}>Sin datos</div>
+        <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.35)", marginTop: 8 }}>{t("perfil.noData")}</div>
       )}
     </div>
   );
@@ -94,10 +104,9 @@ function weeklySeries(weights: WeightEntry[]): { labels: string[]; values: numbe
   };
 }
 
-const DAY_LETTERS = ["D", "L", "M", "M", "J", "V", "S"];
-
 export default function PerfilProgreso() {
-  const { profile, weights, bodyComp, measurements } = useApp();
+  const { profile, weights, bodyComp, measurements, t, lang } = useApp();
+  const DAY_LETTERS = WEEKDAY_LETTERS[lang];
   const [range, setRange] = useState<"days" | "weeks">("days");
   const [infoModal, setInfoModal] = useState<"bmr" | "tdee" | null>(null);
 
@@ -118,8 +127,8 @@ export default function PerfilProgreso() {
   const delta = series.values.length >= 2 ? Math.round((series.values[series.values.length - 1] - series.values[0]) * 10) / 10 : 0;
   const trendLabel =
     series.values.length >= 2
-      ? `${delta <= 0 ? "↓" : "↑"} ${Math.abs(delta)} lb ${range === "days" ? "esta semana" : "en este periodo"}`
-      : "Registra tu peso para ver tendencia";
+      ? `${delta <= 0 ? "↓" : "↑"} ${Math.abs(delta)} lb ${range === "days" ? t("perfil.weightTrendWeek") : t("perfil.weightTrendPeriod")}`
+      : t("perfil.weightTrendNoData");
   const trendColor = delta <= 0 ? "oklch(78% 0.15 145)" : "oklch(75% 0.15 60)";
 
   const GREEN = { bg: "rgba(199,242,122,.15)", color: "#c7f27a" };
@@ -128,39 +137,51 @@ export default function PerfilProgreso() {
   const bodyRows = bodyComp
     ? [
         {
-          label: "IMC",
+          label: t("perfil.bmi"),
           value: String(bodyComp.bmi),
-          ...(bodyComp.bmi < 25 ? { badge: "Normal", ...GREEN } : bodyComp.bmi < 30 ? { badge: "Alto", ...ORANGE } : { badge: "Muy alto", ...RED }),
+          ...(bodyComp.bmi < 25
+            ? { badge: t("perfil.badgeNormal"), ...GREEN }
+            : bodyComp.bmi < 30
+            ? { badge: t("perfil.badgeHigh"), ...ORANGE }
+            : { badge: t("perfil.badgeVeryHigh"), ...RED }),
         },
         {
-          label: "Grasa corporal",
+          label: t("perfil.bodyFat"),
           value: `${bodyComp.fatPct}%`,
-          ...(bodyComp.fatPct < 20 ? { badge: "Bueno", ...GREEN } : bodyComp.fatPct < 32 ? { badge: "Alto", ...ORANGE } : { badge: "Muy alto", ...RED }),
+          ...(bodyComp.fatPct < 20
+            ? { badge: t("perfil.badgeGood"), ...GREEN }
+            : bodyComp.fatPct < 32
+            ? { badge: t("perfil.badgeHigh"), ...ORANGE }
+            : { badge: t("perfil.badgeVeryHigh"), ...RED }),
         },
         {
-          label: "Nivel de agua",
+          label: t("perfil.waterLevel"),
           value: `${bodyComp.waterPct}%`,
-          ...(bodyComp.waterPct >= 50 ? { badge: "Normal", ...GREEN } : { badge: "Insuficiente", ...ORANGE }),
+          ...(bodyComp.waterPct >= 50 ? { badge: t("perfil.badgeNormal"), ...GREEN } : { badge: t("perfil.badgeInsufficient"), ...ORANGE }),
         },
         {
-          label: "Proteína",
+          label: t("perfil.proteinLevel"),
           value: `${bodyComp.proteinPct}%`,
-          ...(bodyComp.proteinPct >= 16 ? { badge: "Normal", ...GREEN } : { badge: "Insuficiente", ...ORANGE }),
+          ...(bodyComp.proteinPct >= 16 ? { badge: t("perfil.badgeNormal"), ...GREEN } : { badge: t("perfil.badgeInsufficient"), ...ORANGE }),
         },
         {
-          label: "Metabolismo basal",
+          label: t("perfil.basalMetabolism"),
           value: `${bodyComp.bmr.toLocaleString()} kcal`,
           ...(bodyComp.bmr >= mifflinBMR(profile.weight, profile.height, profile.age, profile.sex) * 0.95
-            ? { badge: "Normal", ...GREEN }
-            : { badge: "Bajo lo ideal", ...ORANGE }),
+            ? { badge: t("perfil.badgeNormal"), ...GREEN }
+            : { badge: t("perfil.badgeBelowIdeal"), ...ORANGE }),
         },
         {
-          label: "Grasa visceral",
+          label: t("perfil.visceralFat"),
           value: String(bodyComp.visceralFat),
-          ...(bodyComp.visceralFat < 10 ? { badge: "Normal", ...GREEN } : bodyComp.visceralFat < 15 ? { badge: "Alta", ...ORANGE } : { badge: "Muy alta", ...RED }),
+          ...(bodyComp.visceralFat < 10
+            ? { badge: t("perfil.badgeNormal"), ...GREEN }
+            : bodyComp.visceralFat < 15
+            ? { badge: t("perfil.badgeHighF"), ...ORANGE }
+            : { badge: t("perfil.badgeVeryHighF"), ...RED }),
         },
-        { label: "Músculo", value: `${bodyComp.muscle} lb`, badge: "Bueno", ...GREEN },
-        { label: "Masa ósea", value: `${bodyComp.boneMass} lb`, badge: "Normal", ...GREEN },
+        { label: t("perfil.muscle"), value: `${bodyComp.muscle} lb`, badge: t("perfil.badgeGood"), ...GREEN },
+        { label: t("perfil.boneMass"), value: `${bodyComp.boneMass} lb`, badge: t("perfil.badgeNormal"), ...GREEN },
       ]
     : [];
 
@@ -173,7 +194,7 @@ export default function PerfilProgreso() {
           junto al resto de lo que pasa hoy, que en Perfil. */}
 
       {/* Metabolismo */}
-      <div style={{ ...sectionTitle, marginTop: 18 }}>TU METABOLISMO</div>
+      <div style={{ ...sectionTitle, marginTop: 18 }}>{t("perfil.metabolismTitle")}</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         {(
           [
@@ -187,7 +208,7 @@ export default function PerfilProgreso() {
               <Pressable
                 onClick={() => setInfoModal(m.key)}
                 tapScale={0.85}
-                ariaLabel={`Qué es el ${m.label}`}
+                ariaLabel={t("perfil.whatIs", { term: m.label })}
                 style={{
                   width: 22,
                   height: 22,
@@ -213,20 +234,16 @@ export default function PerfilProgreso() {
         ))}
       </div>
 
-      <InfoModal open={infoModal === "bmr"} title="¿Qué es el BMR?" onClose={() => setInfoModal(null)}>
-        Es tu <b>Tasa Metabólica Basal</b>: las calorías que tu cuerpo quema <b>en reposo total</b> — solo por respirar,
-        pensar y mantener tus órganos funcionando. Se calcula con tu peso, altura, edad y sexo (o viene directo de tu
-        báscula inteligente). Aunque no te muevas en todo el día, tu cuerpo gasta esto.
+      <InfoModal open={infoModal === "bmr"} title={t("perfil.bmrTitle")} onClose={() => setInfoModal(null)}>
+        {t("perfil.bmrBody")}
       </InfoModal>
-      <InfoModal open={infoModal === "tdee"} title="¿Qué es el TDEE?" onClose={() => setInfoModal(null)}>
-        Es tu <b>Gasto Energético Total Diario</b>: el BMR multiplicado por tu nivel de actividad (caminar, trabajar,
-        entrenar). Representa todas las calorías que quemas en un día normal. Para <b>bajar de peso</b> hay que comer
-        por debajo del TDEE (déficit); para mantenerte, igual al TDEE.
+      <InfoModal open={infoModal === "tdee"} title={t("perfil.tdeeTitle")} onClose={() => setInfoModal(null)}>
+        {t("perfil.tdeeBody")}
       </InfoModal>
 
       {/* Historial de peso */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20, marginBottom: 8 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em" }}>HISTORIAL DE PESO</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em" }}>{t("perfil.weightHistoryTitle")}</div>
         <div style={{ fontSize: 11.5, fontWeight: 700, color: trendColor }}>{trendLabel}</div>
       </div>
       <div style={{ background: "#1b1e21", borderRadius: 20, padding: 14 }}>
@@ -250,7 +267,7 @@ export default function PerfilProgreso() {
                 color: range === r ? "#10240a" : "rgba(244,243,238,.6)",
               }}
             >
-              {r === "days" ? "Días" : "Semanas"}
+              {r === "days" ? t("perfil.days") : t("perfil.weeks")}
             </Pressable>
           ))}
         </div>
@@ -280,7 +297,7 @@ export default function PerfilProgreso() {
           </>
         ) : (
           <div style={{ textAlign: "center", fontSize: 12, color: "rgba(244,243,238,.45)", padding: "16px 0" }}>
-            Sube tu peso (en Ajustes o con la báscula) y verás tu progreso.
+            {t("perfil.weightEmpty")}
           </div>
         )}
       </div>
@@ -290,32 +307,32 @@ export default function PerfilProgreso() {
           chicas, sin scroll) con su propia barrita chica debajo — así se
           compara todo de un vistazo, sin tener que elegir una por una. */}
       <div style={{ marginTop: 20, marginBottom: 8 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em" }}>HISTORIAL DE MEDIDAS</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em" }}>{t("perfil.measurementsTitle")}</div>
       </div>
       {measurements.length ? (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {MEASURE_FIELDS.map((m) => (
-            <MeasureMiniCard key={m.field} label={m.label} values={measureSeries(measurements, m.field).values} />
+          {measureFields(t).map((m) => (
+            <MeasureMiniCard key={m.field} label={m.label} values={measureSeries(measurements, m.field).values} t={t} />
           ))}
         </div>
       ) : (
         <div style={{ background: "#1b1e21", borderRadius: 20, padding: "16px 14px", textAlign: "center", fontSize: 12, color: "rgba(244,243,238,.45)" }}>
-          Anota tus medidas en <b style={{ color: "#c7f27a" }}>Sincronización</b> y aquí vas a ver si subieron o bajaron.
+          {t("perfil.measurementsEmpty", { sync: t("perfil.tabSync") })}
         </div>
       )}
 
       {/* Composición corporal */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20, marginBottom: 8 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em" }}>COMPOSICIÓN CORPORAL</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em" }}>{t("perfil.bodyCompTitle")}</div>
         <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.35)" }}>
-          {bodyComp ? `Última captura: ${bodyComp.date.slice(8, 10)}/${bodyComp.date.slice(5, 7)}` : "Sin captura aún"}
+          {bodyComp ? t("perfil.lastCapture", { date: `${bodyComp.date.slice(8, 10)}/${bodyComp.date.slice(5, 7)}` }) : t("perfil.noCaptureYet")}
         </div>
       </div>
       <div style={{ background: "#1b1e21", borderRadius: 20, padding: 18 }}>
         {bodyComp ? (
           <>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingBottom: 16, borderBottom: "1px solid rgba(255,255,255,.06)" }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em" }}>PUNTUACIÓN CORPORAL</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em" }}>{t("perfil.bodyScoreTitle")}</div>
               <div className="font-sora" style={{ fontSize: 40, fontWeight: 800, marginTop: 4, textShadow: "0 0 12px rgba(199,242,122,.4)" }}>
                 {bodyComp.score}
               </div>
@@ -326,11 +343,11 @@ export default function PerfilProgreso() {
                   {profile.weight}
                   <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(244,243,238,.4)" }}> lb</span>
                 </div>
-                <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.45)", marginTop: 2 }}>Peso</div>
+                <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.45)", marginTop: 2 }}>{t("perfil.weightLabel")}</div>
               </div>
               <div style={{ textAlign: "center", borderLeft: "1px solid rgba(255,255,255,.06)" }}>
                 <div className="font-sora" style={{ fontSize: 17, fontWeight: 800 }}>{bodyComp.build}</div>
-                <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.45)", marginTop: 2 }}>Complexión física</div>
+                <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.45)", marginTop: 2 }}>{t("perfil.bodyBuild")}</div>
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", paddingTop: 6 }}>
@@ -349,8 +366,7 @@ export default function PerfilProgreso() {
           </>
         ) : (
           <div style={{ textAlign: "center", fontSize: 12, color: "rgba(244,243,238,.45)", lineHeight: 1.5 }}>
-            Sube una captura de tu báscula desde <b style={{ color: "#c7f27a" }}>Ajustes</b> y aquí verás tu composición
-            corporal completa.
+            {t("perfil.bodyCompEmpty", { settings: t("perfil.tabSettings") })}
           </div>
         )}
       </div>
