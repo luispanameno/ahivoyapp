@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import Pressable from "@/components/Pressable";
 import { useApp } from "@/lib/store";
+import { MEAL_TIME_LABEL } from "@/lib/i18n";
 
 const fieldStyle: React.CSSProperties = {
   width: "100%",
@@ -23,7 +24,7 @@ const fieldStyle: React.CSSProperties = {
 export default function EditarComida() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
-  const { meals, updateMeal, deleteMeal, showToast } = useApp();
+  const { meals, updateMeal, deleteMeal, showToast, t, lang } = useApp();
 
   const meal = meals.find((m) => m.id === params.id);
   const [desc, setDesc] = useState(meal?.desc ?? "");
@@ -35,9 +36,9 @@ export default function EditarComida() {
   if (!meal) {
     return (
       <div style={{ padding: "80px 24px", textAlign: "center", color: "rgba(244,243,238,.5)", fontSize: 13 }}>
-        Registro no encontrado.
+        {t("comida.notFound")}
         <Pressable onClick={() => router.push("/historial")} style={{ marginTop: 16, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center", color: "#c7f27a", fontWeight: 700, cursor: "pointer" }}>
-          ‹ Volver al historial
+          {t("comida.backToHistory")}
         </Pressable>
       </div>
     );
@@ -45,39 +46,39 @@ export default function EditarComida() {
 
   const save = async () => {
     await updateMeal({ ...meal, desc, kcal: Number(kcal) || 0, p: Number(p) || 0, c: Number(c) || 0, f: Number(f) || 0 });
-    showToast("Comida actualizada");
+    showToast(t("comida.toastUpdated"));
     router.push("/historial");
   };
 
   const remove = async () => {
     await deleteMeal(meal.id);
-    showToast("Registro eliminado");
+    showToast(t("comida.toastDeleted"));
     router.push("/historial");
   };
 
   return (
     <div style={{ minHeight: "100dvh", boxSizing: "border-box", padding: "24px 20px", display: "flex", flexDirection: "column" }}>
-      <div className="font-sora" style={{ fontSize: 18, fontWeight: 700 }}>Editar comida</div>
-      <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>{meal.time}</div>
+      <div className="font-sora" style={{ fontSize: 18, fontWeight: 700 }}>{t("comida.editTitle")}</div>
+      <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>{MEAL_TIME_LABEL[lang][meal.time]}</div>
 
       {meal.photo && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={meal.photo}
-          alt="Tu plato"
+          alt={t("comida.yourPlate")}
           style={{ width: "100%", height: 180, objectFit: "cover", borderRadius: 20, marginTop: 16 }}
         />
       )}
 
-      <div style={{ marginTop: 16, fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)" }}>DESCRIPCIÓN</div>
+      <div style={{ marginTop: 16, fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)" }}>{t("comida.description")}</div>
       <input value={desc} onChange={(e) => setDesc(e.target.value)} style={fieldStyle} />
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 16 }}>
         {[
-          { label: "CALORÍAS", val: kcal, set: setKcal },
-          { label: "PROTEÍNA (g)", val: p, set: setP },
-          { label: "CARBS (g)", val: c, set: setC },
-          { label: "GRASAS (g)", val: f, set: setF },
+          { label: t("comida.calories"), val: kcal, set: setKcal },
+          { label: t("comida.protein"), val: p, set: setP },
+          { label: t("comida.carbs"), val: c, set: setC },
+          { label: t("comida.fat"), val: f, set: setF },
         ].map((x) => (
           <div key={x.label}>
             <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)" }}>{x.label}</div>
@@ -102,7 +103,7 @@ export default function EditarComida() {
           boxShadow: "0 0 20px rgba(199,242,122,.5)",
         }}
       >
-        Guardar cambios
+        {t("comida.saveChanges")}
       </Pressable>
       <Pressable
         onClick={remove}
@@ -118,7 +119,7 @@ export default function EditarComida() {
           border: "1px solid oklch(72% 0.18 25 / 0.4)",
         }}
       >
-        Eliminar registro
+        {t("comida.deleteRecord")}
       </Pressable>
     </div>
   );

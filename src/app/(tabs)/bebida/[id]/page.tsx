@@ -23,7 +23,7 @@ const fieldStyle: React.CSSProperties = {
 export default function EditarBebida() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
-  const { drinks, updateDrink, deleteDrink, showToast } = useApp();
+  const { drinks, updateDrink, deleteDrink, showToast, t } = useApp();
 
   const drink = drinks.find((d) => d.id === params.id);
   const [label, setLabel] = useState(drink?.label ?? "");
@@ -32,9 +32,9 @@ export default function EditarBebida() {
   if (!drink) {
     return (
       <div style={{ padding: "80px 24px", textAlign: "center", color: "rgba(244,243,238,.5)", fontSize: 13 }}>
-        Registro no encontrado.
+        {t("comida.notFound")}
         <Pressable onClick={() => router.push("/historial")} style={{ marginTop: 16, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center", color: "#c7f27a", fontWeight: 700, cursor: "pointer" }}>
-          ‹ Volver al historial
+          {t("comida.backToHistory")}
         </Pressable>
       </div>
     );
@@ -42,25 +42,25 @@ export default function EditarBebida() {
 
   const save = async () => {
     await updateDrink({ ...drink, label: label.trim() || "Agua", ml: Number(ml) || 0 });
-    showToast("Registro actualizado");
+    showToast(t("bebida.toastUpdated"));
     router.push("/historial");
   };
 
   const remove = async () => {
     await deleteDrink(drink.id);
-    showToast("Registro eliminado");
+    showToast(t("bebida.toastDeleted"));
     router.push("/historial");
   };
 
   return (
     <div style={{ minHeight: "100dvh", boxSizing: "border-box", padding: "24px 20px", display: "flex", flexDirection: "column" }}>
-      <div className="font-sora" style={{ fontSize: 18, fontWeight: 700 }}>Editar registro</div>
-      <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>💧 Agua / bebida</div>
+      <div className="font-sora" style={{ fontSize: 18, fontWeight: 700 }}>{t("bebida.editTitle")}</div>
+      <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>{t("bebida.subtitle")}</div>
 
-      <div style={{ marginTop: 16, fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)" }}>ETIQUETA</div>
-      <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Agua, café, jugo…" style={fieldStyle} />
+      <div style={{ marginTop: 16, fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)" }}>{t("bebida.label")}</div>
+      <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder={t("bebida.labelPlaceholder")} style={fieldStyle} />
 
-      <div style={{ marginTop: 16, fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)" }}>MILILITROS</div>
+      <div style={{ marginTop: 16, fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)" }}>{t("bebida.milliliters")}</div>
       <input
         type="number"
         inputMode="numeric"
@@ -69,7 +69,7 @@ export default function EditarBebida() {
         style={fieldStyle}
       />
       <div style={{ fontSize: 11, color: "rgba(244,243,238,.4)", marginTop: 6 }}>
-        Usa un valor negativo para registrar un ajuste (ej. -250).
+        {t("bebida.negativeHint")}
       </div>
 
       <div style={{ flex: 1 }} />
@@ -88,7 +88,7 @@ export default function EditarBebida() {
           boxShadow: "0 0 20px rgba(199,242,122,.5)",
         }}
       >
-        Guardar cambios
+        {t("comida.saveChanges")}
       </Pressable>
       <Pressable
         onClick={remove}
@@ -104,7 +104,7 @@ export default function EditarBebida() {
           border: "1px solid oklch(72% 0.18 25 / 0.4)",
         }}
       >
-        Eliminar registro
+        {t("comida.deleteRecord")}
       </Pressable>
     </div>
   );
