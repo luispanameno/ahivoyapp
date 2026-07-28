@@ -50,9 +50,10 @@ const label: React.CSSProperties = {
 // Las dos "pestañas" Subir captura / Ingresar a mano, con píldora deslizante.
 function PathToggle({ path, onChange }: { path: Path; onChange: (p: Path) => void }) {
   const reduce = useReducedMotion();
+  const { t } = useApp();
   const opts: { value: Path; label: string }[] = [
-    { value: "upload", label: "Subir captura" },
-    { value: "manual", label: "Ingresar a mano" },
+    { value: "upload", label: t("sync.uploadCapture") },
+    { value: "manual", label: t("sync.manualEntry") },
   ];
   return (
     <div style={{ display: "flex", gap: 4, background: "#1b1e21", borderRadius: 100, padding: 4, marginBottom: 16 }}>
@@ -144,7 +145,7 @@ function SyncCard({ icon, title, subtitle, lastLabel, onClick }: { icon: string;
 export default function SyncHub() {
   const router = useRouter();
   const app = useApp();
-  const { activity, sleep, bodyComp, workout, measurements, setActivity, setSleep, setBodyComp, setWorkout, addMeasurement, showToast } = app;
+  const { activity, sleep, bodyComp, workout, measurements, setActivity, setSleep, setBodyComp, setWorkout, addMeasurement, showToast, t } = app;
   const [sheet, setSheet] = useState<SheetKind>(null);
   const [path, setPath] = useState<Path>("upload");
   const [busy, setBusy] = useState(false);
@@ -212,10 +213,10 @@ export default function SyncHub() {
           day: routineDay,
           done: true,
           kcal: Math.round(res.kcal) || 300,
-          name: res.nombre || "Entrenamiento",
+          name: res.nombre || t("sync.defaultWorkoutName"),
           notes: workout?.notes ?? "",
         });
-        showToast(`Rutina leída · ${Math.round(res.kcal)} kcal quemadas`);
+        showToast(t("sync.toastWorkoutRead", { kcal: Math.round(res.kcal) }));
       } else if (mode === "activity") {
         const res = await analyze<{ pasos: number; min_activos: number; kcal_activas: number; kcal_totales: number; distancia_km: number }>({
           mode: "activity",
@@ -229,7 +230,7 @@ export default function SyncHub() {
           distance: Math.round((res.distancia_km || 0) * 100) / 100,
           synced: true,
         });
-        showToast("Actividad actualizada desde tu captura");
+        showToast(t("sync.toastActivityUpdated"));
       } else if (mode === "sleep") {
         const res = await analyze<{ minutos: number; profundo_pct?: number; ligero_pct?: number; rem_pct?: number; despierto_pct?: number }>({
           mode: "sleep",
@@ -243,7 +244,7 @@ export default function SyncHub() {
               ? { deep: Math.round(res.profundo_pct), light: Math.round(res.ligero_pct ?? 0), rem: Math.round(res.rem_pct ?? 0), awake: Math.round(res.despierto_pct ?? 0) }
               : null,
         });
-        showToast(`Sueño actualizado: ${Math.floor(total / 60)}h ${String(total % 60).padStart(2, "0")}m`);
+        showToast(t("sync.toastSleepUpdated", { h: Math.floor(total / 60), m: String(total % 60).padStart(2, "0") }));
       } else {
         const res = await analyze<{
           peso_lb: number; score?: number; complexion?: string; imc?: number; grasa_pct?: number; agua_pct?: number;
@@ -265,11 +266,11 @@ export default function SyncHub() {
           },
           res.peso_lb > 0 ? res.peso_lb : undefined
         );
-        showToast("Perfil actualizado desde tu báscula");
+        showToast(t("sync.toastScaleUpdated"));
       }
       closeSheet();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo leer la captura");
+      setError(e instanceof Error ? e.message : t("sync.errCaptureFailed"));
     } finally {
       setBusy(false);
     }
@@ -284,24 +285,24 @@ export default function SyncHub() {
       distance: Number(distancia) || 0,
       synced: true,
     });
-    showToast("Actividad guardada");
+    showToast(t("sync.toastActivitySaved"));
     closeSheet();
   };
 
   const saveSleepManual = async () => {
     if (sleepManualMin <= 0) {
-      setError("Esas horas no cuadran — revisa a qué hora te acostaste y despertaste.");
+      setError(t("sync.errSleepHours"));
       return;
     }
     await setSleep({ minutes: sleepManualMin, phases: null });
-    showToast(`Sueño guardado: ${Math.floor(sleepManualMin / 60)}h ${String(sleepManualMin % 60).padStart(2, "0")}m`);
+    showToast(t("sync.toastSleepSaved", { h: Math.floor(sleepManualMin / 60), m: String(sleepManualMin % 60).padStart(2, "0") }));
     closeSheet();
   };
 
   const saveScaleManual = async () => {
     const lb = Number(pesoLb);
     if (!lb || lb <= 0) {
-      setError("Escribe tu peso.");
+      setError(t("sync.errWeight"));
       return;
     }
     await setBodyComp(
@@ -320,13 +321,13 @@ export default function SyncHub() {
       },
       lb
     );
-    showToast("Peso y báscula guardados");
+    showToast(t("sync.toastScaleSaved"));
     closeSheet();
   };
 
   const saveRoutineManual = async () => {
     if (!routineNombre.trim()) {
-      setError("Escribe el nombre del entrenamiento.");
+      setError(t("sync.errWorkoutName"));
       return;
     }
     await setWorkout({
@@ -336,7 +337,7 @@ export default function SyncHub() {
       name: routineNombre.trim(),
       notes: workout?.notes ?? "",
     });
-    showToast("Rutina guardada");
+    showToast(t("sync.toastRoutineSaved"));
     closeSheet();
   };
 
@@ -347,7 +348,7 @@ export default function SyncHub() {
     const pierna = Number(piernaCm) || undefined;
     const gluteos = Number(gluteosCm) || undefined;
     if (!brazo && !cintura && !pecho && !pierna && !gluteos) {
-      setError("Escribe al menos una medida.");
+      setError(t("sync.errMeasurements"));
       return;
     }
     await addMeasurement({ armCm: brazo, waistCm: cintura, chestCm: pecho, legCm: pierna, gluteCm: gluteos });
@@ -356,7 +357,7 @@ export default function SyncHub() {
     setPechoCm("");
     setPiernaCm("");
     setGluteosCm("");
-    showToast("Medidas guardadas");
+    showToast(t("sync.toastMeasurementsSaved"));
     closeSheet();
   };
 
@@ -364,41 +365,41 @@ export default function SyncHub() {
 
   return (
     <>
-      <div style={sectionTitle}>SINCRONIZACIÓN Y REGISTRO</div>
+      <div style={sectionTitle}>{t("sync.title")}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <SyncCard
           icon="watch-activity"
-          title="Actividad del reloj"
-          subtitle="Pasos · kcal activas · kcal totales"
-          lastLabel={activity?.synced ? `${activity.steps.toLocaleString()} pasos` : "Sin datos"}
+          title={t("sync.activityTitle")}
+          subtitle={t("sync.activitySubtitle")}
+          lastLabel={activity?.synced ? t("sync.stepsCount", { n: activity.steps.toLocaleString() }) : t("sync.noData")}
           onClick={() => openSheet("activity")}
         />
         <SyncCard
           icon="sleep"
-          title="Registro de sueño"
-          subtitle="Duración y fases"
-          lastLabel={sleep ? `${Math.floor(sleep.minutes / 60)}h ${String(sleep.minutes % 60).padStart(2, "0")}m` : "Sin datos"}
+          title={t("sync.sleepTitle")}
+          subtitle={t("sync.sleepSubtitle")}
+          lastLabel={sleep ? `${Math.floor(sleep.minutes / 60)}h ${String(sleep.minutes % 60).padStart(2, "0")}m` : t("sync.noData")}
           onClick={() => openSheet("sleep")}
         />
         <SyncCard
           icon="smart-scale"
-          title="Báscula inteligente"
-          subtitle="Peso · grasa · composición"
-          lastLabel={bodyComp ? `${bodyComp.date.slice(8, 10)}/${bodyComp.date.slice(5, 7)}` : "Sin datos"}
+          title={t("sync.scaleTitle")}
+          subtitle={t("sync.scaleSubtitle")}
+          lastLabel={bodyComp ? `${bodyComp.date.slice(8, 10)}/${bodyComp.date.slice(5, 7)}` : t("sync.noData")}
           onClick={() => openSheet("scale")}
         />
         <SyncCard
           icon="routine-plan"
-          title="Registro de rutina"
-          subtitle="Entrenamiento de hoy · kcal quemadas"
-          lastLabel={workout?.done ? `${workout.day} · ${workout.kcal} kcal` : "Sin datos"}
+          title={t("sync.routineTitle")}
+          subtitle={t("sync.routineSubtitle")}
+          lastLabel={workout?.done ? `${workout.day} · ${workout.kcal} kcal` : t("sync.noData")}
           onClick={() => openSheet("routine")}
         />
         <SyncCard
           icon="measurement-bmi"
-          title="Medidas corporales"
-          subtitle="Brazo · cintura · pecho · pierna · glúteos (a mano)"
-          lastLabel={lastMeasurement ? `${lastMeasurement.date.slice(8, 10)}/${lastMeasurement.date.slice(5, 7)}` : "Sin datos"}
+          title={t("sync.measurementsTitle")}
+          subtitle={t("sync.measurementsSubtitle")}
+          lastLabel={lastMeasurement ? `${lastMeasurement.date.slice(8, 10)}/${lastMeasurement.date.slice(5, 7)}` : t("sync.noData")}
           onClick={() => openSheet("measurements")}
         />
       </div>
@@ -406,40 +407,40 @@ export default function SyncHub() {
       <BottomSheet
         open={sheet === "activity"}
         onClose={closeSheet}
-        title="Actividad del reloj"
-        subtitle="Sube la captura de tu app de salud o escribe los números tú mismo."
+        title={t("sync.activityTitle")}
+        subtitle={t("sync.activitySheetSubtitle")}
       >
         <PathToggle path={path} onChange={setPath} />
         {path === "upload" ? (
           <>
-            <ImageUploadZone placeholder="Toca para subir la captura de tu reloj" icon="/icons/glyphs/watch-activity.png" height={120} radius={16} onImage={(url) => uploadImage("activity", url)} />
-            {busy && <div style={{ marginTop: 10, fontSize: 12, color: "#c7f27a", fontWeight: 700, textAlign: "center" }}>Leyendo captura…</div>}
+            <ImageUploadZone placeholder={t("sync.uploadActivityPlaceholder")} icon="/icons/glyphs/watch-activity.png" height={120} radius={16} onImage={(url) => uploadImage("activity", url)} />
+            {busy && <div style={{ marginTop: 10, fontSize: 12, color: "#c7f27a", fontWeight: 700, textAlign: "center" }}>{t("sync.readingCapture")}</div>}
           </>
         ) : (
           <>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div>
-                <div style={label}>PASOS</div>
+                <div style={label}>{t("sync.steps")}</div>
                 <input type="number" inputMode="numeric" value={pasos} onChange={(e) => setPasos(e.target.value)} placeholder="8000" style={fieldStyle} />
               </div>
               <div>
-                <div style={label}>MIN. ACTIVOS</div>
+                <div style={label}>{t("sync.activeMin")}</div>
                 <input type="number" inputMode="numeric" value={minActivos} onChange={(e) => setMinActivos(e.target.value)} placeholder="35" style={fieldStyle} />
               </div>
               <div>
-                <div style={label}>KCAL ACTIVAS</div>
+                <div style={label}>{t("sync.activeKcal")}</div>
                 <input type="number" inputMode="numeric" value={kcalActivas} onChange={(e) => setKcalActivas(e.target.value)} placeholder="300" style={fieldStyle} />
               </div>
               <div>
-                <div style={label}>KCAL TOTALES</div>
+                <div style={label}>{t("sync.totalKcal")}</div>
                 <input type="number" inputMode="numeric" value={kcalTotales} onChange={(e) => setKcalTotales(e.target.value)} placeholder="2000" style={fieldStyle} />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
-                <div style={label}>DISTANCIA (KM)</div>
+                <div style={label}>{t("sync.distanceKm")}</div>
                 <input type="number" inputMode="decimal" value={distancia} onChange={(e) => setDistancia(e.target.value)} placeholder="5.2" style={fieldStyle} />
               </div>
             </div>
-            <ActionButton label="Guardar actividad" onClick={saveActivityManual} busy={false} />
+            <ActionButton label={t("sync.saveActivity")} onClick={saveActivityManual} busy={false} />
           </>
         )}
         {error && <div style={{ marginTop: 10, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)" }}>{error}</div>}
@@ -448,31 +449,31 @@ export default function SyncHub() {
       <BottomSheet
         open={sheet === "sleep"}
         onClose={closeSheet}
-        title="Registro de sueño"
-        subtitle="Sube la captura de tu reloj o anota a qué hora te acostaste y despertaste."
+        title={t("sync.sleepTitle")}
+        subtitle={t("sync.sleepSheetSubtitle")}
       >
         <PathToggle path={path} onChange={setPath} />
         {path === "upload" ? (
           <>
-            <ImageUploadZone placeholder="Toca para subir la captura de sueño de tu reloj" icon="/icons/glyphs/sleep.png" height={120} radius={16} onImage={(url) => uploadImage("sleep", url)} />
-            {busy && <div style={{ marginTop: 10, fontSize: 12, color: "#c7f27a", fontWeight: 700, textAlign: "center" }}>Leyendo captura…</div>}
+            <ImageUploadZone placeholder={t("sync.uploadSleepPlaceholder")} icon="/icons/glyphs/sleep.png" height={120} radius={16} onImage={(url) => uploadImage("sleep", url)} />
+            {busy && <div style={{ marginTop: 10, fontSize: 12, color: "#c7f27a", fontWeight: 700, textAlign: "center" }}>{t("sync.readingCapture")}</div>}
           </>
         ) : (
           <>
             <div style={{ display: "flex", gap: 10 }}>
               <div style={{ flex: 1 }}>
-                <div style={label}>ME ACOSTÉ</div>
+                <div style={label}>{t("sync.wentToBed")}</div>
                 <input type="time" value={meAcoste} onChange={(e) => setMeAcoste(e.target.value)} style={{ ...fieldStyle, colorScheme: "dark" }} />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={label}>DESPERTÉ</div>
+                <div style={label}>{t("sync.wokeUp")}</div>
                 <input type="time" value={desperte} onChange={(e) => setDesperte(e.target.value)} style={{ ...fieldStyle, colorScheme: "dark" }} />
               </div>
             </div>
             <div style={{ textAlign: "center", fontSize: 12, fontWeight: 700, color: "#c7f27a", marginTop: 12 }}>
-              {sleepManualMin > 0 ? `Total: ${Math.floor(sleepManualMin / 60)}h ${String(sleepManualMin % 60).padStart(2, "0")}m` : "Revisa las horas"}
+              {sleepManualMin > 0 ? `${t("sync.totalLabel")}: ${Math.floor(sleepManualMin / 60)}h ${String(sleepManualMin % 60).padStart(2, "0")}m` : t("sync.checkHours")}
             </div>
-            <ActionButton label="Guardar horas de sueño" onClick={saveSleepManual} busy={false} />
+            <ActionButton label={t("sync.saveSleepHours")} onClick={saveSleepManual} busy={false} />
           </>
         )}
         {error && <div style={{ marginTop: 10, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)" }}>{error}</div>}
@@ -481,42 +482,42 @@ export default function SyncHub() {
       <BottomSheet
         open={sheet === "scale"}
         onClose={closeSheet}
-        title="Báscula inteligente"
-        subtitle="Sube la captura de tu báscula o escribe tu peso y composición a mano."
+        title={t("sync.scaleTitle")}
+        subtitle={t("sync.scaleSheetSubtitle")}
       >
         <PathToggle path={path} onChange={setPath} />
         {path === "upload" ? (
           <>
-            <ImageUploadZone placeholder="Toca para subir la captura de tu báscula" icon="/icons/glyphs/smart-scale.png" height={120} radius={16} onImage={(url) => uploadImage("scale", url)} />
-            {busy && <div style={{ marginTop: 10, fontSize: 12, color: "#c7f27a", fontWeight: 700, textAlign: "center" }}>Leyendo captura…</div>}
+            <ImageUploadZone placeholder={t("sync.uploadScalePlaceholder")} icon="/icons/glyphs/smart-scale.png" height={120} radius={16} onImage={(url) => uploadImage("scale", url)} />
+            {busy && <div style={{ marginTop: 10, fontSize: 12, color: "#c7f27a", fontWeight: 700, textAlign: "center" }}>{t("sync.readingCapture")}</div>}
           </>
         ) : (
           <>
-            <div style={label}>PESO (LB)</div>
+            <div style={label}>{t("sync.weightLb")}</div>
             <input type="number" inputMode="decimal" value={pesoLb} onChange={(e) => setPesoLb(e.target.value)} placeholder="180" style={{ ...fieldStyle, fontSize: 18, marginBottom: 12 }} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div>
-                <div style={label}>IMC</div>
+                <div style={label}>{t("sync.bmi")}</div>
                 <input type="number" inputMode="decimal" value={imc} onChange={(e) => setImc(e.target.value)} placeholder="24.5" style={fieldStyle} />
               </div>
               <div>
-                <div style={label}>METAB. BASAL</div>
+                <div style={label}>{t("sync.basalMetab")}</div>
                 <input type="number" inputMode="numeric" value={bmr} onChange={(e) => setBmr(e.target.value)} placeholder="1800" style={fieldStyle} />
               </div>
               <div>
-                <div style={label}>GRASA %</div>
+                <div style={label}>{t("sync.fatPct")}</div>
                 <input type="number" inputMode="decimal" value={grasaPct} onChange={(e) => setGrasaPct(e.target.value)} placeholder="22" style={fieldStyle} />
               </div>
               <div>
-                <div style={label}>AGUA %</div>
+                <div style={label}>{t("sync.waterPct")}</div>
                 <input type="number" inputMode="decimal" value={aguaPct} onChange={(e) => setAguaPct(e.target.value)} placeholder="55" style={fieldStyle} />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
-                <div style={label}>PROTEÍNA %</div>
+                <div style={label}>{t("sync.proteinPct")}</div>
                 <input type="number" inputMode="decimal" value={proteinaPct} onChange={(e) => setProteinaPct(e.target.value)} placeholder="18" style={fieldStyle} />
               </div>
             </div>
-            <ActionButton label="Guardar báscula" onClick={saveScaleManual} busy={false} />
+            <ActionButton label={t("sync.saveScale")} onClick={saveScaleManual} busy={false} />
           </>
         )}
         {error && <div style={{ marginTop: 10, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)" }}>{error}</div>}
@@ -525,10 +526,10 @@ export default function SyncHub() {
       <BottomSheet
         open={sheet === "routine"}
         onClose={closeSheet}
-        title="Registro de rutina"
-        subtitle="Sube la captura del resumen de tu entrenamiento o escribe qué hiciste."
+        title={t("sync.routineTitle")}
+        subtitle={t("sync.routineSheetSubtitle")}
       >
-        <div style={{ ...label, marginBottom: 8 }}>DÍA</div>
+        <div style={{ ...label, marginBottom: 8 }}>{t("sync.day")}</div>
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           {ROUTINE_DAYS.map((d) => (
             <div
@@ -553,21 +554,21 @@ export default function SyncHub() {
         <PathToggle path={path} onChange={setPath} />
         {path === "upload" ? (
           <>
-            <ImageUploadZone placeholder="Toca para subir el resumen de tu entrenamiento" icon="/icons/glyphs/routine-plan.png" height={120} radius={16} onImage={(url) => uploadImage("workout", url)} />
-            {busy && <div style={{ marginTop: 10, fontSize: 12, color: "#c7f27a", fontWeight: 700, textAlign: "center" }}>Leyendo captura…</div>}
+            <ImageUploadZone placeholder={t("sync.uploadWorkoutPlaceholder")} icon="/icons/glyphs/routine-plan.png" height={120} radius={16} onImage={(url) => uploadImage("workout", url)} />
+            {busy && <div style={{ marginTop: 10, fontSize: 12, color: "#c7f27a", fontWeight: 700, textAlign: "center" }}>{t("sync.readingCapture")}</div>}
           </>
         ) : (
           <>
-            <div style={label}>NOMBRE DEL ENTRENAMIENTO</div>
+            <div style={label}>{t("sync.workoutNameLabel")}</div>
             <input
               value={routineNombre}
               onChange={(e) => setRoutineNombre(e.target.value)}
-              placeholder="Ej. Push del gimnasio"
+              placeholder={t("sync.workoutNamePlaceholder")}
               style={{ ...fieldStyle, marginBottom: 12 }}
             />
-            <div style={label}>KCAL QUEMADAS</div>
+            <div style={label}>{t("sync.kcalBurned")}</div>
             <input type="number" inputMode="numeric" value={routineKcal} onChange={(e) => setRoutineKcal(e.target.value)} placeholder="300" style={fieldStyle} />
-            <ActionButton label="Guardar rutina" onClick={saveRoutineManual} busy={false} />
+            <ActionButton label={t("sync.saveRoutine")} onClick={saveRoutineManual} busy={false} />
           </>
         )}
         {error && <div style={{ marginTop: 10, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)" }}>{error}</div>}
@@ -587,8 +588,8 @@ export default function SyncHub() {
             cursor: "pointer",
           }}
         >
-          <span style={{ fontSize: 13, fontWeight: 700 }}>Ejercicios de pesas (Push / Pull / Legs)</span>
-          <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)" }}>Editar ›</span>
+          <span style={{ fontSize: 13, fontWeight: 700 }}>{t("sync.weightliftingExercises")}</span>
+          <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)" }}>{t("sync.edit")}</span>
         </Pressable>
       </BottomSheet>
 
@@ -598,32 +599,32 @@ export default function SyncHub() {
       <BottomSheet
         open={sheet === "measurements"}
         onClose={closeSheet}
-        title="Medidas corporales"
-        subtitle="Anota las que tengas — no hace falta llenarlas todas cada vez."
+        title={t("sync.measurementsTitle")}
+        subtitle={t("sync.measurementsSheetSubtitle")}
       >
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div>
-            <div style={label}>BRAZO (CM)</div>
+            <div style={label}>{t("sync.armCm")}</div>
             <input type="number" inputMode="decimal" value={brazoCm} onChange={(e) => setBrazoCm(e.target.value)} placeholder="32" style={fieldStyle} />
           </div>
           <div>
-            <div style={label}>CINTURA (CM)</div>
+            <div style={label}>{t("sync.waistCm")}</div>
             <input type="number" inputMode="decimal" value={cinturaCm} onChange={(e) => setCinturaCm(e.target.value)} placeholder="85" style={fieldStyle} />
           </div>
           <div>
-            <div style={label}>PECHO (CM)</div>
+            <div style={label}>{t("sync.chestCm")}</div>
             <input type="number" inputMode="decimal" value={pechoCm} onChange={(e) => setPechoCm(e.target.value)} placeholder="98" style={fieldStyle} />
           </div>
           <div>
-            <div style={label}>PIERNA (CM)</div>
+            <div style={label}>{t("sync.legCm")}</div>
             <input type="number" inputMode="decimal" value={piernaCm} onChange={(e) => setPiernaCm(e.target.value)} placeholder="55" style={fieldStyle} />
           </div>
           <div>
-            <div style={label}>GLÚTEOS (CM)</div>
+            <div style={label}>{t("sync.gluteCm")}</div>
             <input type="number" inputMode="decimal" value={gluteosCm} onChange={(e) => setGluteosCm(e.target.value)} placeholder="100" style={fieldStyle} />
           </div>
         </div>
-        <ActionButton label="Guardar medidas" onClick={saveMeasurementsManual} busy={false} />
+        <ActionButton label={t("sync.saveMeasurements")} onClick={saveMeasurementsManual} busy={false} />
         {error && <div style={{ marginTop: 10, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)" }}>{error}</div>}
       </BottomSheet>
     </>
