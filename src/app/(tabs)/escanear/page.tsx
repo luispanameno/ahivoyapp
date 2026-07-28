@@ -12,6 +12,7 @@ import { analyze, fileToDataURL, FoodResult } from "@/lib/analyze";
 import { resizeDataURL } from "@/lib/img";
 import { useApp, currentMealTime } from "@/lib/store";
 import { MealTime } from "@/lib/types";
+import { MEAL_TIME_LABEL } from "@/lib/i18n";
 
 type Step = "capture" | "preview" | "analyzing" | "clarify" | "confirm";
 
@@ -19,7 +20,7 @@ const MEAL_TIMES: MealTime[] = ["Desayuno", "Almuerzo", "Cena", "Snack"];
 
 export default function Escanear() {
   const router = useRouter();
-  const { addMeal, addWater, showToast } = useApp();
+  const { addMeal, addWater, showToast, t, lang } = useApp();
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,7 +51,7 @@ export default function Escanear() {
         setStep("confirm");
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo analizar la foto");
+      setError(e instanceof Error ? e.message : t("escanear.errAnalyzeFailed"));
       setStep("preview");
     }
   };
@@ -100,8 +101,8 @@ export default function Escanear() {
     }
     showToast(
       result.agua_ml && result.agua_ml > 0
-        ? `¡Agregado! ${Math.round(result.kcal)} kcal + ${Math.round(result.agua_ml)}ml de agua`
-        : `¡Agregado! ${Math.round(result.kcal)} kcal`
+        ? t("escanear.toastAddedWithWater", { kcal: Math.round(result.kcal), ml: Math.round(result.agua_ml) })
+        : t("escanear.toastAdded", { kcal: Math.round(result.kcal) })
     );
     router.push("/hoy");
   };
@@ -136,7 +137,7 @@ export default function Escanear() {
         <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 14, flex: "none" }}>
           <Pressable
             onClick={() => router.push("/hoy")}
-            ariaLabel="Volver a Hoy"
+            ariaLabel={t("escanear.backToToday")}
             style={{
               width: 44,
               height: 44,
@@ -157,10 +158,10 @@ export default function Escanear() {
           </Pressable>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="font-sora" style={{ fontSize: 19, fontWeight: 800, lineHeight: 1.15 }}>
-              Escáner de Comida
+              {t("escanear.title")}
             </div>
             <div style={{ fontSize: 12, color: "rgba(244,243,238,.55)", marginTop: 2 }}>
-              Analiza tu comida con <span style={{ color: "#c7f27a", fontWeight: 700 }}>IA</span>
+              {t("escanear.subtitle")}
             </div>
           </div>
         </div>
@@ -181,7 +182,7 @@ export default function Escanear() {
             }}
           >
             <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#c7f27a", boxShadow: "0 0 8px #c7f27a" }} />
-            IA lista para analizar
+            {t("escanear.aiReady")}
           </div>
         </div>
         {error && (
@@ -233,7 +234,7 @@ export default function Escanear() {
                 stroke="#10240a" strokeWidth="3" strokeLinecap="round" />
               <path d="M20 13v14M13 20h14" stroke="#10240a" strokeWidth="3" strokeLinecap="round" />
             </svg>
-            Escanear comida
+            {t("escanear.scanFood")}
           </Pressable>
           <Pressable
             onClick={() => galleryInputRef.current?.click()}
@@ -252,7 +253,7 @@ export default function Escanear() {
               border: "1px solid rgba(255,255,255,.1)",
             }}
           >
-            <Icon name="gallery" size={20} /> Elegir de la galería
+            <Icon name="gallery" size={20} /> {t("escanear.chooseGallery")}
           </Pressable>
         </div>
         {/* Cámara (fuerza cámara en Android) + galería, cada uno su input. */}
@@ -286,7 +287,7 @@ export default function Escanear() {
     return (
       <div style={{ height: "calc(100dvh - 88px)", boxSizing: "border-box", padding: "calc(24px + env(safe-area-inset-top)) 20px 24px", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div className="font-sora" style={{ fontSize: 18, fontWeight: 700 }}>Antes de analizar</div>
+          <div className="font-sora" style={{ fontSize: 18, fontWeight: 700 }}>{t("escanear.beforeAnalyzing")}</div>
           <div
             onClick={() => {
               setPhoto(null);
@@ -296,11 +297,11 @@ export default function Escanear() {
             }}
             style={{ fontSize: 12, fontWeight: 700, color: "rgba(244,243,238,.5)", cursor: "pointer" }}
           >
-            Cambiar foto
+            {t("escanear.changePhoto")}
           </div>
         </div>
         <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>
-          Agrega contexto para que el cálculo sea más preciso (opcional)
+          {t("escanear.addContextHint")}
         </div>
 
         {error && (
@@ -324,18 +325,18 @@ export default function Escanear() {
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={photo}
-            alt="Tu plato"
+            alt={t("escanear.yourPlate")}
             style={{ width: "100%", height: 220, objectFit: "cover", borderRadius: 24, marginTop: 16 }}
           />
         )}
 
         <div style={{ marginTop: 18, fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".03em" }}>
-          CONTEXTO ADICIONAL
+          {t("escanear.additionalContext")}
         </div>
         <textarea
           value={context}
           onChange={(e) => setContext(e.target.value)}
-          placeholder="¿Algún detalle extra? (Ej: Usé 1 cucharada de aceite, dejé la mitad...)"
+          placeholder={t("escanear.contextPlaceholder")}
           style={{
             marginTop: 8,
             background: "#1b1e21",
@@ -367,7 +368,7 @@ export default function Escanear() {
             boxShadow: "0 0 20px rgba(199,242,122,.5)",
           }}
         >
-          Analizar Comida
+          {t("escanear.analyzeFood")}
         </Pressable>
       </div>
     );
@@ -387,9 +388,9 @@ export default function Escanear() {
             animation: "spin 1s linear infinite",
           }}
         />
-        <div style={{ fontWeight: 700, fontSize: 14 }}>Analizando tu plato…</div>
+        <div style={{ fontWeight: 700, fontSize: 14 }}>{t("escanear.analyzing")}</div>
         <div style={{ fontSize: 12, color: "rgba(244,243,238,.45)", animation: "pulse 1.4s ease-in-out infinite" }}>
-          Estimando porciones y macros
+          {t("escanear.estimating")}
         </div>
       </div>
     );
@@ -399,19 +400,19 @@ export default function Escanear() {
   if (step === "clarify") {
     return (
       <div style={{ height: "calc(100dvh - 88px)", boxSizing: "border-box", padding: "calc(40px + env(safe-area-inset-top)) 24px 24px", display: "flex", flexDirection: "column" }}>
-        <div className="font-sora" style={{ fontSize: 18, fontWeight: 700 }}>Una pregunta rápida</div>
-        <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 4 }}>Para afinar el cálculo de macros</div>
+        <div className="font-sora" style={{ fontSize: 18, fontWeight: 700 }}>{t("escanear.quickQuestion")}</div>
+        <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 4 }}>{t("escanear.quickQuestionSubtitle")}</div>
         <div style={{ marginTop: 20, fontSize: 14, fontWeight: 600 }}>{result?.pregunta}</div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 20 }}>
           <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,.1)" }} />
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em" }}>RESPONDE O ACLARA</div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em" }}>{t("escanear.answerOrClarify")}</div>
           <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,.1)" }} />
         </div>
         <textarea
           value={clarifyText}
           onChange={(e) => setClarifyText(e.target.value)}
-          placeholder="Ej. era blanco, la porción era doble, el pollo estaba frito…"
+          placeholder={t("escanear.clarifyPlaceholder")}
           style={{
             marginTop: 14,
             background: "#1b1e21",
@@ -449,7 +450,7 @@ export default function Escanear() {
             boxShadow: "0 0 20px rgba(199,242,122,.5)",
           }}
         >
-          Continuar
+          {t("escanear.continue")}
         </Pressable>
       </div>
     );
@@ -458,16 +459,16 @@ export default function Escanear() {
   // ---------- Confirmar ----------
   return (
     <div style={{ minHeight: "calc(100dvh - 88px)", boxSizing: "border-box", padding: "calc(40px + env(safe-area-inset-top)) 20px 0", display: "flex", flexDirection: "column" }}>
-      <div className="font-sora" style={{ fontSize: 18, fontWeight: 700 }}>Confirma tu comida</div>
+      <div className="font-sora" style={{ fontSize: 18, fontWeight: 700 }}>{t("escanear.confirmMeal")}</div>
       <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>
-        Detectado por foto · ajusta si algo no cuadra
+        {t("escanear.detectedByPhoto")}
       </div>
 
       <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
-        {MEAL_TIMES.map((t) => (
+        {MEAL_TIMES.map((mt) => (
           <div
-            key={t}
-            onClick={() => setMealTime(t)}
+            key={mt}
+            onClick={() => setMealTime(mt)}
             style={{
               flex: 1,
               textAlign: "center",
@@ -476,12 +477,12 @@ export default function Escanear() {
               fontSize: 11.5,
               fontWeight: 700,
               cursor: "pointer",
-              background: t === mealTime ? "#c7f27a" : "#1b1e21",
-              color: t === mealTime ? "#10240a" : "rgba(244,243,238,.6)",
-              boxShadow: t === mealTime ? "0 0 14px rgba(199,242,122,.55)" : "none",
+              background: mt === mealTime ? "#c7f27a" : "#1b1e21",
+              color: mt === mealTime ? "#10240a" : "rgba(244,243,238,.6)",
+              boxShadow: mt === mealTime ? "0 0 14px rgba(199,242,122,.55)" : "none",
             }}
           >
-            {t}
+            {MEAL_TIME_LABEL[lang][mt]}
           </div>
         ))}
       </div>
@@ -502,7 +503,7 @@ export default function Escanear() {
           <div style={{ fontWeight: 700, fontSize: 14 }}>{result?.descripcion}</div>
           {result?.gramos ? (
             <div style={{ fontSize: 11.5, color: "rgba(244,243,238,.45)", marginTop: 4 }}>
-              ≈ {result.gramos}g estimados por análisis visual
+              {t("escanear.estimatedGrams", { g: result.gramos })}
             </div>
           ) : null}
         </div>
@@ -510,10 +511,10 @@ export default function Escanear() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginTop: 14 }}>
         {[
-          { v: Math.round(result?.kcal ?? 0), l: "kcal", color: "#f4f3ee" },
-          { v: `${Math.round(result?.carbos ?? 0)}g`, l: "carbs", color: "oklch(78% 0.15 85)" },
-          { v: `${Math.round(result?.proteina ?? 0)}g`, l: "prote", color: "oklch(72% 0.15 250)" },
-          { v: `${Math.round(result?.grasa ?? 0)}g`, l: "grasa", color: "oklch(72% 0.15 40)" },
+          { v: Math.round(result?.kcal ?? 0), l: t("escanear.kcal"), color: "#f4f3ee" },
+          { v: `${Math.round(result?.carbos ?? 0)}g`, l: t("escanear.carbsShort"), color: "oklch(78% 0.15 85)" },
+          { v: `${Math.round(result?.proteina ?? 0)}g`, l: t("escanear.proteinShort"), color: "oklch(72% 0.15 250)" },
+          { v: `${Math.round(result?.grasa ?? 0)}g`, l: t("escanear.fatShort"), color: "oklch(72% 0.15 40)" },
         ].map((x) => (
           <div key={x.l} style={{ background: "#1b1e21", borderRadius: 18, padding: 10, textAlign: "center" }}>
             <div className="font-sora" style={{ fontSize: 15, fontWeight: 800, color: x.color }}>{x.v}</div>
@@ -538,7 +539,7 @@ export default function Escanear() {
           boxShadow: "0 0 20px rgba(199,242,122,.5)",
         }}
       >
-        Agregar al tablero
+        {t("escanear.addToBoard")}
       </Pressable>
     </div>
   );
