@@ -22,7 +22,7 @@ import { useApp } from "@/lib/store";
 import { RoutineDay } from "@/lib/types";
 import { sectionTitle } from "./profileUi";
 
-type SheetKind = "activity" | "sleep" | "scale" | "routine" | null;
+type SheetKind = "activity" | "sleep" | "scale" | "routine" | "measurements" | null;
 type Path = "upload" | "manual";
 const ROUTINE_DAYS: RoutineDay[] = ["Push", "Pull", "Legs"];
 
@@ -144,7 +144,7 @@ function SyncCard({ icon, title, subtitle, lastLabel, onClick }: { icon: string;
 export default function SyncHub() {
   const router = useRouter();
   const app = useApp();
-  const { activity, sleep, bodyComp, workout, setActivity, setSleep, setBodyComp, setWorkout, showToast } = app;
+  const { activity, sleep, bodyComp, workout, measurements, setActivity, setSleep, setBodyComp, setWorkout, addMeasurement, showToast } = app;
   const [sheet, setSheet] = useState<SheetKind>(null);
   const [path, setPath] = useState<Path>("upload");
   const [busy, setBusy] = useState(false);
@@ -182,6 +182,12 @@ export default function SyncHub() {
   const [routineDay, setRoutineDay] = useState<RoutineDay>(workout?.day ?? "Push");
   const [routineNombre, setRoutineNombre] = useState("");
   const [routineKcal, setRoutineKcal] = useState("");
+
+  // ---- Medidas corporales (solo a mano, sin captura) ----
+  const [brazoCm, setBrazoCm] = useState("");
+  const [cinturaCm, setCinturaCm] = useState("");
+  const [pechoCm, setPechoCm] = useState("");
+  const [piernaCm, setPiernaCm] = useState("");
 
   const closeSheet = () => {
     setSheet(null);
@@ -333,6 +339,26 @@ export default function SyncHub() {
     closeSheet();
   };
 
+  const saveMeasurementsManual = async () => {
+    const brazo = Number(brazoCm) || undefined;
+    const cintura = Number(cinturaCm) || undefined;
+    const pecho = Number(pechoCm) || undefined;
+    const pierna = Number(piernaCm) || undefined;
+    if (!brazo && !cintura && !pecho && !pierna) {
+      setError("Escribe al menos una medida.");
+      return;
+    }
+    await addMeasurement({ armCm: brazo, waistCm: cintura, chestCm: pecho, legCm: pierna });
+    setBrazoCm("");
+    setCinturaCm("");
+    setPechoCm("");
+    setPiernaCm("");
+    showToast("Medidas guardadas");
+    closeSheet();
+  };
+
+  const lastMeasurement = measurements[measurements.length - 1];
+
   return (
     <>
       <div style={sectionTitle}>SINCRONIZACIÓN Y REGISTRO</div>
@@ -364,6 +390,13 @@ export default function SyncHub() {
           subtitle="Entrenamiento de hoy · kcal quemadas"
           lastLabel={workout?.done ? `${workout.day} · ${workout.kcal} kcal` : "Sin datos"}
           onClick={() => openSheet("routine")}
+        />
+        <SyncCard
+          icon="measurement-bmi"
+          title="Medidas corporales"
+          subtitle="Brazo · cintura · pecho · pierna (a mano)"
+          lastLabel={lastMeasurement ? `${lastMeasurement.date.slice(8, 10)}/${lastMeasurement.date.slice(5, 7)}` : "Sin datos"}
+          onClick={() => openSheet("measurements")}
         />
       </div>
 
@@ -554,6 +587,37 @@ export default function SyncHub() {
           <span style={{ fontSize: 13, fontWeight: 700 }}>Ejercicios de pesas (Push / Pull / Legs)</span>
           <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)" }}>Editar ›</span>
         </Pressable>
+      </BottomSheet>
+
+      {/* Medidas corporales: SOLO a mano, no hay foto que leer aquí — se
+          puede llenar solo una medida a la vez, no hace falta completar
+          las 4 cada vez. */}
+      <BottomSheet
+        open={sheet === "measurements"}
+        onClose={closeSheet}
+        title="Medidas corporales"
+        subtitle="Anota las que tengas — no hace falta llenarlas todas cada vez."
+      >
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div>
+            <div style={label}>BRAZO (CM)</div>
+            <input type="number" inputMode="decimal" value={brazoCm} onChange={(e) => setBrazoCm(e.target.value)} placeholder="32" style={fieldStyle} />
+          </div>
+          <div>
+            <div style={label}>CINTURA (CM)</div>
+            <input type="number" inputMode="decimal" value={cinturaCm} onChange={(e) => setCinturaCm(e.target.value)} placeholder="85" style={fieldStyle} />
+          </div>
+          <div>
+            <div style={label}>PECHO (CM)</div>
+            <input type="number" inputMode="decimal" value={pechoCm} onChange={(e) => setPechoCm(e.target.value)} placeholder="98" style={fieldStyle} />
+          </div>
+          <div>
+            <div style={label}>PIERNA (CM)</div>
+            <input type="number" inputMode="decimal" value={piernaCm} onChange={(e) => setPiernaCm(e.target.value)} placeholder="55" style={fieldStyle} />
+          </div>
+        </div>
+        <ActionButton label="Guardar medidas" onClick={saveMeasurementsManual} busy={false} />
+        {error && <div style={{ marginTop: 10, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)" }}>{error}</div>}
       </BottomSheet>
     </>
   );

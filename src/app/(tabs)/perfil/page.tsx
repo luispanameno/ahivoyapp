@@ -9,8 +9,22 @@ import Pressable from "@/components/Pressable";
 import InfoModal from "@/components/InfoModal";
 import { ProfileFooter, ProfileHeader, ProfileTabs, sectionTitle } from "@/components/profileUi";
 import { useApp } from "@/lib/store";
-import { ACTIVITY_FACTORS, WeightEntry } from "@/lib/types";
+import { ACTIVITY_FACTORS, MeasurementEntry, WeightEntry } from "@/lib/types";
 import { mifflinBMR } from "@/lib/nutrition";
+
+type MeasureField = "armCm" | "waistCm" | "chestCm" | "legCm";
+
+// Último valor + cuánto cambió desde la anotación anterior QUE TENÍA ese
+// mismo campo (una entrada puede traer solo alguna de las 4 medidas).
+function measureTrend(measurements: MeasurementEntry[], field: MeasureField): { value: number; delta: number; hasPrev: boolean } | null {
+  const withValue = measurements.filter((m) => m[field] != null);
+  if (!withValue.length) return null;
+  const latest = withValue[withValue.length - 1];
+  const prev = withValue.length >= 2 ? withValue[withValue.length - 2] : null;
+  const value = latest[field] as number;
+  const delta = prev ? Math.round((value - (prev[field] as number)) * 10) / 10 : 0;
+  return { value, delta, hasPrev: !!prev };
+}
 
 function weeklySeries(weights: WeightEntry[]): { labels: string[]; values: number[] } {
   const byWeek = new Map<string, number[]>();
@@ -31,7 +45,7 @@ function weeklySeries(weights: WeightEntry[]): { labels: string[]; values: numbe
 const DAY_LETTERS = ["D", "L", "M", "M", "J", "V", "S"];
 
 export default function PerfilProgreso() {
-  const { profile, weights, bodyComp } = useApp();
+  const { profile, weights, bodyComp, measurements } = useApp();
   const [range, setRange] = useState<"days" | "weeks">("days");
   const [infoModal, setInfoModal] = useState<"bmr" | "tdee" | null>(null);
 
@@ -215,6 +229,50 @@ export default function PerfilProgreso() {
         ) : (
           <div style={{ textAlign: "center", fontSize: 12, color: "rgba(244,243,238,.45)", padding: "16px 0" }}>
             Sube tu peso (en Ajustes o con la báscula) y verás tu progreso.
+          </div>
+        )}
+      </div>
+
+      {/* Historial de medidas: brazo, cintura, pecho, pierna — se cargan a
+          mano en Sincronización; acá solo se reflejan (subió/bajó). */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20, marginBottom: 8 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em" }}>HISTORIAL DE MEDIDAS</div>
+      </div>
+      <div style={{ background: "#1b1e21", borderRadius: 20, padding: 14 }}>
+        {measurements.length ? (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {(
+              [
+                { field: "armCm" as const, label: "Brazo" },
+                { field: "waistCm" as const, label: "Cintura" },
+                { field: "chestCm" as const, label: "Pecho" },
+                { field: "legCm" as const, label: "Pierna" },
+              ]
+            ).map((m) => {
+              const t = measureTrend(measurements, m.field);
+              return (
+                <div key={m.field} style={{ background: "#232527", borderRadius: 16, padding: "12px 14px" }}>
+                  <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(244,243,238,.45)" }}>{m.label.toUpperCase()}</div>
+                  {t ? (
+                    <>
+                      <div className="font-sora" style={{ fontSize: 18, fontWeight: 800, marginTop: 4 }}>
+                        {t.value}
+                        <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(244,243,238,.4)" }}> cm</span>
+                      </div>
+                      <div style={{ fontSize: 10.5, fontWeight: 700, marginTop: 2, color: !t.hasPrev ? "rgba(244,243,238,.4)" : t.delta === 0 ? "rgba(244,243,238,.4)" : "oklch(70% 0.13 220)" }}>
+                        {!t.hasPrev ? "Primera medida" : t.delta === 0 ? "Sin cambio" : `${t.delta > 0 ? "↑" : "↓"} ${Math.abs(t.delta)} cm`}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ fontSize: 11, color: "rgba(244,243,238,.35)", marginTop: 6 }}>Sin datos</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{ textAlign: "center", fontSize: 12, color: "rgba(244,243,238,.45)", padding: "10px 0" }}>
+            Anota tus medidas en <b style={{ color: "#c7f27a" }}>Sincronización</b> y aquí verás si subieron o bajaron.
           </div>
         )}
       </div>

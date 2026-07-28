@@ -13,6 +13,7 @@ import {
   DEFAULT_ROUTINE,
   Drink,
   Meal,
+  MeasurementEntry,
   Profile,
   Routine,
   SleepState,
@@ -60,6 +61,7 @@ export interface AllData {
   bodyComp: BodyComp | null;
   routine: Routine;
   weights: WeightEntry[];
+  measurements: MeasurementEntry[];
 }
 
 export async function loadAll(date: string): Promise<AllData> {
@@ -71,7 +73,7 @@ export async function loadAll(date: string): Promise<AllData> {
   since.setDate(since.getDate() - 45);
   const sinceISO = since.toISOString().slice(0, 10);
 
-  const [profileQ, mealsQ, drinksQ, activityQ, workoutQ, sleepQ, bodyQ, routineQ, weightsQ] =
+  const [profileQ, mealsQ, drinksQ, activityQ, workoutQ, sleepQ, bodyQ, routineQ, weightsQ, measurementsQ] =
     await Promise.all([
       sb.from("profiles").select("*").eq("id", uid).maybeSingle(),
       sb.from("meals").select("*").eq("user_id", uid).eq("fecha", date),
@@ -82,6 +84,7 @@ export async function loadAll(date: string): Promise<AllData> {
       sb.from("body_composition").select("*").eq("user_id", uid).order("fecha", { ascending: false }).limit(1).maybeSingle(),
       sb.from("routines").select("*").eq("user_id", uid),
       sb.from("weight_logs").select("*").eq("user_id", uid).gte("fecha", sinceISO).order("fecha"),
+      sb.from("measurements_logs").select("*").eq("user_id", uid).order("fecha"),
     ]);
 
   const p = profileQ.data;
@@ -207,6 +210,14 @@ export async function loadAll(date: string): Promise<AllData> {
     lb: Number(x.peso_lb),
   }));
 
+  const measurements: MeasurementEntry[] = (measurementsQ.data ?? []).map((x) => ({
+    date: x.fecha,
+    armCm: x.brazo_cm != null ? Number(x.brazo_cm) : undefined,
+    waistCm: x.cintura_cm != null ? Number(x.cintura_cm) : undefined,
+    chestCm: x.pecho_cm != null ? Number(x.pecho_cm) : undefined,
+    legCm: x.pierna_cm != null ? Number(x.pierna_cm) : undefined,
+  }));
+
   return {
     profile,
     meals,
@@ -217,6 +228,7 @@ export async function loadAll(date: string): Promise<AllData> {
     bodyComp,
     routine,
     weights,
+    measurements,
   };
 }
 
@@ -233,6 +245,7 @@ function loadLocal(date: string): AllData {
     bodyComp: lsGet<BodyComp | null>("bodyComp", null),
     routine: lsGet<Routine>("routine", DEFAULT_ROUTINE),
     weights: lsGet<WeightEntry[]>("weights", []),
+    measurements: lsGet<MeasurementEntry[]>("measurements", []),
   };
 }
 
@@ -569,6 +582,47 @@ export async function addWeight(entry: WeightEntry) {
   } else {
     const all = lsGet<WeightEntry[]>("weights", []).filter((w) => w.date !== entry.date);
     lsSet("weights", [...all, entry].sort((a, b) => a.date.localeCompare(b.date)));
+  }
+}
+
+// Medidas corporales: SIEMPRE se combinan con lo que ya había ese mismo día
+// (el formulario deja completar solo alguna medida) — sin este merge, subir
+// solo el brazo hoy borraría la cintura que ya se había guardado hoy mismo.
+export async function addMeasurement(entry: MeasurementEntry) {
+  const sb = getSupabase();
+  const uid = await userId();
+  if (sb && uid) {
+    const { data: existing } = await sb
+      .from("measurements_logs")
+      .select("*")
+      .eq("user_id", uid)
+      .eq("fecha", entry.date)
+      .maybeSingle();
+    await sb.from("measurements_logs").upsert(
+      {
+        user_id: uid,
+        fecha: entry.date,
+        brazo_cm: entry.armCm ?? existing?.brazo_cm ?? null,
+        cintura_cm: entry.waistCm ?? existing?.cintura_cm ?? null,
+        pecho_cm: entry.chestCm ?? existing?.pecho_cm ?? null,
+        pierna_cm: entry.legCm ?? existing?.pierna_cm ?? null,
+      },
+      { onConflict: "user_id,fecha" }
+    );
+  } else {
+    const all = lsGet<MeasurementEntry[]>("measurements", []);
+    const existing = all.find((m) => m.date === entry.date);
+    const merged: MeasurementEntry = {
+      date: entry.date,
+      armCm: entry.armCm ?? existing?.armCm,
+      waistCm: entry.waistCm ?? existing?.waistCm,
+      chestCm: entry.chestCm ?? existing?.chestCm,
+      legCm: entry.legCm ?? existing?.legCm,
+    };
+    lsSet(
+      "measurements",
+      [...all.filter((m) => m.date !== entry.date), merged].sort((a, b) => a.date.localeCompare(b.date))
+    );
   }
 }
 

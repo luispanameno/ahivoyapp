@@ -280,6 +280,14 @@ const MANUAL_RESET_MS = 30_000;
 // hora sin registrar nada" siga siendo cierto aunque se cierre y reabra la
 // app — si viviera solo en memoria, el contador se reiniciaría cada vez.
 const ACTIVITY_KEY = "ahivoy:ultimo_registro";
+// La ÚLTIMA FIRMA vista también se guarda en localStorage (no solo en un
+// ref en memoria): un ref se reinicia cada vez que este componente se
+// desmonta y vuelve a montar (ej. subiste el desayuno desde el chat/escáner
+// y volviste a Hoy), así que comparando solo contra el ref, ese cambio real
+// pasaba desapercibido y la tortuga seguía "dormida" aunque ya hubieras
+// registrado algo. Comparando contra lo guardado, el cambio se detecta
+// sin importar qué pantalla lo generó.
+const ACTIVITY_SIG_KEY = "ahivoy:ultima_firma";
 
 function leerUltimoRegistro(): number {
   try {
@@ -293,6 +301,22 @@ function leerUltimoRegistro(): number {
 function guardarUltimoRegistro(ts: number) {
   try {
     localStorage.setItem(ACTIVITY_KEY, String(ts));
+  } catch {
+    // sin storage: como mucho, la tortuga tarda más en dormirse
+  }
+}
+
+function leerUltimaFirma(): string | null {
+  try {
+    return localStorage.getItem(ACTIVITY_SIG_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function guardarUltimaFirma(sig: string) {
+  try {
+    localStorage.setItem(ACTIVITY_SIG_KEY, sig);
   } catch {
     // sin storage: como mucho, la tortuga tarda más en dormirse
   }
@@ -483,17 +507,26 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
   const datosFirma = `${kcalEaten}|${water}|${proteinG}|${workout?.done ?? false}`;
   const firmaPrevia = useRef<string | null>(null);
   useEffect(() => {
-    // El primer render solo memoriza la firma: si sellara aquí, abrir la app
-    // contaría como "actividad" y nunca se dormiría.
-    if (firmaPrevia.current === null) {
-      firmaPrevia.current = datosFirma;
-      return;
-    }
     if (firmaPrevia.current === datosFirma) return;
     firmaPrevia.current = datosFirma;
-    const ahora = Date.now();
-    guardarUltimoRegistro(ahora);
-    setUltimoRegistro(ahora);
+    // Compara contra la ÚLTIMA FIRMA GUARDADA (localStorage), no contra la
+    // nada: así, si el dato cambió mientras este componente no estaba
+    // montado (subiste el desayuno desde el chat o el escáner y volviste a
+    // Hoy), el cambio real SÍ se detecta. Sin firma previa guardada (primera
+    // vez que corre esto en el dispositivo) solo se siembra, sin contar como
+    // actividad — abrir la app por primera vez no debe resetear el sueño.
+    const guardada = leerUltimaFirma();
+    guardarUltimaFirma(datosFirma);
+    if (guardada === null || guardada === datosFirma) return;
+    // El setState va dentro de un callback (no directo en el cuerpo del
+    // efecto): React desaconseja llamarlo síncrono ahí porque encadena
+    // renders. El retraso de 0ms es imperceptible.
+    const t = setTimeout(() => {
+      const ahora = Date.now();
+      guardarUltimoRegistro(ahora);
+      setUltimoRegistro(ahora);
+    }, 0);
+    return () => clearTimeout(t);
   }, [datosFirma]);
 
   // ---- Pulsos de recordatorio ----

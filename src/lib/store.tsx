@@ -23,6 +23,7 @@ import {
   Drink,
   Meal,
   MealTime,
+  MeasurementEntry,
   Profile,
   Routine,
   RoutineDay,
@@ -172,6 +173,7 @@ interface AppState {
   bodyComp: BodyComp | null;
   routine: Routine;
   weights: WeightEntry[];
+  measurements: MeasurementEntry[];
   toast: string | null;
 
   // chat del Coach — vive aquí (no en la página) para que una respuesta en
@@ -207,6 +209,7 @@ interface AppState {
   saveRoutine: (r: Routine) => Promise<void>;
   setWeight: (lb: number) => Promise<void>;
   setWeightGoal: (lb: number) => Promise<void>;
+  addMeasurement: (m: Omit<MeasurementEntry, "date">) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -232,6 +235,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [bodyComp, setBodyCompState] = useState<BodyComp | null>(null);
   const [routine, setRoutineState] = useState<Routine>(DEFAULT_ROUTINE);
   const [weights, setWeights] = useState<WeightEntry[]>([]);
+  const [measurements, setMeasurements] = useState<MeasurementEntry[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -279,6 +283,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setBodyCompState(all.bodyComp);
       setRoutineState(all.routine);
       setWeights(all.weights);
+      setMeasurements(all.measurements);
       setReady(true);
     })();
     return () => {
@@ -436,6 +441,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await db.saveProfile(p);
     },
     [profile]
+  );
+
+  const addMeasurement = useCallback(
+    async (m: Omit<MeasurementEntry, "date">) => {
+      const entry: MeasurementEntry = { date, ...m };
+      // Se combina con lo que ya hubiera guardado hoy (igual que en db.ts):
+      // así completar solo el brazo no borra la cintura anotada esta mañana.
+      setMeasurements((prev) => {
+        const existing = prev.find((x) => x.date === date);
+        const merged: MeasurementEntry = {
+          date,
+          armCm: entry.armCm ?? existing?.armCm,
+          waistCm: entry.waistCm ?? existing?.waistCm,
+          chestCm: entry.chestCm ?? existing?.chestCm,
+          legCm: entry.legCm ?? existing?.legCm,
+        };
+        return [...prev.filter((x) => x.date !== date), merged].sort((a, b) => a.date.localeCompare(b.date));
+      });
+      await db.addMeasurement(entry);
+    },
+    [date]
   );
 
   const setBodyComp = useCallback(
@@ -849,6 +875,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     bodyComp,
     routine,
     weights,
+    measurements,
     toast,
     chatMessages,
     chatTyping,
@@ -870,6 +897,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     saveRoutine,
     setWeight,
     setWeightGoal,
+    addMeasurement,
     signOut,
   };
 

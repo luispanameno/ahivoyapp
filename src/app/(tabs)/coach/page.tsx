@@ -237,6 +237,22 @@ export default function Coach() {
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Alto real y visible de la pantalla (VisualViewport), no el de layout.
+  // 100dvh en varios navegadores móviles NO se achica cuando aparece el
+  // teclado — el contenedor se quedaba con su alto de "sin teclado" y el
+  // input, pegado al fondo de ESE alto, terminaba por debajo de lo que en
+  // verdad se ve, obligando a hacer scroll de toda la página para alcanzarlo.
+  // El VisualViewport sí refleja el teclado en tiempo real.
+  const [viewportH, setViewportH] = useState<number | null>(null);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setViewportH(vv.height);
+    update();
+    vv.addEventListener("resize", update);
+    return () => vv.removeEventListener("resize", update);
+  }, []);
+
   // El campo de texto crece con el contenido (hasta un máximo) en vez de
   // quedarse en una sola línea — así se puede leer lo que se está escribiendo.
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -363,7 +379,14 @@ export default function Coach() {
         // barra de gestos, 100dvh incluye esa franja pero la barra ya se
         // apoya encima, y sin este margen el input quedaba por debajo de
         // ella. Restarlo de más solo acorta el chat unos píxeles.
-        height: "calc(100dvh - 88px - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
+        // Cuando el VisualViewport ya está disponible (todo navegador móvil
+        // moderno) se usa SU alto en vez de 100dvh: así, si el teclado abre,
+        // el contenedor se achica con él y el input se queda siempre visible
+        // arriba del teclado, sin que la página necesite scroll.
+        height:
+          viewportH !== null
+            ? `calc(${viewportH}px - 88px - env(safe-area-inset-top) - env(safe-area-inset-bottom))`
+            : "calc(100dvh - 88px - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
         display: "flex",
         flexDirection: "column",
         boxSizing: "border-box",
@@ -639,13 +662,9 @@ export default function Coach() {
           ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => {
-            // Enter envía; Shift+Enter agrega un salto de línea.
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              send(input);
-            }
-          }}
+          // Enter siempre agrega un salto de línea — solo el botón de enviar
+          // envía. Antes Enter enviaba y en el teclado del celular es fácil
+          // tocarlo sin querer a media frase.
           rows={1}
           placeholder={listening ? "Escuchando…" : pendingPhoto ? "Agrega contexto a tu foto…" : "Pregúntale o sube una foto…"}
           style={{

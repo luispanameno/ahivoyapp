@@ -120,6 +120,17 @@ export interface WeightEntry {
   lb: number;
 }
 
+// Medidas corporales: solo se cargan a mano (en Sincronización), nunca por
+// foto. Cada campo es opcional porque un registro puede traer solo alguna
+// medida (ej. solo brazo esta semana).
+export interface MeasurementEntry {
+  date: string; // YYYY-MM-DD
+  armCm?: number;
+  waistCm?: number;
+  chestCm?: number;
+  legCm?: number;
+}
+
 // Registro individual de agua/bebida (como una comida, pero solo ml + etiqueta).
 // El total del día se calcula sumando estos registros — así cualquier valor
 // erróneo se puede borrar en Historial en vez de quedar pegado para siempre.

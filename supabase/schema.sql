@@ -114,6 +114,20 @@ create table if not exists public.body_composition (
 );
 create index if not exists bodycomp_user_fecha on public.body_composition (user_id, fecha desc);
 
+-- Medidas corporales (brazo, cintura, pecho, pierna): SOLO se cargan a mano
+-- desde Sincronización, nunca por foto. Un registro puede traer solo alguna
+-- de las 4, por eso todas son nullable.
+create table if not exists public.measurements_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  fecha date not null,
+  brazo_cm numeric,
+  cintura_cm numeric,
+  pecho_cm numeric,
+  pierna_cm numeric,
+  unique (user_id, fecha)
+);
+
 create table if not exists public.routines (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -209,6 +223,7 @@ alter table public.workouts enable row level security;
 alter table public.activity_logs enable row level security;
 alter table public.body_composition enable row level security;
 alter table public.routines enable row level security;
+alter table public.measurements_logs enable row level security;
 
 -- profiles usa id = auth.uid()
 drop policy if exists "own profile" on public.profiles;
@@ -238,7 +253,7 @@ create policy "admin manage profiles" on public.profiles
 do $$
 declare t text;
 begin
-  foreach t in array array['meals','water_logs','drinks','weight_logs','sleep_logs','workouts','activity_logs','body_composition','routines']
+  foreach t in array array['meals','water_logs','drinks','weight_logs','sleep_logs','workouts','activity_logs','body_composition','routines','measurements_logs']
   loop
     execute format('drop policy if exists "own rows" on public.%I', t);
     execute format(
