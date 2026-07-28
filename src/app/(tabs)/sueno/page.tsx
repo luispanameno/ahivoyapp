@@ -1,10 +1,13 @@
 "use client";
 
-// Sueño: fases, meta 7–8 h, respaldo por captura del reloj.
+// Sueño: fases, meta 7–8 h y anotación manual. Las capturas del reloj
+// se suben desde Perfil → Sincronización (o por el chat del Coach).
 
 import { useState } from "react";
-import ImageUploadZone, { ActionButton } from "@/components/ImageUploadZone";
-import { analyze } from "@/lib/analyze";
+import { useRouter } from "next/navigation";
+import { ActionButton } from "@/components/ImageUploadZone";
+import Pressable from "@/components/Pressable";
+import Icon from "@/components/Icon";
 import { useApp } from "@/lib/store";
 
 const timeInputStyle: React.CSSProperties = {
@@ -33,9 +36,8 @@ function rangeToMinutes(from: string, to: string): number {
 }
 
 export default function Sueno() {
+  const router = useRouter();
   const { sleep, setSleep, showToast } = useApp();
-  const [shot, setShot] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [manualFrom, setManualFrom] = useState("23:00");
   const [manualTo, setManualTo] = useState("07:00");
@@ -62,41 +64,6 @@ export default function Sueno() {
     }
   };
 
-  const readCapture = async () => {
-    if (!shot) {
-      setError("Primero sube la captura de sueño de tu reloj.");
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await analyze<{
-        minutos: number;
-        profundo_pct?: number;
-        ligero_pct?: number;
-        rem_pct?: number;
-        despierto_pct?: number;
-      }>({ mode: "sleep", image: shot });
-      const total = Math.round(res.minutos) || 0;
-      await setSleep({
-        minutes: total,
-        phases:
-          res.profundo_pct != null
-            ? {
-                deep: Math.round(res.profundo_pct),
-                light: Math.round(res.ligero_pct ?? 0),
-                rem: Math.round(res.rem_pct ?? 0),
-                awake: Math.round(res.despierto_pct ?? 0),
-              }
-            : null,
-      });
-      showToast(`Sueño actualizado: ${Math.floor(total / 60)}h ${String(total % 60).padStart(2, "0")}m`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo leer la captura");
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <div style={{ boxSizing: "border-box", padding: "24px 20px 24px", display: "flex", flexDirection: "column" }}>
@@ -130,13 +97,33 @@ export default function Sueno() {
         </div>
       )}
 
-      <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em", marginTop: 18, marginBottom: 8 }}>
-        SUBE UNA CAPTURA DE TU RELOJ
-      </div>
-      <ImageUploadZone placeholder="Toca para subir la captura de sueño de tu reloj" icon="/icons/glyphs/sleep.png" height={120} radius={14} onImage={setShot} />
-      <ActionButton label={busy ? "Leyendo captura…" : "Leer captura del reloj"} onClick={readCapture} busy={busy} />
+      {/* Subir capturas de sueño vive SOLO en Perfil → Sincronización (y en
+          el chat del Coach). Aquí queda únicamente la anotación a mano, para
+          no tener el mismo registro repartido en dos sitios. */}
+      <Pressable
+        onClick={() => router.push("/perfil/sincronizacion")}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          background: "rgba(199,242,122,.08)",
+          border: "1px solid rgba(199,242,122,.22)",
+          borderRadius: 18,
+          padding: "12px 14px",
+          marginTop: 16,
+          minHeight: 44,
+          boxSizing: "border-box",
+          cursor: "pointer",
+        }}
+      >
+        <Icon name="sleep" size={18} />
+        <div style={{ flex: 1, fontSize: 12, fontWeight: 700, color: "rgba(244,243,238,.8)" }}>
+          ¿Tienes captura del reloj? Súbela en Sincronización
+        </div>
+        <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)", flex: "none" }}>Ir ›</span>
+      </Pressable>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "22px 0 14px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "20px 0 14px" }}>
         <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,.08)" }} />
         <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(244,243,238,.35)", letterSpacing: ".04em" }}>
           O ANÓTALO A MANO

@@ -31,6 +31,7 @@ export interface CoachAction {
     | "set_weight"
     | "set_goal_weight"
     | "set_meta_kcal"
+    | "set_meta_water"
     | "log_meal"
     | "log_sleep"
     | "delete_sleep"

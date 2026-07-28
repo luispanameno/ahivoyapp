@@ -203,7 +203,10 @@ export default function Hoy() {
 
   const steps = activity?.steps ?? 0;
   const activeMin = activity?.activeMin ?? 0;
-  const actKcal = activity?.activityKcal ?? 0;
+  // Las calorías del anillo salen de burnedKcal (el mayor entre reloj y
+  // rutina), no solo del reloj: al subir SOLO la rutina, el anillo se
+  // quedaba en cero aunque el centro de la rueda ya mostrara las kcal.
+  const actKcal = Math.max(activity?.activityKcal ?? 0, burnedKcal);
   const stepsDeg = Math.min(360, Math.round((steps / 6000) * 360));
   const activeMinDeg = Math.min(360, Math.round((activeMin / 50) * 360));
   const actKcalDeg = Math.min(360, Math.round((actKcal / 500) * 360));
@@ -663,7 +666,7 @@ export default function Hoy() {
             <div style={{ flex: 1, background: "#232527", borderRadius: 14, padding: "10px 12px" }}>
               <div style={{ fontSize: 10, color: "rgba(244,243,238,.5)", fontWeight: 600 }}>Total quemadas</div>
               <div className="font-sora" style={{ fontSize: 15, fontWeight: 800, marginTop: 2 }}>
-                {(activity?.totalKcal ?? 0).toLocaleString()}{" "}
+                {Math.max(activity?.totalKcal ?? 0, burnedKcal).toLocaleString()}{" "}
                 <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(244,243,238,.4)" }}>kcal</span>
               </div>
             </div>

@@ -526,6 +526,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             } else if (a.type === "set_weight" && a.lb) await setWeight(a.lb);
             else if (a.type === "set_goal_weight" && a.lb) await setWeightGoal(a.lb);
             else if (a.type === "set_meta_kcal" && a.kcal) await saveProfile({ ...profile, metaKcal: a.kcal });
+            else if (a.type === "set_meta_water" && a.ml) await saveProfile({ ...profile, metaWater: Math.round(a.ml) });
             else if (a.type === "log_sleep" && a.minutos) await setSleep({ minutes: a.minutos, phases: sleep?.phases ?? null });
             else if (a.type === "delete_sleep") await setSleep({ minutes: 0, phases: null });
             else if (a.type === "log_workout")

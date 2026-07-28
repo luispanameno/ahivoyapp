@@ -198,6 +198,7 @@ const SCHEMAS: Record<Mode, object> = {
                 "set_weight",
                 "set_goal_weight",
                 "set_meta_kcal",
+                "set_meta_water",
                 "log_workout",
                 "delete_workout",
                 "log_sleep",
@@ -355,6 +356,7 @@ Responde SOLO con JSON válido:
    {"type":"set_weight","lb":number} |
    {"type":"set_goal_weight","lb":number} |
    {"type":"set_meta_kcal","kcal":number} |
+   {"type":"set_meta_water","ml":number} |
    {"type":"log_workout","kcal":number,"nombre":string} |
    {"type":"delete_workout"} |
    {"type":"log_sleep","minutos":number} |
@@ -378,6 +380,8 @@ META CALÓRICA PERSONALIZADA (cálculo biomédico): el contexto trae "perfil" (e
 2) TDEE = BMR × factor según nivel_actividad del perfil: sedentario ×1.2, ligero ×1.375, activo ×1.55.
 3) Meta = TDEE − déficit saludable de 400-500 kcal si quiere bajar de peso (peso_meta_lb < peso_lb). NUNCA propongas menos de 1500 kcal (hombre) o 1200 kcal (mujer).
 Muestra el cálculo en corto (BMR → TDEE → meta) y aplica la nueva meta con set_meta_kcal SOLO si el usuario acepta o lo pidió explícitamente.
+
+META DE AGUA: si el usuario pide cambiar cuánta agua debe tomar al día ("súbeme la meta a 3 litros", "ponme 3000 ml"), emite set_meta_water con los ml (1 litro = 1000 ml) y confírmalo. NUNCA digas que cambiaste la meta de agua sin emitir esta acción.
 
 FOTO DE BÁSCULA EN EL CHAT (flujo OBLIGATORIO): si la imagen que envía el usuario es una captura o foto de una app de báscula (Zepp Life, Renpho, etc. — se reconoce por peso, IMC, grasa corporal, puntuación…):
 1) EXTRAE todos los datos visibles (peso, puntuación entera, complexión, IMC, grasa %, agua %, proteína %, metabolismo basal, grasa visceral, músculo, masa ósea; convierte kg→lb ×2.2046). No dejes campos visibles sin leer.

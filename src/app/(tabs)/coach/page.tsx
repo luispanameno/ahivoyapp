@@ -358,9 +358,12 @@ export default function Coach() {
   return (
     <div
       style={{
-        // Igual al paddingBottom del Shell (88, la altura de la barra de
-        // navegación): así el total es exactamente 100dvh, sin scroll extra.
-        height: "calc(100dvh - 88px - env(safe-area-inset-top))",
+        // 88 = alto de la barra de navegación (igual al paddingBottom del
+        // Shell). Se resta ADEMÁS el safe-area inferior: en teléfonos con
+        // barra de gestos, 100dvh incluye esa franja pero la barra ya se
+        // apoya encima, y sin este margen el input quedaba por debajo de
+        // ella. Restarlo de más solo acorta el chat unos píxeles.
+        height: "calc(100dvh - 88px - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
         display: "flex",
         flexDirection: "column",
         boxSizing: "border-box",
@@ -589,10 +592,10 @@ export default function Coach() {
         </div>
       )}
 
-      {/* Input — el padding inferior deja siempre un colchón por si el
-          cálculo de alto (100dvh - barra) no cuadra exacto en algún
-          navegador/teclado móvil, para que la barra nunca la tape. */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 16px calc(12px + env(safe-area-inset-bottom))", flex: "none" }}>
+      {/* Input. El safe-area inferior ya se descuenta del alto del
+          contenedor, así que aquí solo va un colchón fijo — sumarlo dos
+          veces desperdiciaba espacio de chat. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 16px 12px", flex: "none" }}>
         <label
           style={{
             width: 46,

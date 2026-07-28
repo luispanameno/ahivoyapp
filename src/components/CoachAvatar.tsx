@@ -303,19 +303,30 @@ function guardarUltimoRegistro(ts: number) {
 // (agua, calorías) la frase trae el número real.
 function phrasesForState(
   state: MascotState,
-  d: { water: number; metaWater: number; kcalEaten: number; metaKcal: number; burned: number },
+  d: { water: number; metaWater: number; kcalEaten: number; metaKcal: number; burned: number; duermePorInactividad: boolean },
   fallback: string[]
 ): string[] {
   const vasos = Math.max(1, Math.round((d.metaWater - d.water) / 250));
   switch (state) {
     case "Durmiendo":
-      return [
-        "Zzz… mañana seguimos.",
-        "Descansar también es progreso.",
-        "Dormir bien baja el antojo del día siguiente.",
-        "A esta hora ya no contamos calorías, contamos ovejas.",
-        "Buenas noches. Apaga el teléfono, va.",
-      ];
+      // Se duerme por dos motivos distintos y las frases NO son iguales: de
+      // noche toca desear buenas noches; de día, hacer notar que lleva rato
+      // sin registros para que la persona sepa cómo despertarla.
+      return d.duermePorInactividad
+        ? [
+            "Zzz… me dormí esperando. Sube algo y despierto.",
+            "No has anotado comida, agua ni rutina. Aquí sigo, roncando.",
+            "Llevas un rato sin registrar nada. ¡Despiértame con un vaso de agua!",
+            "Zzz… en cuanto subas algo, vuelvo a la acción.",
+            "Me agarró la siesta. Registra algo y me levanto.",
+          ]
+        : [
+            "Zzz… mañana seguimos.",
+            "Descansar también es progreso.",
+            "Dormir bien baja el antojo del día siguiente.",
+            "A esta hora ya no contamos calorías, contamos ovejas.",
+            "Buenas noches. Apaga el teléfono, va.",
+          ];
     case "Despertando":
       return [
         "¡Buenos días! ¿Arrancamos con un vaso de agua?",
@@ -607,6 +618,8 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
       kcalEaten,
       metaKcal: kcalBudget || profile.metaKcal,
       burned: burnedKcal,
+      // De noche no: solo cuando se durmió por llevar rato sin registros.
+      duermePorInactividad: data.minutosInactiva >= SLEEP_AFTER_MIN && data.hour >= 6 && data.hour < 23,
     },
     messages
   );
