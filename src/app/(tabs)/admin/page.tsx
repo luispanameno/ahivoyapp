@@ -12,10 +12,11 @@ import { SkeletonBox } from "@/components/Skeleton";
 import * as db from "@/lib/db";
 import { useApp } from "@/lib/store";
 import { AccessStatus, AdminUserRow } from "@/lib/types";
+import { Lang } from "@/lib/i18n";
 
-function fmtDate(iso: string): string {
+function fmtDate(iso: string, lang: Lang): string {
   try {
-    return new Date(iso).toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return new Date(iso).toLocaleDateString(lang === "en" ? "en-US" : "es-CO", { day: "2-digit", month: "2-digit", year: "numeric" });
   } catch {
     return iso;
   }
@@ -39,6 +40,7 @@ function UserRow({
   onDelete?: (id: string) => void;
 }) {
   const [confirmando, setConfirmando] = useState(false);
+  const { t, lang } = useApp();
   return (
     <motion.div
       layout
@@ -51,13 +53,13 @@ function UserRow({
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 13.5, fontWeight: 700 }}>{user.nombre}</div>
           <div style={{ fontSize: 11.5, color: "rgba(244,243,238,.5)", marginTop: 2, wordBreak: "break-all" }}>{user.email}</div>
-          <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.35)", marginTop: 2 }}>Registrado: {fmtDate(user.creado)}</div>
+          <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.35)", marginTop: 2 }}>{t("admin.registered", { date: fmtDate(user.creado, lang) })}</div>
         </div>
         {/* Quitar de la lista: pide confirmación porque no se deshace. */}
         {onDelete && (
           <Pressable
             onClick={() => setConfirmando((c) => !c)}
-            ariaLabel={confirmando ? "Cancelar borrado" : `Quitar a ${user.nombre} de la lista`}
+            ariaLabel={confirmando ? t("admin.cancelDelete") : t("admin.removeUser", { name: user.nombre })}
             style={{
               width: 44,
               height: 44,
@@ -85,20 +87,20 @@ function UserRow({
           style={{ overflow: "hidden" }}
         >
           <div style={{ fontSize: 11.5, color: "rgba(244,243,238,.6)", lineHeight: 1.4, paddingTop: 8 }}>
-            Se quita de la lista. Si vuelve a entrar, reaparecerá como pendiente.
+            {t("admin.removeWarning")}
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
             <Pressable
               onClick={() => onDelete(user.id)}
               style={{ flex: 1, textAlign: "center", padding: "9px 0", borderRadius: 12, fontSize: 12, fontWeight: 800, cursor: "pointer", background: "oklch(72% 0.18 25)", color: "#1a0505" }}
             >
-              Sí, quitar
+              {t("admin.yesRemove")}
             </Pressable>
             <Pressable
               onClick={() => setConfirmando(false)}
               style={{ flex: 1, textAlign: "center", padding: "9px 0", borderRadius: 12, fontSize: 12, fontWeight: 800, cursor: "pointer", background: "rgba(255,255,255,.06)", color: "rgba(244,243,238,.7)" }}
             >
-              Cancelar
+              {t("admin.cancel")}
             </Pressable>
           </div>
         </motion.div>
@@ -109,7 +111,7 @@ function UserRow({
             onClick={() => onSetStatus(user.id, "approved")}
             style={{ flex: 1, textAlign: "center", padding: "9px 0", borderRadius: 12, fontSize: 12, fontWeight: 800, cursor: "pointer", background: "#c7f27a", color: "#10240a" }}
           >
-            Aprobar
+            {t("admin.approve")}
           </Pressable>
         )}
         {user.status !== "rejected" && (
@@ -128,7 +130,7 @@ function UserRow({
               border: "1px solid oklch(72% 0.18 25 / 0.35)",
             }}
           >
-            {user.status === "approved" ? "Revocar acceso" : "Rechazar"}
+            {user.status === "approved" ? t("admin.revokeAccess") : t("admin.reject")}
           </Pressable>
         )}
       </div>
@@ -138,7 +140,7 @@ function UserRow({
 
 export default function AdminPanel() {
   const router = useRouter();
-  const { profile, userEmail, showToast } = useApp();
+  const { profile, userEmail, showToast, t } = useApp();
   const [users, setUsers] = useState<AdminUserRow[] | null>(null);
 
   const load = () => {
@@ -152,9 +154,9 @@ export default function AdminPanel() {
   if (!profile.isAdmin) {
     return (
       <div style={{ padding: "80px 24px", textAlign: "center", color: "rgba(244,243,238,.5)", fontSize: 13 }}>
-        No autorizado.
+        {t("admin.notAuthorized")}
         <Pressable onClick={() => router.push("/hoy")} style={{ marginTop: 16, minHeight: 44, display: "flex", alignItems: "center", justifyContent: "center", color: "#c7f27a", fontWeight: 700, cursor: "pointer" }}>
-          ‹ Volver a Hoy
+          {t("admin.backToToday")}
         </Pressable>
       </div>
     );
@@ -164,13 +166,13 @@ export default function AdminPanel() {
     // Optimista: refleja el cambio de inmediato, sin esperar la respuesta.
     setUsers((prev) => prev?.map((u) => (u.id === id ? { ...u, status } : u)) ?? prev);
     await db.setUserStatus(id, status);
-    showToast(status === "approved" ? "Acceso aprobado" : "Acceso rechazado");
+    showToast(status === "approved" ? t("admin.toastApproved") : t("admin.toastRejected"));
   };
 
   const removeUser = async (id: string) => {
     setUsers((prev) => prev?.filter((u) => u.id !== id) ?? prev);
     await db.deleteUserProfile(id);
-    showToast("Quitado de la lista");
+    showToast(t("admin.toastRemoved"));
   };
 
   // El admin no se gestiona a sí mismo (evita un auto-bloqueo accidental).
@@ -182,15 +184,15 @@ export default function AdminPanel() {
   return (
     <div style={{ boxSizing: "border-box", padding: "24px 20px 40px" }}>
       <Pressable onClick={() => router.push("/perfil/ajustes")} style={{ fontSize: 13, fontWeight: 700, color: "rgba(244,243,238,.7)", cursor: "pointer", minHeight: 44, display: "flex", alignItems: "center" }}>
-        ‹ Volver
+        {t("admin.back")}
       </Pressable>
       <div className="font-sora" style={{ fontSize: 20, fontWeight: 800, marginTop: 10 }}>
-        Control de acceso
+        {t("admin.title")}
       </div>
-      <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>Decide quién puede entrar a la app.</div>
+      <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>{t("admin.subtitle")}</div>
 
       {users === null ? (
-        <div aria-busy="true" aria-label="Cargando usuarios" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 24 }}>
+        <div aria-busy="true" aria-label={t("admin.loadingUsers")} style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 24 }}>
           <SkeletonBox height={11} width="45%" radius={100} style={{ marginBottom: 4 }} />
           <SkeletonBox height={96} radius={18} />
           <SkeletonBox height={96} radius={18} />
@@ -198,11 +200,11 @@ export default function AdminPanel() {
       ) : (
         <>
           <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".04em", marginTop: 24, marginBottom: 10 }}>
-            SOLICITUDES PENDIENTES {pending.length > 0 && `(${pending.length})`}
+            {t("admin.pendingRequests")} {pending.length > 0 && `(${pending.length})`}
           </div>
           {pending.length === 0 ? (
             <div style={{ fontSize: 12.5, color: "rgba(244,243,238,.4)", background: "#1b1e21", borderRadius: 18, padding: "14px 16px" }}>
-              No hay solicitudes esperando.
+              {t("admin.noPending")}
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -215,7 +217,7 @@ export default function AdminPanel() {
           )}
 
           <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".04em", marginTop: 24, marginBottom: 10 }}>
-            CON ACCESO ({approved.length})
+            {t("admin.withAccess")} ({approved.length})
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <AnimatePresence>
@@ -229,7 +231,7 @@ export default function AdminPanel() {
               solicitudes pendientes, que es lo que se viene a resolver. */}
           {rejected.length > 0 && (
             <div style={{ marginTop: 24 }}>
-              <Accordion label="Ver accesos rechazados" count={rejected.length}>
+              <Accordion label={t("admin.viewRejected")} count={rejected.length}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <AnimatePresence>
                     {rejected.map((u) => (
