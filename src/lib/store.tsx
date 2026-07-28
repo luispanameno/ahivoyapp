@@ -609,6 +609,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 },
                 a.peso_lb && a.peso_lb > 0 ? a.peso_lb : undefined
               );
+            else if (
+              a.type === "set_measurements" &&
+              (a.brazo_cm || a.cintura_cm || a.pecho_cm || a.pierna_cm || a.gluteos_cm)
+            )
+              await addMeasurement({
+                armCm: a.brazo_cm,
+                waistCm: a.cintura_cm,
+                chestCm: a.pecho_cm,
+                legCm: a.pierna_cm,
+                gluteCm: a.gluteos_cm,
+              });
           } else {
             // ---- Acciones sobre OTRO día (directo a la base de datos) ----
             if (a.type === "add_water" && a.ml) {
@@ -695,6 +706,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setActivity,
       addMeal,
       setBodyComp,
+      addMeasurement,
       showToast,
     ]
   );
@@ -809,6 +821,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               }
             : null,
           historial_peso: weights.slice(-6).map((w) => ({ fecha: w.date, lb: w.lb })),
+          // Última medida a cinta de cada parte (la más reciente que TRAIGA
+          // ese campo — un registro puede venir con solo alguna): sin esto
+          // el Coach no puede calcular pedidos relativos ("súbele 2cm al
+          // brazo") ni saber si ya hay una medida hoy para combinarla.
+          medidas_actuales: {
+            brazo_cm: [...measurements].reverse().find((m) => m.armCm != null)?.armCm ?? null,
+            cintura_cm: [...measurements].reverse().find((m) => m.waistCm != null)?.waistCm ?? null,
+            pecho_cm: [...measurements].reverse().find((m) => m.chestCm != null)?.chestCm ?? null,
+            pierna_cm: [...measurements].reverse().find((m) => m.legCm != null)?.legCm ?? null,
+            gluteos_cm: [...measurements].reverse().find((m) => m.gluteCm != null)?.gluteCm ?? null,
+          },
           rutina: routine,
           hora_local: new Date().toTimeString().slice(0, 5),
           fecha_hoy: date,
@@ -836,7 +859,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setChatTyping(false);
       }
     },
-    [profile, derived, workout, sleep, routine, meals, chatMessages, date, bodyComp, weights, applyChatActions]
+    [profile, derived, workout, sleep, routine, meals, chatMessages, date, bodyComp, weights, measurements, applyChatActions]
   );
 
   // Reenvía sola la pregunta que quedó a medias por una recarga.

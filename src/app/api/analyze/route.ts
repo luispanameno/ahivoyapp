@@ -209,6 +209,7 @@ const SCHEMAS: Record<Mode, object> = {
                 "set_macros",
                 "set_body_comp",
                 "set_activity",
+                "set_measurements",
               ],
             },
             ml: NUM,
@@ -233,6 +234,12 @@ const SCHEMAS: Record<Mode, object> = {
             kcal_activas: NUM,
             kcal_totales: NUM,
             distancia_km: NUM,
+            // set_measurements (medidas a cinta: brazo/cintura/pecho/pierna/glúteos)
+            brazo_cm: NUM,
+            cintura_cm: NUM,
+            pecho_cm: NUM,
+            pierna_cm: NUM,
+            gluteos_cm: NUM,
             // OJO: sin enum, los modelos interpretan "time" como hora de
             // reloj y el decodificador entra en bucle.
             time: { type: Type.STRING, enum: ["Desayuno", "Almuerzo", "Cena", "Snack"] },
@@ -343,6 +350,7 @@ Además de aconsejar, tienes acceso COMPLETO (crear, modificar, borrar) a los da
 - registrar una comida SIN foto ("agrega a mi almuerzo: pollo con arroz") — estima kcal y macros tú mismo
 - BORRAR una comida del historial ("borra el pollo del almuerzo") — usa delete_meal con la descripción EXACTA que aparece en comidas_hoy del contexto
 - CORREGIR una comida ("el desayuno eran 300 kcal, no 500") — usa update_meal con la descripción exacta de comidas_hoy y los valores nuevos completos.
+- registrar medidas corporales a cinta (brazo, cintura, pecho, pierna, glúteos) con set_measurements — ver regla MEDIDAS CORPORALES más abajo.
 Si envía una FOTO de comida: analízala y estima macros; si además pide registrarla ("agrégala"), regístrala con log_meal.
 
 MÚLTIPLES INTENCIONES EN UN MISMO MENSAJE (REGLA OBLIGATORIA): un solo mensaje puede traer VARIAS cosas a la vez (ej. foto del plato + "también tomé 644 ml de agua" + "dormí 6 horas"). ANTES de responder, escanea SIEMPRE el texto completo del usuario buscando CADA intención — comida, AGUA/LÍQUIDOS, sueño, ejercicio, peso — y emite UNA acción por cada una. Ignorar una intención secundaria (muy típico: el agua mencionada junto a una foto de comida) es un ERROR GRAVE.
@@ -366,7 +374,8 @@ Responde SOLO con JSON válido:
    {"type":"update_meal","desc":string,"kcal":number,"p":number,"c":number,"f":number} |
    {"type":"set_macros","kcal":number,"p":number,"c":number,"f":number} |
    {"type":"set_body_comp","peso_lb":number,"score":number,"complexion":string,"imc":number,"grasa_pct":number,"agua_pct":number,"proteina_pct":number,"bmr":number,"grasa_visceral":number,"musculo_lb":number,"masa_osea_lb":number} |
-   {"type":"set_activity","pasos":number,"min_activos":number,"kcal_activas":number,"kcal_totales":number,"distancia_km":number}
+   {"type":"set_activity","pasos":number,"min_activos":number,"kcal_activas":number,"kcal_totales":number,"distancia_km":number} |
+   {"type":"set_measurements","brazo_cm":number,"cintura_cm":number,"pecho_cm":number,"pierna_cm":number,"gluteos_cm":number}
  ]}
 "actions" va vacío [] si el usuario solo pregunta. Cuando registres/borres/modifiques algo, confírmalo en "reply" con los números.
 En log_meal incluye SIEMPRE los campos desc, kcal, p, c y f con tus estimaciones — NUNCA los omitas. En add_water/remove_water incluye siempre ml.
@@ -382,6 +391,13 @@ META CALÓRICA PERSONALIZADA (cálculo biomédico): el contexto trae "perfil" (e
 Muestra el cálculo en corto (BMR → TDEE → meta) y aplica la nueva meta con set_meta_kcal SOLO si el usuario acepta o lo pidió explícitamente.
 
 META DE AGUA: si el usuario pide cambiar cuánta agua debe tomar al día ("súbeme la meta a 3 litros", "ponme 3000 ml"), emite set_meta_water con los ml (1 litro = 1000 ml) y confírmalo. NUNCA digas que cambiaste la meta de agua sin emitir esta acción.
+
+MEDIDAS CORPORALES (brazo, cintura, pecho, pierna, glúteos — SOLO a cinta métrica, nunca de foto): el contexto trae "medidas_actuales" con el último valor conocido de cada una (o null si nunca se anotó). Cuando el usuario mencione una o varias:
+- Valor ABSOLUTO ("mi cintura ahora es 85", "anota 32 de brazo"): usa ese número directo.
+- Valor RELATIVO ("súbele 2 al brazo", "la cintura me bajó 3 cm"): suma/resta sobre medidas_actuales — si esa medida nunca se anotó (null), dile que no tenés un valor previo para calcular el cambio y pregúntale el número exacto, NO adivines.
+- Emite set_measurements SOLO con los campos que el usuario mencionó (brazo_cm, cintura_cm, pecho_cm, pierna_cm, gluteos_cm) — deja los demás fuera, no los reescribas con el valor viejo.
+- Un mismo mensaje puede traer varias medidas a la vez ("brazo 33, cintura 82") — van todas en la MISMA acción set_measurements.
+- Confirma en tu "reply" el/los valores nuevos y, si tenías uno previo en medidas_actuales, si subió o bajó. NUNCA digas que anotaste una medida sin emitir esta acción.
 
 FOTO DE BÁSCULA EN EL CHAT (flujo OBLIGATORIO): si la imagen que envía el usuario es una captura o foto de una app de báscula (Zepp Life, Renpho, etc. — se reconoce por peso, IMC, grasa corporal, puntuación…):
 1) EXTRAE todos los datos visibles (peso, puntuación entera, complexión, IMC, grasa %, agua %, proteína %, metabolismo basal, grasa visceral, músculo, masa ósea; convierte kg→lb ×2.2046). No dejes campos visibles sin leer.

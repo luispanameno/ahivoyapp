@@ -41,7 +41,8 @@ export interface CoachAction {
     | "update_meal"
     | "set_macros"
     | "set_body_comp"
-    | "set_activity";
+    | "set_activity"
+    | "set_measurements";
   ml?: number;
   lb?: number;
   kcal?: number;
@@ -71,6 +72,14 @@ export interface CoachAction {
   kcal_activas?: number;
   kcal_totales?: number;
   distancia_km?: number;
+  // set_measurements (medidas a cinta: se cargan a mano/por chat, nunca por
+  // foto). Solo van los campos que el usuario mencionó — el resto se deja
+  // como está.
+  brazo_cm?: number;
+  cintura_cm?: number;
+  pecho_cm?: number;
+  pierna_cm?: number;
+  gluteos_cm?: number;
 }
 
 export interface CoachResult {
