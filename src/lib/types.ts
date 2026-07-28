@@ -129,6 +129,7 @@ export interface MeasurementEntry {
   waistCm?: number;
   chestCm?: number;
   legCm?: number;
+  gluteCm?: number;
 }
 
 // Registro individual de agua/bebida (como una comida, pero solo ml + etiqueta).

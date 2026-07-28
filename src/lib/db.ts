@@ -216,6 +216,7 @@ export async function loadAll(date: string): Promise<AllData> {
     waistCm: x.cintura_cm != null ? Number(x.cintura_cm) : undefined,
     chestCm: x.pecho_cm != null ? Number(x.pecho_cm) : undefined,
     legCm: x.pierna_cm != null ? Number(x.pierna_cm) : undefined,
+    gluteCm: x.gluteos_cm != null ? Number(x.gluteos_cm) : undefined,
   }));
 
   return {
@@ -606,6 +607,7 @@ export async function addMeasurement(entry: MeasurementEntry) {
         cintura_cm: entry.waistCm ?? existing?.cintura_cm ?? null,
         pecho_cm: entry.chestCm ?? existing?.pecho_cm ?? null,
         pierna_cm: entry.legCm ?? existing?.pierna_cm ?? null,
+        gluteos_cm: entry.gluteCm ?? existing?.gluteos_cm ?? null,
       },
       { onConflict: "user_id,fecha" }
     );
@@ -618,6 +620,7 @@ export async function addMeasurement(entry: MeasurementEntry) {
       waistCm: entry.waistCm ?? existing?.waistCm,
       chestCm: entry.chestCm ?? existing?.chestCm,
       legCm: entry.legCm ?? existing?.legCm,
+      gluteCm: entry.gluteCm ?? existing?.gluteCm,
     };
     lsSet(
       "measurements",

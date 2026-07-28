@@ -114,9 +114,9 @@ create table if not exists public.body_composition (
 );
 create index if not exists bodycomp_user_fecha on public.body_composition (user_id, fecha desc);
 
--- Medidas corporales (brazo, cintura, pecho, pierna): SOLO se cargan a mano
--- desde Sincronización, nunca por foto. Un registro puede traer solo alguna
--- de las 4, por eso todas son nullable.
+-- Medidas corporales (brazo, cintura, pecho, pierna, glúteos): SOLO se
+-- cargan a mano desde Sincronización, nunca por foto. Un registro puede
+-- traer solo alguna de las 5, por eso todas son nullable.
 create table if not exists public.measurements_logs (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -125,8 +125,11 @@ create table if not exists public.measurements_logs (
   cintura_cm numeric,
   pecho_cm numeric,
   pierna_cm numeric,
+  gluteos_cm numeric,
   unique (user_id, fecha)
 );
+-- Por si la tabla ya existía sin esta columna (se agregó después):
+alter table public.measurements_logs add column if not exists gluteos_cm numeric;
 
 create table if not exists public.routines (
   id uuid primary key default gen_random_uuid(),

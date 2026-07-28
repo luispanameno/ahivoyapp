@@ -12,18 +12,26 @@ import { useApp } from "@/lib/store";
 import { ACTIVITY_FACTORS, MeasurementEntry, WeightEntry } from "@/lib/types";
 import { mifflinBMR } from "@/lib/nutrition";
 
-type MeasureField = "armCm" | "waistCm" | "chestCm" | "legCm";
+type MeasureField = "armCm" | "waistCm" | "chestCm" | "legCm" | "gluteCm";
 
-// Último valor + cuánto cambió desde la anotación anterior QUE TENÍA ese
-// mismo campo (una entrada puede traer solo alguna de las 4 medidas).
-function measureTrend(measurements: MeasurementEntry[], field: MeasureField): { value: number; delta: number; hasPrev: boolean } | null {
-  const withValue = measurements.filter((m) => m[field] != null);
-  if (!withValue.length) return null;
-  const latest = withValue[withValue.length - 1];
-  const prev = withValue.length >= 2 ? withValue[withValue.length - 2] : null;
-  const value = latest[field] as number;
-  const delta = prev ? Math.round((value - (prev[field] as number)) * 10) / 10 : 0;
-  return { value, delta, hasPrev: !!prev };
+const MEASURE_FIELDS: { field: MeasureField; label: string }[] = [
+  { field: "armCm", label: "Brazo" },
+  { field: "waistCm", label: "Cintura" },
+  { field: "chestCm", label: "Pecho" },
+  { field: "legCm", label: "Pierna" },
+  { field: "gluteCm", label: "Glúteos" },
+];
+
+// Serie de una sola medida (solo las anotaciones QUE TRAEN ese campo — una
+// entrada puede venir con solo alguna de las 5). Se ordena por fecha, sin
+// agrupar por día/semana como el peso: las medidas no se cargan seguido, así
+// que cada anotación real es su propia barra.
+function measureSeries(measurements: MeasurementEntry[], field: MeasureField): { labels: string[]; values: number[] } {
+  const withValue = measurements.filter((m) => m[field] != null).slice(-6);
+  return {
+    labels: withValue.map((m) => `${m.date.slice(8, 10)}/${m.date.slice(5, 7)}`),
+    values: withValue.map((m) => m[field] as number),
+  };
 }
 
 function weeklySeries(weights: WeightEntry[]): { labels: string[]; values: number[] } {
@@ -48,6 +56,7 @@ export default function PerfilProgreso() {
   const { profile, weights, bodyComp, measurements } = useApp();
   const [range, setRange] = useState<"days" | "weeks">("days");
   const [infoModal, setInfoModal] = useState<"bmr" | "tdee" | null>(null);
+  const [measureField, setMeasureField] = useState<MeasureField>("armCm");
 
   const bmr = bodyComp?.bmr || mifflinBMR(profile.weight, profile.height, profile.age, profile.sex);
   const tdee = Math.round(bmr * ACTIVITY_FACTORS[profile.activityLevel]);
@@ -69,6 +78,24 @@ export default function PerfilProgreso() {
       ? `${delta <= 0 ? "↓" : "↑"} ${Math.abs(delta)} lb ${range === "days" ? "esta semana" : "en este periodo"}`
       : "Registra tu peso para ver tendencia";
   const trendColor = delta <= 0 ? "oklch(78% 0.15 145)" : "oklch(75% 0.15 60)";
+
+  // Misma lógica de barras que el peso, pero para la medida elegida — sin
+  // agrupar por semana: cada anotación real es su propia barra.
+  const measureSeriesData = measureSeries(measurements, measureField);
+  const mMax = Math.max(...measureSeriesData.values, 1);
+  const mMin = Math.min(...measureSeriesData.values, mMax);
+  const measureBars = measureSeriesData.values.map((v, i) => ({
+    label: measureSeriesData.labels[i],
+    h: Math.round(20 + ((v - mMin) / Math.max(0.1, mMax - mMin)) * 80),
+  }));
+  const measureDelta =
+    measureSeriesData.values.length >= 2
+      ? Math.round((measureSeriesData.values[measureSeriesData.values.length - 1] - measureSeriesData.values[0]) * 10) / 10
+      : 0;
+  const measureTrendLabel =
+    measureSeriesData.values.length >= 2
+      ? `${measureDelta === 0 ? "Sin cambio" : `${measureDelta > 0 ? "↑" : "↓"} ${Math.abs(measureDelta)} cm`}`
+      : "Anota esta medida más de una vez para ver la tendencia";
 
   const GREEN = { bg: "rgba(199,242,122,.15)", color: "#c7f27a" };
   const ORANGE = { bg: "rgba(230,150,60,.15)", color: "oklch(75% 0.15 60)" };
@@ -233,46 +260,66 @@ export default function PerfilProgreso() {
         )}
       </div>
 
-      {/* Historial de medidas: brazo, cintura, pecho, pierna — se cargan a
-          mano en Sincronización; acá solo se reflejan (subió/bajó). */}
+      {/* Historial de medidas: brazo, cintura, pecho, pierna, glúteos — se
+          cargan a mano en Sincronización; acá se grafica cada una para ver
+          si al volver a medirte subió o bajó. */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 20, marginBottom: 8 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em" }}>HISTORIAL DE MEDIDAS</div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: "oklch(70% 0.13 220)" }}>{measureTrendLabel}</div>
       </div>
       <div style={{ background: "#1b1e21", borderRadius: 20, padding: 14 }}>
-        {measurements.length ? (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-            {(
-              [
-                { field: "armCm" as const, label: "Brazo" },
-                { field: "waistCm" as const, label: "Cintura" },
-                { field: "chestCm" as const, label: "Pecho" },
-                { field: "legCm" as const, label: "Pierna" },
-              ]
-            ).map((m) => {
-              const t = measureTrend(measurements, m.field);
-              return (
-                <div key={m.field} style={{ background: "#232527", borderRadius: 16, padding: "12px 14px" }}>
-                  <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(244,243,238,.45)" }}>{m.label.toUpperCase()}</div>
-                  {t ? (
-                    <>
-                      <div className="font-sora" style={{ fontSize: 18, fontWeight: 800, marginTop: 4 }}>
-                        {t.value}
-                        <span style={{ fontSize: 11, fontWeight: 600, color: "rgba(244,243,238,.4)" }}> cm</span>
-                      </div>
-                      <div style={{ fontSize: 10.5, fontWeight: 700, marginTop: 2, color: !t.hasPrev ? "rgba(244,243,238,.4)" : t.delta === 0 ? "rgba(244,243,238,.4)" : "oklch(70% 0.13 220)" }}>
-                        {!t.hasPrev ? "Primera medida" : t.delta === 0 ? "Sin cambio" : `${t.delta > 0 ? "↑" : "↓"} ${Math.abs(t.delta)} cm`}
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{ fontSize: 11, color: "rgba(244,243,238,.35)", marginTop: 6 }}>Sin datos</div>
-                  )}
+        <div style={{ display: "flex", gap: 6, marginBottom: 14, overflowX: "auto" }}>
+          {MEASURE_FIELDS.map((m) => (
+            <Pressable
+              key={m.field}
+              onClick={() => setMeasureField(m.field)}
+              style={{
+                flex: "none",
+                minHeight: 36,
+                display: "flex",
+                alignItems: "center",
+                padding: "0 14px",
+                boxSizing: "border-box",
+                borderRadius: 100,
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                background: measureField === m.field ? "#c7f27a" : "#232527",
+                color: measureField === m.field ? "#10240a" : "rgba(244,243,238,.6)",
+              }}
+            >
+              {m.label}
+            </Pressable>
+          ))}
+        </div>
+        {measureBars.length ? (
+          <>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 64 }}>
+              {measureBars.map((b, i) => (
+                <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, height: "100%", justifyContent: "flex-end" }}>
+                  <div
+                    style={{
+                      width: "100%",
+                      maxWidth: 18,
+                      borderRadius: "4px 4px 0 0",
+                      background: "oklch(70% 0.13 220)",
+                      height: `${b.h}%`,
+                      boxShadow: "0 0 8px oklch(70% 0.13 220 / 0.5)",
+                    }}
+                  />
                 </div>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+              {measureBars.map((b, i) => (
+                <div key={i} style={{ flex: 1, textAlign: "center", fontSize: 9.5, color: "rgba(244,243,238,.4)" }}>{b.label}</div>
+              ))}
+            </div>
+          </>
         ) : (
-          <div style={{ textAlign: "center", fontSize: 12, color: "rgba(244,243,238,.45)", padding: "10px 0" }}>
-            Anota tus medidas en <b style={{ color: "#c7f27a" }}>Sincronización</b> y aquí verás si subieron o bajaron.
+          <div style={{ textAlign: "center", fontSize: 12, color: "rgba(244,243,238,.45)", padding: "16px 0" }}>
+            Anota esta medida en <b style={{ color: "#c7f27a" }}>Sincronización</b> y aquí vas a ver si subió o bajó.
           </div>
         )}
       </div>

@@ -188,6 +188,7 @@ export default function SyncHub() {
   const [cinturaCm, setCinturaCm] = useState("");
   const [pechoCm, setPechoCm] = useState("");
   const [piernaCm, setPiernaCm] = useState("");
+  const [gluteosCm, setGluteosCm] = useState("");
 
   const closeSheet = () => {
     setSheet(null);
@@ -344,15 +345,17 @@ export default function SyncHub() {
     const cintura = Number(cinturaCm) || undefined;
     const pecho = Number(pechoCm) || undefined;
     const pierna = Number(piernaCm) || undefined;
-    if (!brazo && !cintura && !pecho && !pierna) {
+    const gluteos = Number(gluteosCm) || undefined;
+    if (!brazo && !cintura && !pecho && !pierna && !gluteos) {
       setError("Escribe al menos una medida.");
       return;
     }
-    await addMeasurement({ armCm: brazo, waistCm: cintura, chestCm: pecho, legCm: pierna });
+    await addMeasurement({ armCm: brazo, waistCm: cintura, chestCm: pecho, legCm: pierna, gluteCm: gluteos });
     setBrazoCm("");
     setCinturaCm("");
     setPechoCm("");
     setPiernaCm("");
+    setGluteosCm("");
     showToast("Medidas guardadas");
     closeSheet();
   };
@@ -394,7 +397,7 @@ export default function SyncHub() {
         <SyncCard
           icon="measurement-bmi"
           title="Medidas corporales"
-          subtitle="Brazo · cintura · pecho · pierna (a mano)"
+          subtitle="Brazo · cintura · pecho · pierna · glúteos (a mano)"
           lastLabel={lastMeasurement ? `${lastMeasurement.date.slice(8, 10)}/${lastMeasurement.date.slice(5, 7)}` : "Sin datos"}
           onClick={() => openSheet("measurements")}
         />
@@ -614,6 +617,10 @@ export default function SyncHub() {
           <div>
             <div style={label}>PIERNA (CM)</div>
             <input type="number" inputMode="decimal" value={piernaCm} onChange={(e) => setPiernaCm(e.target.value)} placeholder="55" style={fieldStyle} />
+          </div>
+          <div>
+            <div style={label}>GLÚTEOS (CM)</div>
+            <input type="number" inputMode="decimal" value={gluteosCm} onChange={(e) => setGluteosCm(e.target.value)} placeholder="100" style={fieldStyle} />
           </div>
         </div>
         <ActionButton label="Guardar medidas" onClick={saveMeasurementsManual} busy={false} />

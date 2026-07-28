@@ -456,6 +456,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           waistCm: entry.waistCm ?? existing?.waistCm,
           chestCm: entry.chestCm ?? existing?.chestCm,
           legCm: entry.legCm ?? existing?.legCm,
+          gluteCm: entry.gluteCm ?? existing?.gluteCm,
         };
         return [...prev.filter((x) => x.date !== date), merged].sort((a, b) => a.date.localeCompare(b.date));
       });
