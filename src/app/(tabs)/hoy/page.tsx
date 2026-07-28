@@ -201,6 +201,10 @@ export default function Hoy() {
       ? `Asesor de menús: te faltan ${protLeft}g de proteína y tienes ${kcalRemaining} kcal. Ideal: pescado o pollo a la plancha con verduras.`
       : `¡Proteína completa! Con ${kcalRemaining} kcal restantes, una cena ligera de verduras cierra perfecto el día.`;
 
+  const waterExceeded = profile.metaWater > 0 && water > profile.metaWater;
+  const waterAltValue = waterExceeded ? `+${water - profile.metaWater}ml` : `${Math.max(0, profile.metaWater - water)}ml`;
+  const waterAltLabel = waterExceeded ? "de más" : "faltan";
+
   const steps = activity?.steps ?? 0;
   const activeMin = activity?.activeMin ?? 0;
   // Las calorías del anillo salen de burnedKcal (el mayor entre reloj y
@@ -381,10 +385,27 @@ export default function Hoy() {
             }}
           />
           <div style={{ flex: 1 }}>
-            <div className="font-sora" style={{ fontSize: 19, fontWeight: 800 }}>
-              {water}ml
-              <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(244,243,238,.4)" }}> / {profile.metaWater}ml</span>
-            </div>
+            {/* Alterna cada 5s entre "consumido / meta" y "cuánto falta"
+                (o "+X de más" si ya se pasó) — el mismo vaivén que ya
+                tienen las ruedas de macros arriba, para que el agua se
+                sienta igual de informativa que ellas. */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={showRemaining ? "falta" : "actual"}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.35 }}
+                className="font-sora"
+                style={{ fontSize: 19, fontWeight: 800, color: showRemaining && waterExceeded ? OVER_COLOR : undefined }}
+              >
+                {showRemaining ? waterAltValue : `${water}ml`}
+                <span style={{ fontSize: 12, fontWeight: 600, color: showRemaining && waterExceeded ? OVER_COLOR : "rgba(244,243,238,.4)" }}>
+                  {" "}
+                  {showRemaining ? waterAltLabel : `/ ${profile.metaWater}ml`}
+                </span>
+              </motion.div>
+            </AnimatePresence>
             <div style={{ height: 6, borderRadius: 100, background: "rgba(255,255,255,.08)", marginTop: 8 }}>
               <div
                 style={{
