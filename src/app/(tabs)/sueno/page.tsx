@@ -37,7 +37,7 @@ function rangeToMinutes(from: string, to: string): number {
 
 export default function Sueno() {
   const router = useRouter();
-  const { sleep, setSleep, showToast } = useApp();
+  const { sleep, setSleep, showToast, t } = useApp();
   const [error, setError] = useState<string | null>(null);
   const [manualFrom, setManualFrom] = useState("23:00");
   const [manualTo, setManualTo] = useState("07:00");
@@ -51,14 +51,14 @@ export default function Sueno() {
 
   const saveManual = async () => {
     if (manualMinutes <= 0) {
-      setError("Esas horas no cuadran — revisa a qué hora te acostaste y a qué hora despertaste.");
+      setError(t("sueno.errHours"));
       return;
     }
     setSavingManual(true);
     setError(null);
     try {
       await setSleep({ minutes: manualMinutes, phases: null });
-      showToast(`Sueño actualizado: ${Math.floor(manualMinutes / 60)}h ${String(manualMinutes % 60).padStart(2, "0")}m`);
+      showToast(t("sueno.toastUpdated", { h: Math.floor(manualMinutes / 60), m: String(manualMinutes % 60).padStart(2, "0") }));
     } finally {
       setSavingManual(false);
     }
@@ -67,20 +67,20 @@ export default function Sueno() {
 
   return (
     <div style={{ boxSizing: "border-box", padding: "24px 20px 24px", display: "flex", flexDirection: "column" }}>
-      <div className="font-sora" style={{ fontSize: 20, fontWeight: 700 }}>Sueño</div>
-      <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>Meta: 7–8 horas · con captura de tu reloj o a mano</div>
+      <div className="font-sora" style={{ fontSize: 20, fontWeight: 700 }}>{t("sueno.title")}</div>
+      <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>{t("sueno.subtitle")}</div>
 
       <div style={{ background: "#1b1e21", borderRadius: 20, padding: 18, marginTop: 16, textAlign: "center" }}>
         <div className="font-sora" style={{ fontSize: 36, fontWeight: 800, textShadow: "0 0 12px oklch(72% 0.15 300 / 0.5)" }}>{label}</div>
         <div style={{ fontSize: 11.5, color: sleepOk ? "#c7f27a" : "oklch(75% 0.15 60)", fontWeight: 700, marginTop: 4 }}>
-          {sleep ? (sleepOk ? "Dentro de tu meta de 7–8 horas" : "Fuera de tu meta de 7–8 horas") : "Sin registro de anoche"}
+          {sleep ? (sleepOk ? t("sueno.withinGoal") : t("sueno.outsideGoal")) : t("sueno.noRecord")}
         </div>
       </div>
 
       {phases && (
         <div style={{ background: "#1b1e21", borderRadius: 20, padding: 14, marginTop: 10 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em", marginBottom: 10 }}>
-            FASES DE ANOCHE
+            {t("sueno.phasesTitle")}
           </div>
           <div style={{ display: "flex", height: 14, borderRadius: 100, overflow: "hidden" }}>
             <div style={{ width: `${phases.deep}%`, background: "oklch(55% 0.18 290)" }} />
@@ -89,10 +89,10 @@ export default function Sueno() {
             <div style={{ width: `${phases.awake}%`, background: "rgba(255,255,255,.15)" }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 10, color: "rgba(244,243,238,.45)" }}>
-            <span>Profundo {phases.deep}%</span>
-            <span>Ligero {phases.light}%</span>
-            <span>REM {phases.rem}%</span>
-            <span>Despierto {phases.awake}%</span>
+            <span>{t("sueno.deep", { pct: phases.deep })}</span>
+            <span>{t("sueno.light", { pct: phases.light })}</span>
+            <span>{t("sueno.rem", { pct: phases.rem })}</span>
+            <span>{t("sueno.awake", { pct: phases.awake })}</span>
           </div>
         </div>
       )}
@@ -118,39 +118,39 @@ export default function Sueno() {
       >
         <Icon name="sleep" size={18} />
         <div style={{ flex: 1, fontSize: 12, fontWeight: 700, color: "rgba(244,243,238,.8)" }}>
-          ¿Tienes captura del reloj? Súbela en Sincronización
+          {t("sueno.gotWatchCapture")}
         </div>
-        <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)", flex: "none" }}>Ir ›</span>
+        <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)", flex: "none" }}>{t("sueno.go")}</span>
       </Pressable>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "20px 0 14px" }}>
         <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,.08)" }} />
         <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(244,243,238,.35)", letterSpacing: ".04em" }}>
-          O ANÓTALO A MANO
+          {t("sueno.orManual")}
         </div>
         <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,.08)" }} />
       </div>
 
       <div style={{ background: "#1b1e21", borderRadius: 20, padding: 16 }}>
         <div style={{ fontSize: 11.5, color: "rgba(244,243,238,.5)", marginBottom: 12 }}>
-          ¿Sin reloj o app del celular a la mano? Escribe a qué hora te acostaste y a qué hora despertaste.
+          {t("sueno.manualHint")}
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(244,243,238,.4)", marginBottom: 6 }}>ME ACOSTÉ</div>
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(244,243,238,.4)", marginBottom: 6 }}>{t("sueno.wentToBed")}</div>
             <input type="time" value={manualFrom} onChange={(e) => setManualFrom(e.target.value)} style={timeInputStyle} />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(244,243,238,.4)", marginBottom: 6 }}>DESPERTÉ</div>
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(244,243,238,.4)", marginBottom: 6 }}>{t("sueno.wokeUp")}</div>
             <input type="time" value={manualTo} onChange={(e) => setManualTo(e.target.value)} style={timeInputStyle} />
           </div>
         </div>
         <div style={{ textAlign: "center", fontSize: 12, fontWeight: 700, color: "#c7f27a", marginTop: 12 }}>
           {manualMinutes > 0
-            ? `Total: ${Math.floor(manualMinutes / 60)}h ${String(manualMinutes % 60).padStart(2, "0")}m`
-            : "Revisa las horas"}
+            ? `${t("sync.totalLabel")}: ${Math.floor(manualMinutes / 60)}h ${String(manualMinutes % 60).padStart(2, "0")}m`
+            : t("sueno.checkHours")}
         </div>
-        <ActionButton label={savingManual ? "Guardando…" : "Guardar horas de sueño"} onClick={saveManual} busy={savingManual} />
+        <ActionButton label={savingManual ? t("sueno.saving") : t("sueno.saveHours")} onClick={saveManual} busy={savingManual} />
       </div>
 
       {error && <div style={{ marginTop: 12, fontSize: 11.5, fontWeight: 600, color: "oklch(78% 0.15 50)" }}>{error}</div>}

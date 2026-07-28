@@ -11,10 +11,7 @@ import Pressable from "@/components/Pressable";
 import * as db from "@/lib/db";
 import { useApp } from "@/lib/store";
 import { Activity, Drink, Meal, Profile, WorkoutState, todayISO } from "@/lib/types";
-
-const DIA_ABBR = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-const DIA_LARGO = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
-const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+import { Lang, MONTHS_SHORT, WEEKDAYS_LONG, WEEKDAYS_SHORT } from "@/lib/i18n";
 
 // Mismo rojo de alerta que usa el resto de la app cuando se supera una meta.
 const OVER_COLOR = "oklch(65% 0.19 25)";
@@ -33,10 +30,10 @@ function lastNDays(end: string, n: number): string[] {
   return out;
 }
 
-function dayLabel(iso: string): string {
+function dayLabel(iso: string, lang: Lang): string {
   const [y, m, d] = iso.split("-").map(Number);
   const dt = new Date(y, m - 1, d);
-  return `${DIA_LARGO[dt.getDay()]}, ${dt.getDate()} ${MESES[dt.getMonth()]}`;
+  return `${WEEKDAYS_LONG[lang][dt.getDay()].toLowerCase()}, ${dt.getDate()} ${MONTHS_SHORT[lang][dt.getMonth()]}`;
 }
 
 function computeDerived(meals: Meal[], drinks: Drink[], activity: Activity | null, workout: WorkoutState | null, profile: Profile) {
@@ -58,10 +55,10 @@ function computeDerived(meals: Meal[], drinks: Drink[], activity: Activity | nul
   };
 }
 
-function joinEs(items: string[]): string {
+function joinList(items: string[], and: string): string {
   if (items.length === 0) return "";
   if (items.length === 1) return items[0];
-  return `${items.slice(0, -1).join(", ")} y ${items[items.length - 1]}`;
+  return `${items.slice(0, -1).join(", ")} ${and} ${items[items.length - 1]}`;
 }
 
 interface DayVerdict {
@@ -74,49 +71,51 @@ interface DayVerdict {
 // se cumplió, qué NO, y una recomendación. Si el día es HOY (aún no
 // termina), la recomendación mira hacia adelante ("aún estás a tiempo");
 // si es un día pasado, mira hacia la próxima vez.
-function buildDayVerdict(params: {
-  hasAnyData: boolean;
-  isToday: boolean;
-  kcalOk: boolean;
-  carbsOk: boolean;
-  fatOk: boolean;
-  proteinOk: boolean;
-}): DayVerdict | null {
+function buildDayVerdict(
+  params: {
+    hasAnyData: boolean;
+    isToday: boolean;
+    kcalOk: boolean;
+    carbsOk: boolean;
+    fatOk: boolean;
+    proteinOk: boolean;
+  },
+  t: (key: string, vars?: Record<string, string | number>) => string
+): DayVerdict | null {
   const { hasAnyData, isToday, kcalOk, carbsOk, fatOk, proteinOk } = params;
   if (!hasAnyData) return null;
 
   const checks = [
-    { label: "las calorías", ok: kcalOk },
-    { label: "los carbohidratos", ok: carbsOk },
-    { label: "las grasas", ok: fatOk },
-    { label: "la proteína", ok: proteinOk },
+    { label: t("verdict.checkKcal"), ok: kcalOk },
+    { label: t("verdict.checkCarbs"), ok: carbsOk },
+    { label: t("verdict.checkFat"), ok: fatOk },
+    { label: t("verdict.checkProtein"), ok: proteinOk },
   ];
   const met = checks.filter((c) => c.ok).map((c) => c.label);
   const missed = checks.filter((c) => !c.ok).map((c) => c.label);
+  const and = t("verdict.and");
 
   if (missed.length === 0) {
     return {
       goalReached: true,
-      headline: "¡Meta alcanzada!",
-      body: isToday
-        ? "Calorías, carbohidratos, grasas y proteína bajo control. Sigue así y cierras el día como un campeón."
-        : "Ese día cerraste todo dentro de tus metas. Así se hace.",
+      headline: t("verdict.goalReachedHeadline"),
+      body: isToday ? t("verdict.goalReachedBodyToday") : t("verdict.goalReachedBodyPast"),
     };
   }
 
   let tip = "";
-  if (!kcalOk) tip = "baja un poco las porciones o elige algo más ligero";
-  else if (!carbsOk) tip = "cambia el arroz o el pan por más vegetales";
-  else if (!fatOk) tip = "evita las frituras y elige proteínas a la plancha";
-  else tip = "suma un huevo, pollo o un batido de proteína";
+  if (!kcalOk) tip = t("verdict.tipKcal");
+  else if (!carbsOk) tip = t("verdict.tipCarbs");
+  else if (!fatOk) tip = t("verdict.tipFat");
+  else tip = t("verdict.tipDefault");
 
-  const metText = met.length ? `Cumpliste con ${joinEs(met)}` : "Todavía no cumples ninguna meta";
-  const adviceText = isToday ? `Aún estás a tiempo: ${tip}.` : `Para la próxima, ${tip}.`;
+  const metText = met.length ? t("verdict.metText", { met: joinList(met, and) }) : t("verdict.metNone");
+  const adviceText = isToday ? t("verdict.adviceToday", { tip }) : t("verdict.advicePast", { tip });
 
   return {
     goalReached: false,
-    headline: "Meta no alcanzada",
-    body: `${metText}, pero te faltó en ${joinEs(missed)}. ${adviceText}`,
+    headline: t("verdict.notReachedHeadline"),
+    body: t("verdict.bodyTemplate", { met: metText, missed: joinList(missed, and), advice: adviceText }),
   };
 }
 
@@ -269,7 +268,7 @@ function StatTile({ label, value, sub }: { label: string; value: string; sub?: s
 export default function DailyHistoryDashboard() {
   const router = useRouter();
   const app = useApp();
-  const { profile } = app;
+  const { profile, t, lang } = app;
   const reduceMotion = useReducedMotion();
   const today = todayISO();
 
@@ -321,7 +320,7 @@ export default function DailyHistoryDashboard() {
   const metrics: BarMetric[] = [
     {
       key: "kcal",
-      label: "Calorías",
+      label: t("resumen.calories"),
       actual: derived.kcalEaten,
       meta: derived.kcalBudget,
       unit: "",
@@ -331,7 +330,7 @@ export default function DailyHistoryDashboard() {
     },
     {
       key: "carbs",
-      label: "Carbohidratos",
+      label: t("resumen.carbs"),
       actual: derived.carbsG,
       meta: profile.metaCarbs,
       unit: "g",
@@ -341,7 +340,7 @@ export default function DailyHistoryDashboard() {
     },
     {
       key: "prot",
-      label: "Proteína",
+      label: t("resumen.protein"),
       actual: derived.proteinG,
       meta: profile.metaProtein,
       unit: "g",
@@ -351,7 +350,7 @@ export default function DailyHistoryDashboard() {
     },
     {
       key: "fat",
-      label: "Grasas",
+      label: t("resumen.fat"),
       actual: derived.fatG,
       meta: profile.metaFat,
       unit: "g",
@@ -361,7 +360,7 @@ export default function DailyHistoryDashboard() {
     },
     {
       key: "water",
-      label: "Agua",
+      label: t("resumen.water"),
       actual: derived.water,
       meta: profile.metaWater,
       unit: "ml",
@@ -378,7 +377,7 @@ export default function DailyHistoryDashboard() {
   const fatOk = derived.fatG <= profile.metaFat;
   const proteinOk = derived.proteinG >= profile.metaProtein;
 
-  const dayVerdict = buildDayVerdict({ hasAnyData, isToday, kcalOk, carbsOk, fatOk, proteinOk });
+  const dayVerdict = buildDayVerdict({ hasAnyData, isToday, kcalOk, carbsOk, fatOk, proteinOk }, t);
 
   // Carrusel: centra automáticamente el día seleccionado.
   const dayRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -397,7 +396,7 @@ export default function DailyHistoryDashboard() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <Pressable onClick={() => router.push("/hoy")} style={{ fontSize: 13, fontWeight: 700, color: "rgba(244,243,238,.7)", cursor: "pointer", minHeight: 44, display: "flex", alignItems: "center" }}>
-          ‹ Volver
+          {t("resumen.back")}
         </Pressable>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
@@ -419,11 +418,11 @@ export default function DailyHistoryDashboard() {
         </div>
         <div>
           <div className="font-sora" style={{ fontSize: 18, fontWeight: 800 }}>
-            Resumen diario
+            {t("resumen.title")}
           </div>
           <div style={{ fontSize: 11.5, color: "rgba(244,243,238,.5)", marginTop: 1 }}>
-            {isToday ? "Hoy · " : ""}
-            {dayLabel(selectedDate)}
+            {isToday ? t("resumen.todayPrefix") : ""}
+            {dayLabel(selectedDate, lang)}
           </div>
         </div>
       </div>
@@ -461,7 +460,7 @@ export default function DailyHistoryDashboard() {
                 transition: "background .18s ease",
               }}
             >
-              <div style={{ fontSize: 10, fontWeight: 700, color: selected ? "#10240a" : "rgba(244,243,238,.45)" }}>{DIA_ABBR[dow]}</div>
+              <div style={{ fontSize: 10, fontWeight: 700, color: selected ? "#10240a" : "rgba(244,243,238,.45)" }}>{WEEKDAYS_SHORT[lang][dow]}</div>
               <div className="font-sora" style={{ fontSize: 15, fontWeight: 800, color: selected ? "#10240a" : "#f4f3ee", marginTop: 2 }}>
                 {d}
               </div>
@@ -484,7 +483,7 @@ export default function DailyHistoryDashboard() {
           {!dayVerdict ? (
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ fontSize: 18 }}>—</div>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "rgba(244,243,238,.55)" }}>Sin registros para este día.</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "rgba(244,243,238,.55)" }}>{t("resumen.noRecords")}</div>
             </div>
           ) : (
             <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
@@ -552,12 +551,12 @@ export default function DailyHistoryDashboard() {
       {/* Actividad física — glassmorphism */}
       <div className="rounded-2xl border border-white/12 bg-white/[0.06] backdrop-blur-xl shadow-lg" style={{ marginTop: 14, padding: 16 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".04em", marginBottom: 10 }}>
-          ACTIVIDAD FÍSICA
+          {t("resumen.activityTitle")}
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <StatTile label="PASOS" value={steps.toLocaleString()} />
-          <StatTile label="KCAL EJERCICIO" value={String(derived.burnedKcal)} />
-          <StatTile label="RUTINAS" value={routineDone ? "1" : "0"} sub={routineDone ? activeWorkout?.day : "—"} />
+          <StatTile label={t("resumen.steps")} value={steps.toLocaleString()} />
+          <StatTile label={t("resumen.exerciseKcal")} value={String(derived.burnedKcal)} />
+          <StatTile label={t("resumen.routines")} value={routineDone ? "1" : "0"} sub={routineDone ? activeWorkout?.day : "—"} />
         </div>
       </div>
     </div>
