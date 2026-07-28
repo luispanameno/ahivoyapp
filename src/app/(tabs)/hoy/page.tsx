@@ -158,6 +158,7 @@ export default function Hoy() {
     burnedKcal,
     kcalBudget,
     kcalRemaining,
+    t,
   } = app;
 
   const { messages: coachMessages } = useCoachMood();
@@ -169,7 +170,7 @@ export default function Hoy() {
 
   const healthSyncLabel = activity
     ? `${activity.steps.toLocaleString()} pasos · ${activity.activityKcal} kcal activas`
-    : "Sube la captura de tu reloj en Perfil";
+    : t("hoy.syncPrompt");
 
   const sleepMins = sleep?.minutes ?? 0;
   const sleepOk = sleepMins >= 420 && sleepMins <= 510;
@@ -323,14 +324,14 @@ export default function Hoy() {
       {/* Macros */}
       <div style={{ borderRadius: 24, background: "#1b1e21", padding: "16px 10px", marginTop: 14, animation: "fadeUp .5s ease both" }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".04em", marginBottom: 12, paddingLeft: 4 }}>
-          MACRONUTRIENTES HOY
+          {t("hoy.macrosTitle")}
         </div>
         <div style={{ display: "flex", justifyContent: "space-around", animation: "ringIn .6s cubic-bezier(.2,.8,.2,1) both" }}>
           <MacroRing
             actual={kcalEaten}
             meta={kcalBudget}
             unit=""
-            label="CALORÍAS"
+            label={t("hoy.calories")}
             color="#c7f27a"
             glow="rgba(199,242,122,.65)"
             showRemaining={showRemaining}
@@ -339,7 +340,7 @@ export default function Hoy() {
             actual={carbsG}
             meta={profile.metaCarbs}
             unit="g"
-            label="CARBS"
+            label={t("hoy.carbs")}
             color="oklch(78% 0.15 85)"
             glow="oklch(78% 0.15 85 / 0.55)"
             showRemaining={showRemaining}
@@ -348,7 +349,7 @@ export default function Hoy() {
             actual={proteinG}
             meta={profile.metaProtein}
             unit="g"
-            label="PROTEÍNA"
+            label={t("hoy.protein")}
             color="oklch(72% 0.15 250)"
             glow="oklch(72% 0.15 250 / 0.55)"
             showRemaining={showRemaining}
@@ -357,7 +358,7 @@ export default function Hoy() {
             actual={fatG}
             meta={profile.metaFat}
             unit="g"
-            label="GRASAS"
+            label={t("hoy.fat")}
             color="oklch(72% 0.15 40)"
             glow="oklch(72% 0.15 40 / 0.55)"
             showRemaining={showRemaining}
@@ -369,7 +370,7 @@ export default function Hoy() {
       <div style={{ borderRadius: 24, background: "#1b1e21", padding: "16px 18px", marginTop: 10 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".04em" }}>
-            SEGUIMIENTO DE HIDRATACIÓN
+            {t("hoy.hydrationTitle")}
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -497,11 +498,11 @@ export default function Hoy() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <Icon name="sleep" size={16} />
-            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".04em" }}>SUEÑO</div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".04em" }}>{t("hoy.sleepTitle")}</div>
           </div>
           {sleep && (
             <div style={{ fontSize: 10.5, fontWeight: 700, color: sleepOk ? "#c7f27a" : "oklch(75% 0.15 60)" }}>
-              {sleepOk ? "Dentro de tu meta" : "Bajo tu meta de 7–8h"}
+              {sleepOk ? t("hoy.sleepWithinGoal") : t("hoy.sleepBelowGoal")}
             </div>
           )}
         </div>
@@ -525,7 +526,7 @@ export default function Hoy() {
           </>
         ) : (
           <div style={{ fontSize: 11, color: "rgba(244,243,238,.4)", marginTop: 10 }}>
-            {sleep ? "Sin datos de fases — solo duración" : "Toca para anotar tus horas"}
+            {sleep ? t("hoy.sleepNoPhases") : t("hoy.sleepTapToLog")}
           </div>
         )}
       </Pressable>
@@ -584,10 +585,10 @@ export default function Hoy() {
       >
         <Icon name="history-trends" size={20} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 800, color: "#c7f27a" }}>Resumen del día</div>
-          <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.5)", marginTop: 1 }}>Barras de macros y cómo te fue</div>
+          <div style={{ fontSize: 12.5, fontWeight: 800, color: "#c7f27a" }}>{t("hoy.summaryTitle")}</div>
+          <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.5)", marginTop: 1 }}>{t("hoy.summarySubtitle")}</div>
         </div>
-        <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)", flex: "none" }}>Ver ›</span>
+        <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)", flex: "none" }}>{t("hoy.viewMore")}</span>
       </Pressable>
 
       {/* Actividad de hoy (rueda estilo Samsung Health) — interactiva: al
@@ -610,10 +611,10 @@ export default function Hoy() {
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".04em" }}>ACTIVIDAD DE HOY</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.45)", letterSpacing: ".04em" }}>{t("hoy.activityTitle")}</div>
               <div style={{ fontSize: 11, fontWeight: 700, color: "#c7f27a", marginTop: 2 }}>{activitySummary}</div>
             </div>
-            <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.35)" }}>Ver detalle ›</div>
+            <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.35)" }}>{t("hoy.viewDetail")}</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
             <div style={{ position: "relative", width: 132, height: 132, flex: "none" }}>
@@ -666,9 +667,9 @@ export default function Hoy() {
             </div>
             <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12 }}>
               {[
-                { color: "#7ed957", label: "Pasos", value: steps.toLocaleString(), meta: " /6,000" },
-                { color: "oklch(72% 0.14 220)", label: "Tiempo de actividad", value: String(activeMin), meta: " min /50" },
-                { color: "#a56bff", label: "Calorías de actividad", value: String(actKcal), meta: " /500" },
+                { color: "#7ed957", label: t("hoy.steps"), value: steps.toLocaleString(), meta: " /6,000" },
+                { color: "oklch(72% 0.14 220)", label: t("hoy.activeTime"), value: String(activeMin), meta: " min /50" },
+                { color: "#a56bff", label: t("hoy.activityCalories"), value: String(actKcal), meta: " /500" },
               ].map((row) => (
                 <div key={row.label} style={{ display: "flex", alignItems: "center", gap: 9 }}>
                   <div style={{ width: 9, height: 9, borderRadius: "50%", background: row.color, flex: "none", boxShadow: `0 0 6px ${row.color}` }} />
@@ -685,14 +686,14 @@ export default function Hoy() {
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
             <div style={{ flex: 1, background: "#232527", borderRadius: 14, padding: "10px 12px" }}>
-              <div style={{ fontSize: 10, color: "rgba(244,243,238,.5)", fontWeight: 600 }}>Total quemadas</div>
+              <div style={{ fontSize: 10, color: "rgba(244,243,238,.5)", fontWeight: 600 }}>{t("hoy.totalBurned")}</div>
               <div className="font-sora" style={{ fontSize: 15, fontWeight: 800, marginTop: 2 }}>
                 {Math.max(activity?.totalKcal ?? 0, burnedKcal).toLocaleString()}{" "}
                 <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(244,243,238,.4)" }}>kcal</span>
               </div>
             </div>
             <div style={{ flex: 1, background: "#232527", borderRadius: 14, padding: "10px 12px" }}>
-              <div style={{ fontSize: 10, color: "rgba(244,243,238,.5)", fontWeight: 600 }}>Distancia</div>
+              <div style={{ fontSize: 10, color: "rgba(244,243,238,.5)", fontWeight: 600 }}>{t("hoy.distance")}</div>
               <div className="font-sora" style={{ fontSize: 15, fontWeight: 800, marginTop: 2 }}>
                 {activity?.distance ?? 0}{" "}
                 <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(244,243,238,.4)" }}>km</span>

@@ -150,6 +150,8 @@ alter table public.profiles add column if not exists plan_ejercicio text default
 -- típica (para que las sugerencias de swaps sean realistas y no genéricas).
 alter table public.profiles add column if not exists motivo text default '';
 alter table public.profiles add column if not exists cultura_alimentaria text default '';
+-- Idioma de toda la app (interfaz + Coach IA): 'es' o 'en'.
+alter table public.profiles add column if not exists idioma text default 'es';
 
 -- ============ CONTROL DE ACCESO (aprobación manual + panel admin) ============
 -- Las cuentas YA existentes quedan aprobadas y con el asistente de bienvenida

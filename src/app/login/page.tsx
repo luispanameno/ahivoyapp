@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import Pressable from "@/components/Pressable";
 import PasswordField, { authInputStyle as inputStyle } from "@/components/PasswordField";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import { readLocalLang, translate } from "@/lib/i18n";
 
 // Validación de forma (no de existencia real): exige algo@algo.algo, para
 // atrapar errores obvios como "hola@jdkf" antes de mandarlo a Supabase.
@@ -13,6 +14,10 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function Login() {
   const router = useRouter();
+  // Sin sesión todavía: no hay profile.language que leer. Se usa el
+  // respaldo en localStorage que el store mantiene al día (ver i18n.ts).
+  const [lang] = useState(() => readLocalLang());
+  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
   const [mode, setMode] = useState<"signin" | "signup" | "recover">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,16 +39,15 @@ export default function Login() {
   if (!isSupabaseConfigured) {
     return (
       <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", justifyContent: "center", padding: 28, boxSizing: "border-box" }}>
-        <div className="font-sora" style={{ fontSize: 20, fontWeight: 700 }}>Cuentas aún no activadas</div>
+        <div className="font-sora" style={{ fontSize: 20, fontWeight: 700 }}>{t("login.localModeTitle")}</div>
         <div style={{ fontSize: 13, color: "rgba(244,243,238,.6)", marginTop: 10, lineHeight: 1.5 }}>
-          Falta configurar Supabase (SUPABASE_URL y ANON_KEY en .env.local). Mientras tanto puedes usar la app en modo
-          local: tus datos se guardan solo en este dispositivo.
+          {t("login.localModeBody")}
         </div>
         <div
           onClick={() => router.push("/hoy")}
           style={{ background: "#c7f27a", color: "#10240a", textAlign: "center", padding: 15, borderRadius: 22, fontWeight: 800, fontSize: 13.5, marginTop: 24, cursor: "pointer", boxShadow: "0 0 20px rgba(199,242,122,.5)" }}
         >
-          Continuar en modo local
+          {t("login.localModeCta")}
         </div>
       </div>
     );
@@ -56,11 +60,11 @@ export default function Login() {
     setError(null);
     setInfo(null);
     if (!email) {
-      setError("Escribe tu correo.");
+      setError(t("login.errEmailOnly"));
       return;
     }
     if (!EMAIL_RE.test(email.trim())) {
-      setError("Ese correo no parece válido — revisa que tenga la forma nombre@dominio.com.");
+      setError(t("login.errEmailInvalid"));
       return;
     }
     setBusy(true);
@@ -70,9 +74,9 @@ export default function Login() {
         redirectTo: `${window.location.origin}/reset-password`,
       });
       if (error) throw error;
-      setInfo("Si ese correo tiene una cuenta, te llegó un enlace para poner una contraseña nueva. Revisa también spam.");
+      setInfo(t("login.infoRecoverSent"));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo enviar el enlace");
+      setError(e instanceof Error ? e.message : t("login.errRecoverFailed"));
     } finally {
       setBusy(false);
     }
@@ -84,24 +88,24 @@ export default function Login() {
     setError(null);
     setInfo(null);
     if (mode === "signup" && !name.trim()) {
-      setError("Escribe tu nombre.");
+      setError(t("login.errName"));
       return;
     }
     if (!email || !password) {
-      setError("Escribe tu correo y contraseña.");
+      setError(t("login.errEmailPassword"));
       return;
     }
     if (!EMAIL_RE.test(email.trim())) {
-      setError("Ese correo no parece válido — revisa que tenga la forma nombre@dominio.com.");
+      setError(t("login.errEmailInvalid"));
       return;
     }
     if (mode === "signup") {
       if (password.length < 6) {
-        setError("La contraseña debe tener al menos 6 caracteres.");
+        setError(t("login.errPasswordShort"));
         return;
       }
       if (password !== confirmPassword) {
-        setError("Las contraseñas no coinciden.");
+        setError(t("login.errPasswordMismatch"));
         return;
       }
     }
@@ -118,7 +122,7 @@ export default function Login() {
         if (data.session) {
           router.replace("/hoy");
         } else {
-          setInfo("Revisa tu correo para confirmar la cuenta. Después, alguien debe aprobar tu acceso antes de que puedas entrar.");
+          setInfo(t("login.infoConfirmEmail"));
         }
       } else {
         const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
@@ -126,7 +130,7 @@ export default function Login() {
         router.replace("/hoy");
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error de autenticación");
+      setError(e instanceof Error ? e.message : t("login.errAuth"));
     } finally {
       setBusy(false);
     }
@@ -164,20 +168,20 @@ export default function Login() {
         </div>
         <div style={{ fontSize: 12, color: "rgba(244,243,238,.55)", marginTop: 4 }}>
           {mode === "signin"
-            ? "Inicia sesión con tu cuenta"
+            ? t("login.signinTitle")
             : mode === "signup"
-            ? "Crea tu cuenta — tus datos son solo tuyos"
-            : "Te mandamos un enlace para poner una contraseña nueva"}
+            ? t("login.signupTitle")
+            : t("login.recoverTitle")}
         </div>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {mode === "signup" && (
-          <input style={inputStyle} placeholder="Tu nombre" value={name} onChange={(e) => setName(e.target.value)} />
+          <input style={inputStyle} placeholder={t("login.namePlaceholder")} value={name} onChange={(e) => setName(e.target.value)} />
         )}
         <input
           style={inputStyle}
-          placeholder="Correo"
+          placeholder={t("login.emailPlaceholder")}
           type="email"
           autoComplete="email"
           value={email}
@@ -188,7 +192,7 @@ export default function Login() {
           <PasswordField
             value={password}
             onChange={setPassword}
-            placeholder="Contraseña"
+            placeholder={t("login.passwordPlaceholder")}
             autoComplete={mode === "signin" ? "current-password" : "new-password"}
             onEnter={mode === "signin" ? submit : undefined}
           />
@@ -197,7 +201,7 @@ export default function Login() {
           <PasswordField
             value={confirmPassword}
             onChange={setConfirmPassword}
-            placeholder="Confirma tu contraseña"
+            placeholder={t("login.confirmPasswordPlaceholder")}
             autoComplete="new-password"
             onEnter={submit}
           />
@@ -213,7 +217,7 @@ export default function Login() {
           }}
           style={{ textAlign: "right", fontSize: 11.5, color: "rgba(244,243,238,.5)", marginTop: 10, cursor: "pointer", fontWeight: 600 }}
         >
-          ¿Olvidaste tu contraseña?
+          {t("login.forgotPassword")}
         </div>
       )}
 
@@ -238,7 +242,7 @@ export default function Login() {
           boxShadow: "0 0 26px rgba(90,220,150,.45)",
         }}
       >
-        {busy ? "Un momento…" : mode === "signin" ? "Iniciar sesión" : mode === "signup" ? "Crear cuenta" : "Enviar enlace"}
+        {busy ? t("login.busy") : mode === "signin" ? t("login.signIn") : mode === "signup" ? t("login.createAccount") : t("login.sendLink")}
       </Pressable>
 
       <div
@@ -249,7 +253,7 @@ export default function Login() {
         }}
         style={{ textAlign: "center", fontSize: 12, color: "rgba(244,243,238,.55)", marginTop: 16, cursor: "pointer", fontWeight: 600 }}
       >
-        {mode === "signin" ? "¿No tienes cuenta? Crear una nueva" : mode === "signup" ? "Ya tengo cuenta · Iniciar sesión" : "‹ Volver a iniciar sesión"}
+        {mode === "signin" ? t("login.toSignup") : mode === "signup" ? t("login.toSignin") : t("login.toSigninFromRecover")}
       </div>
 
       <div style={{ textAlign: "center", fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 24 }}>

@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "motion/react";
 import Icon from "./Icon";
+import { useApp } from "@/lib/store";
 
 // Barra de navegación clásica anclada al borde inferior (a pedido del
 // usuario: sin isla flotante), pero con los íconos del set propio:
@@ -15,13 +16,13 @@ import Icon from "./Icon";
 // perderlo y la app volvía a pedir la foto). Todo en una sola pantalla
 // elimina ese riesgo por completo.
 
-const TABS_LEFT: { route: string; icon: string; label: string }[] = [
-  { route: "/hoy", icon: "date", label: "Hoy" },
-  { route: "/historial", icon: "history-trends", label: "Historial" },
+const TABS_LEFT: { route: string; icon: string; labelKey: string }[] = [
+  { route: "/hoy", icon: "date", labelKey: "tabbar.hoy" },
+  { route: "/historial", icon: "history-trends", labelKey: "tabbar.historial" },
 ];
-const TABS_RIGHT: { route: string; icon: string; label: string }[] = [
-  { route: "/coach", icon: "users", label: "Coach" },
-  { route: "/perfil", icon: "user", label: "Perfil" },
+const TABS_RIGHT: { route: string; icon: string; labelKey: string }[] = [
+  { route: "/coach", icon: "users", labelKey: "tabbar.coach" },
+  { route: "/perfil", icon: "user", labelKey: "tabbar.perfil" },
 ];
 
 function Tab({ route, icon, label }: { route: string; icon: string; label: string }) {
@@ -100,6 +101,7 @@ function Tab({ route, icon, label }: { route: string; icon: string; label: strin
 export default function TabBar() {
   const router = useRouter();
   const reduce = useReducedMotion();
+  const { t } = useApp();
 
   return (
     <div
@@ -123,8 +125,8 @@ export default function TabBar() {
         zIndex: 50,
       }}
     >
-      {TABS_LEFT.map((t) => (
-        <Tab key={t.route} {...t} />
+      {TABS_LEFT.map((tab) => (
+        <Tab key={tab.route} route={tab.route} icon={tab.icon} label={t(tab.labelKey)} />
       ))}
 
       <motion.div
@@ -168,8 +170,8 @@ export default function TabBar() {
         </div>
       </motion.div>
 
-      {TABS_RIGHT.map((t) => (
-        <Tab key={t.route} {...t} />
+      {TABS_RIGHT.map((tab) => (
+        <Tab key={tab.route} route={tab.route} icon={tab.icon} label={t(tab.labelKey)} />
       ))}
     </div>
   );

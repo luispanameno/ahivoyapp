@@ -226,6 +226,8 @@ export default function Coach() {
     sendChat,
     clearChat,
     showToast,
+    t,
+    lang,
   } = app;
 
   // El chat (mensajes, "escribiendo…", envío a la IA, aplicar acciones) vive
@@ -322,7 +324,7 @@ export default function Coach() {
       return;
     }
     const rec = new Ctor();
-    rec.lang = "es-ES";
+    rec.lang = lang === "en" ? "en-US" : "es-ES";
     rec.continuous = true;
     rec.interimResults = true;
     dictationBaseRef.current = input.trim();
@@ -339,11 +341,11 @@ export default function Coach() {
     rec.start();
   };
 
-  const kcalCard = statInfo(kcalEaten, kcalBudget, "", "KCAL LIBRES", "KCAL DE MÁS", "#c7f27a", "rgba(199,242,122,.5)");
-  const carbsCard = statInfo(carbsG, profile.metaCarbs, "g", "CARBS FALTAN", "CARBS DE MÁS", "oklch(78% 0.15 85)", "oklch(78% 0.15 85 / .5)");
-  const protCard = statInfo(proteinG, profile.metaProtein, "g", "PROTEÍNA FALTA", "PROTEÍNA DE MÁS", "oklch(80% 0.14 25)", "oklch(80% 0.14 25 / .5)");
-  const fatCard = statInfo(fatG, profile.metaFat, "g", "GRASAS FALTAN", "GRASAS DE MÁS", "oklch(72% 0.15 40)", "oklch(72% 0.15 40 / .5)");
-  const waterCard = statInfo(water, profile.metaWater, "ml", "AGUA FALTA", "AGUA DE MÁS", "oklch(80% 0.13 230)", "oklch(80% 0.13 230 / .5)");
+  const kcalCard = statInfo(kcalEaten, kcalBudget, "", t("coach.kcalFree"), t("coach.kcalOver"), "#c7f27a", "rgba(199,242,122,.5)");
+  const carbsCard = statInfo(carbsG, profile.metaCarbs, "g", t("coach.carbsLeft"), t("coach.carbsOver"), "oklch(78% 0.15 85)", "oklch(78% 0.15 85 / .5)");
+  const protCard = statInfo(proteinG, profile.metaProtein, "g", t("coach.proteinLeft"), t("coach.proteinOver"), "oklch(80% 0.14 25)", "oklch(80% 0.14 25 / .5)");
+  const fatCard = statInfo(fatG, profile.metaFat, "g", t("coach.fatLeft"), t("coach.fatOver"), "oklch(72% 0.15 40)", "oklch(72% 0.15 40 / .5)");
+  const waterCard = statInfo(water, profile.metaWater, "ml", t("coach.waterLeft"), t("coach.waterOver"), "oklch(80% 0.13 230)", "oklch(80% 0.13 230 / .5)");
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -412,10 +414,10 @@ export default function Coach() {
           <div style={{ width: 14, height: 14, border: "2.5px solid #10240a", borderRadius: "6px 6px 6px 2px" }} />
         </div>
         <div style={{ flex: 1 }}>
-          <div className="font-sora" style={{ fontSize: 16, fontWeight: 800 }}>Coach IA</div>
+          <div className="font-sora" style={{ fontSize: 16, fontWeight: 800 }}>{t("coach.title")}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 1 }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#c7f27a", boxShadow: "0 0 6px #c7f27a" }} />
-            <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(244,243,238,.55)" }}>Con tus datos de hoy en tiempo real</div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(244,243,238,.55)" }}>{t("coach.subtitle")}</div>
           </div>
         </div>
         <div
@@ -434,7 +436,7 @@ export default function Coach() {
             cursor: "pointer",
           }}
         >
-          <Icon name="delete" size={14} /> Limpiar
+          <Icon name="delete" size={14} /> {t("coach.clear")}
         </div>
       </div>
 
@@ -591,7 +593,7 @@ export default function Coach() {
             style={{ width: 52, height: 52, borderRadius: 12, objectFit: "cover", flex: "none" }}
           />
           <div style={{ flex: 1, fontSize: 11.5, color: "rgba(244,243,238,.6)", fontWeight: 600, lineHeight: 1.4 }}>
-            Foto lista 📸 — escribe contexto si quieres (ej. &quot;dejé la mitad&quot;) y presiona enviar
+            {t("coach.photoReady")}
           </div>
           <div
             onClick={() => setPendingPhoto(null)}
@@ -666,7 +668,7 @@ export default function Coach() {
           // envía. Antes Enter enviaba y en el teclado del celular es fácil
           // tocarlo sin querer a media frase.
           rows={1}
-          placeholder={listening ? "Escuchando…" : pendingPhoto ? "Agrega contexto a tu foto…" : "Pregúntale o sube una foto…"}
+          placeholder={listening ? t("coach.placeholderListening") : pendingPhoto ? t("coach.placeholderPhoto") : t("coach.placeholderDefault")}
           style={{
             flex: 1,
             minWidth: 0,

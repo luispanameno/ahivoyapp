@@ -53,6 +53,9 @@ export interface Profile {
   // Qué tan seguido come comida típica — para que las sugerencias del Coach
   // sean realistas (swaps de pupusas/tamales, no "cambia todo por quinoa").
   foodCulture: string;
+  // Idioma de toda la app (interfaz Y el Coach IA). "es" por defecto para no
+  // afectar a nadie que ya use la app.
+  language: "es" | "en";
 }
 
 // Fila resumida de un usuario para el panel de administración (aprobar
@@ -169,6 +172,7 @@ export const DEFAULT_PROFILE: Profile = {
   exercisePlan: "",
   goalMotivation: "",
   foodCulture: "",
+  language: "es",
 };
 
 export const DEFAULT_ROUTINE: Routine = {

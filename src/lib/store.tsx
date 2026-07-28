@@ -14,6 +14,7 @@ import * as db from "./db";
 import { getSupabase, isSupabaseConfigured } from "./supabase";
 import { analyze, CoachAction, CoachResult } from "./analyze";
 import { resizeDataURL } from "./img";
+import { Lang, translate, writeLocalLang } from "./i18n";
 import {
   Activity,
   BodyComp,
@@ -164,6 +165,8 @@ interface AppState {
   ready: boolean;
   userEmail: string | null;
   profile: Profile;
+  lang: Lang;
+  t: (key: string, vars?: Record<string, string | number>) => string;
   meals: Meal[];
   drinks: Drink[];
   water: number; // suma de "drinks" del día — se calcula sola, no se guarda
@@ -227,6 +230,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE);
+  const lang: Lang = profile.language ?? "es";
+  const t = useCallback(
+    (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars),
+    [lang]
+  );
+  // La pantalla de login (sin sesión, sin AppProvider) lee este respaldo en
+  // localStorage — se mantiene al día con cada carga/cambio de perfil.
+  useEffect(() => {
+    writeLocalLang(lang);
+  }, [lang]);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [drinks, setDrinks] = useState<Drink[]>([]);
   const [activity, setActivityState] = useState<Activity | null>(null);
@@ -755,6 +768,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           !wasScaleSuggested(userIdRef.current, scaleDate);
         const context = {
           nombre: profile.name,
+          idioma: lang,
           perfil: {
             edad: profile.age,
             altura_cm: profile.height,
@@ -859,7 +873,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setChatTyping(false);
       }
     },
-    [profile, derived, workout, sleep, routine, meals, chatMessages, date, bodyComp, weights, measurements, applyChatActions]
+    [profile, derived, workout, sleep, routine, meals, chatMessages, date, bodyComp, weights, measurements, lang, applyChatActions]
   );
 
   // Reenvía sola la pregunta que quedó a medias por una recarga.
@@ -891,6 +905,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ready,
     userEmail,
     profile,
+    lang,
+    t,
     meals,
     drinks,
     activity,

@@ -27,7 +27,7 @@ import { macrosForKcal } from "@/lib/nutrition";
 export default function PerfilAjustes() {
   const router = useRouter();
   const app = useApp();
-  const { profile, saveProfile, showToast, userEmail, signOut } = app;
+  const { profile, saveProfile, showToast, userEmail, signOut, t } = app;
 
   // Borrador de datos personales: se guardan solo al tocar "Guardar"
   const [draft, setDraft] = useState({
@@ -80,6 +80,41 @@ export default function PerfilAjustes() {
     <div style={{ boxSizing: "border-box", padding: "24px 20px 0" }}>
       <ProfileHeader />
       <ProfileTabs />
+
+      {/* Idioma de la app: cambia interfaz + Coach IA */}
+      <div style={{ ...sectionTitle, marginTop: 22 }}>{t("perfil.languageTitle")}</div>
+      <div style={{ background: "#1b1e21", borderRadius: 20, padding: 14 }}>
+        <div style={{ fontSize: 11.5, color: "rgba(244,243,238,.5)", marginBottom: 10 }}>{t("perfil.languageSubtitle")}</div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {(
+            [
+              { value: "es" as const, label: t("perfil.languageEs") },
+              { value: "en" as const, label: t("perfil.languageEn") },
+            ]
+          ).map((opt) => (
+            <Pressable
+              key={opt.value}
+              onClick={() => saveProfile({ ...profile, language: opt.value })}
+              style={{
+                flex: 1,
+                minHeight: 44,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxSizing: "border-box",
+                borderRadius: 100,
+                fontSize: 12.5,
+                fontWeight: 700,
+                cursor: "pointer",
+                background: profile.language === opt.value ? "#c7f27a" : "rgba(255,255,255,.06)",
+                color: profile.language === opt.value ? "#10240a" : "rgba(244,243,238,.6)",
+              }}
+            >
+              {opt.label}
+            </Pressable>
+          ))}
+        </div>
+      </div>
 
       {/* Datos personales */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 22, marginBottom: 8 }}>

@@ -260,6 +260,7 @@ const SCHEMAS: Record<Mode, object> = {
 // perfil, metas y progreso del día se cargan de la BD al abrir la app).
 interface CoachCtx {
   nombre?: string;
+  idioma?: string; // "es" | "en" — idioma elegido en Ajustes
   perfil?: {
     edad?: number;
     altura_cm?: number;
@@ -308,8 +309,15 @@ function buildCoachPrompt(ctxRaw: unknown): string {
   const factores: Record<string, number> = { sedentario: 1.2, ligero: 1.375, activo: 1.55 };
   const tdee = Math.round(bmr * (factores[p.nivel_actividad ?? "ligero"] ?? 1.375));
   const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : 0);
+  const en = ctx.idioma === "en";
 
-  return `Eres el Escáner Nutricional AI, el asistente personal de ${nombre} para la gestión total de salud. Tu comunicación es exclusivamente en ESPAÑOL y usas un tono profesional, analítico y motivador, con respuestas concisas.
+  return `Eres el Escáner Nutricional AI, el asistente personal de ${nombre} para la gestión total de salud. Usas un tono profesional, analítico y motivador, con respuestas concisas.
+
+${
+  en
+    ? `IDIOMA DE RESPUESTA (REGLA DE MÁXIMA PRIORIDAD): el usuario eligió INGLÉS en Ajustes (context.idioma = "en"). El campo "reply" de tu JSON debe estar 100% en inglés natural — ni una palabra en español, aunque estas instrucciones estén en español (son solo para vos, el usuario nunca las lee). Traduce también las etiquetas fijas del Tablero Nutricional: "📱 TABLERO NUTRICIONAL 📱"→"📱 NUTRITION DASHBOARD 📱", "Calorías"→"Calories", "Carbs"→"Carbs", "Proteína"→"Protein", "Grasas"→"Fat", "Agua"→"Water", "faltan"→"left", "te pasaste"/"de más"→"over", "ya cumpliste"→"goal met". Los valores de "type" en "actions" (ej. "add_water") se quedan igual en inglés técnico, sin traducir — esos no los ve el usuario.`
+    : `IDIOMA: responde en ESPAÑOL (context.idioma = "es" o no vino).`
+}
 
 CONTEXTO ACTUAL:
 BMR: ${bmr} kcal | TDEE: ${tdee} kcal (nivel de actividad: ${p.nivel_actividad ?? "ligero"}).
@@ -355,7 +363,7 @@ Si envía una FOTO de comida: analízala y estima macros; si además pide regist
 
 MÚLTIPLES INTENCIONES EN UN MISMO MENSAJE (REGLA OBLIGATORIA): un solo mensaje puede traer VARIAS cosas a la vez (ej. foto del plato + "también tomé 644 ml de agua" + "dormí 6 horas"). ANTES de responder, escanea SIEMPRE el texto completo del usuario buscando CADA intención — comida, AGUA/LÍQUIDOS, sueño, ejercicio, peso — y emite UNA acción por cada una. Ignorar una intención secundaria (muy típico: el agua mencionada junto a una foto de comida) es un ERROR GRAVE.
 LÍQUIDOS — detección obligatoria: cualquier mención de beber suma hidratación con add_water usando la cantidad EXACTA en ml ("644 ml" → 644; "medio litro" → 500; "1.5L" → 1500). Sin cantidad, estima: vaso ≈ 250 ml, botella ≈ 600 ml, taza ≈ 240 ml. Agua, té o café sin azúcar cuentan como agua; bebidas CON calorías (jugo, refresco, cerveza, batido) NO van a add_water: se registran con log_meal (o se suman a la comida si vienen con ella). Si el usuario menciona té o café SIN aclarar si tiene azúcar/leche/miel, asume que es SIN azúcar y regístralo como agua — pero dilo explícitamente en tu "reply" (ej. "Registré tu té como agua, asumiendo que era sin azúcar — si le pusiste algo dime y lo corrijo") para que pueda corregirte si la suposición está mal. En tu "reply" confirma también el agua registrada.
-
+${en ? '\nRECORDATORIO DE IDIOMA: "reply" va COMPLETO en inglés — incluidos los ejemplos de arriba (tradúcelos al confirmarlos, no los copies en español).\n' : ""}
 Responde SOLO con JSON válido:
 {"reply": string (tu respuesta al usuario),
  "actions": [

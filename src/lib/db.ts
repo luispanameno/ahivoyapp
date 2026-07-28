@@ -120,6 +120,7 @@ export async function loadAll(date: string): Promise<AllData> {
         exercisePlan: p.plan_ejercicio ?? "",
         goalMotivation: p.motivo ?? "",
         foodCulture: p.cultura_alimentaria ?? "",
+        language: p.idioma === "en" ? "en" : "es",
       }
     : // OJO: con Supabase configurado, si la fila de "profiles" no llegó
       // (aún no la crea el trigger, un error de RLS, lo que sea) NUNCA se
@@ -337,6 +338,7 @@ export async function saveProfile(profile: Profile) {
       plan_ejercicio: profile.exercisePlan,
       motivo: profile.goalMotivation,
       cultura_alimentaria: profile.foodCulture,
+      idioma: profile.language,
     });
   } else {
     lsSet("profile", profile);

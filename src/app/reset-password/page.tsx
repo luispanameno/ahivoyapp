@@ -11,9 +11,12 @@ import Image from "next/image";
 import Pressable from "@/components/Pressable";
 import PasswordField from "@/components/PasswordField";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import { readLocalLang, translate } from "@/lib/i18n";
 
 export default function ResetPassword() {
   const router = useRouter();
+  const [lang] = useState(() => readLocalLang());
+  const t = (key: string, vars?: Record<string, string | number>) => translate(lang, key, vars);
   const [ready, setReady] = useState(() => !isSupabaseConfigured);
   const [hasSession, setHasSession] = useState(false);
   const [password, setPassword] = useState("");
@@ -45,11 +48,11 @@ export default function ResetPassword() {
     if (busy) return;
     setError(null);
     if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres.");
+      setError(t("reset.errPasswordShort"));
       return;
     }
     if (password !== confirm) {
-      setError("Las contraseñas no coinciden.");
+      setError(t("reset.errPasswordMismatch"));
       return;
     }
     setBusy(true);
@@ -60,7 +63,7 @@ export default function ResetPassword() {
       setDone(true);
       setTimeout(() => router.replace("/hoy"), 1800);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo actualizar la contraseña");
+      setError(e instanceof Error ? e.message : t("reset.errFailed"));
     } finally {
       setBusy(false);
     }
@@ -97,16 +100,16 @@ export default function ResetPassword() {
           AHIVOYAPP
         </div>
         <div style={{ fontSize: 12, color: "rgba(244,243,238,.55)", marginTop: 4, textAlign: "center" }}>
-          Pon tu contraseña nueva
+          {t("reset.title")}
         </div>
       </div>
 
       {!ready ? (
-        <div style={{ textAlign: "center", fontSize: 13, color: "rgba(244,243,238,.55)" }}>Un momento…</div>
+        <div style={{ textAlign: "center", fontSize: 13, color: "rgba(244,243,238,.55)" }}>{t("reset.wait")}</div>
       ) : !hasSession ? (
         <>
           <div style={{ fontSize: 13, color: "rgba(244,243,238,.7)", lineHeight: 1.5, textAlign: "center" }}>
-            Este enlace ya venció o no es válido. Pide uno nuevo desde la pantalla de inicio de sesión.
+            {t("reset.invalidLink")}
           </div>
           <Pressable
             onClick={() => router.replace("/login")}
@@ -123,12 +126,12 @@ export default function ResetPassword() {
               boxShadow: "0 0 26px rgba(90,220,150,.45)",
             }}
           >
-            Ir a iniciar sesión
+            {t("reset.goToLogin")}
           </Pressable>
         </>
       ) : done ? (
         <div style={{ textAlign: "center", fontSize: 13, fontWeight: 700, color: "#c7f27a" }}>
-          Contraseña actualizada. Te llevamos a la app…
+          {t("reset.done")}
         </div>
       ) : (
         <>
@@ -136,13 +139,13 @@ export default function ResetPassword() {
             <PasswordField
               value={password}
               onChange={setPassword}
-              placeholder="Contraseña nueva"
+              placeholder={t("reset.newPassword")}
               autoComplete="new-password"
             />
             <PasswordField
               value={confirm}
               onChange={setConfirm}
-              placeholder="Confirma la contraseña nueva"
+              placeholder={t("reset.confirmNewPassword")}
               autoComplete="new-password"
               onEnter={submit}
             />
@@ -166,7 +169,7 @@ export default function ResetPassword() {
               boxShadow: "0 0 26px rgba(90,220,150,.45)",
             }}
           >
-            {busy ? "Un momento…" : "Guardar contraseña"}
+            {busy ? t("reset.wait") : t("reset.save")}
           </Pressable>
         </>
       )}
