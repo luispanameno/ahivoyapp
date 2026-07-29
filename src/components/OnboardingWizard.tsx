@@ -16,6 +16,7 @@ import UploadCard from "./UploadCard";
 import Icon from "./Icon";
 import AvatarEditor from "./AvatarEditor";
 import MascotIllustration from "./MascotIllustration";
+import { getActivityOptions } from "./profileUi";
 import { analyze, fileToDataURL } from "@/lib/analyze";
 import { useApp } from "@/lib/store";
 import { ACTIVITY_FACTORS, ActivityLevel } from "@/lib/types";
@@ -34,12 +35,6 @@ interface ScaleResult {
   musculo_lb?: number;
   masa_osea_lb?: number;
 }
-
-const ACTIVITY_OPTIONS: { value: ActivityLevel; label: string; desc: string }[] = [
-  { value: "sedentario", label: "Sedentario", desc: "No haces nada de ejercicio" },
-  { value: "ligero", label: "Ligero", desc: "Por tu trabajo o rutina te mantienes caminando / en movimiento" },
-  { value: "activo", label: "Activo", desc: "Haces ejercicio 3 días a la semana o más" },
-];
 
 const fieldStyle: React.CSSProperties = {
   width: "100%",
@@ -85,18 +80,24 @@ const subtitleStyle: React.CSSProperties = {
 
 const TOTAL_STEPS = 9;
 
-const MOTIVATION_PRESETS = [
-  { emoji: "🎯", label: "Bajar de peso", value: "Bajar de peso." },
-  { emoji: "🌿", label: "Comer mejor, sin obsesionarme", value: "Comer mejor, sin volverme loco/a contando cada cosa." },
-  { emoji: "⚡", label: "Tener más energía", value: "Tener más energía en el día a día." },
-  { emoji: "📋", label: "Solo llevar el control", value: "Solo quiero llevar el control de lo que como." },
-] as const;
+type T = (key: string, vars?: Record<string, string | number>) => string;
 
-const EXERCISE_PRESETS = [
-  { icon: "🏋️", label: "Pesas · Push/Pull/Legs", value: "Rutina de pesas Push/Pull/Legs, 3 días a la semana." },
-  { icon: "/icons/glyphs/steps.png", label: "Caminar o cardio", value: "Camino o hago cardio casi todos los días." },
-  { icon: "🌱", label: "Apenas empezando", value: "Por ahora no tengo una rutina fija — voy empezando de a poco." },
-] as const;
+function motivationPresets(t: T) {
+  return [
+    { emoji: "🎯", label: t("onboarding.motivWeight"), value: t("onboarding.motivWeightValue") },
+    { emoji: "🌿", label: t("onboarding.motivBetter"), value: t("onboarding.motivBetterValue") },
+    { emoji: "⚡", label: t("onboarding.motivEnergy"), value: t("onboarding.motivEnergyValue") },
+    { emoji: "📋", label: t("onboarding.motivTrack"), value: t("onboarding.motivTrackValue") },
+  ] as const;
+}
+
+function exercisePresets(t: T) {
+  return [
+    { icon: "🏋️", label: t("onboarding.exWeights"), value: t("onboarding.exWeightsValue") },
+    { icon: "/icons/glyphs/steps.png", label: t("onboarding.exWalk"), value: t("onboarding.exWalkValue") },
+    { icon: "🌱", label: t("onboarding.exStarting"), value: t("onboarding.exStartingValue") },
+  ] as const;
+}
 
 function iconFor(src: string, size: number) {
   return src.startsWith("/") ? (
@@ -146,7 +147,7 @@ function PresetChips<T extends { label: string; value: string }>({
 }
 
 export default function OnboardingWizard({ onFinished }: { onFinished?: () => void } = {}) {
-  const { profile, saveProfile, setBodyComp, showToast } = useApp();
+  const { profile, saveProfile, setBodyComp, showToast, t } = useApp();
   const [step, setStep] = useState(0);
 
   const [photo, setPhoto] = useState<string | null>(profile.photo);
@@ -192,7 +193,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
     try {
       setEditorSrc(await fileToDataURL(file));
     } catch {
-      showToast("No se pudo cargar esa foto");
+      showToast(t("perfil.photoLoadError"));
     }
   };
 
@@ -204,7 +205,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
       setScaleResult(res);
       if (res.peso_lb > 0) setWeight(String(Math.round(res.peso_lb)));
     } catch (e) {
-      setScaleError(e instanceof Error ? e.message : "No se pudo leer la captura");
+      setScaleError(e instanceof Error ? e.message : t("entrenamiento.errCaptureFailed"));
     } finally {
       setScaleBusy(false);
     }
@@ -251,10 +252,10 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
           undefined
         );
       }
-      showToast(`¡Listo, ${name.trim() || "bienvenido"}! Tus metas ya están configuradas`);
+      showToast(t("onboarding.toastFinished", { name: name.trim() || t("onboarding.defaultWelcomeName") }));
       onFinished?.();
     } catch {
-      showToast("No se pudo guardar. Intenta de nuevo.");
+      showToast(t("onboarding.toastSaveError"));
       setSaving(false);
     }
   };
@@ -298,10 +299,10 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
             <motion.div key="s0" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
               <MascotIllustration art="bienvenida" height={132} style={{ marginBottom: 10 }} />
               <div className="font-sora" style={heroTitleStyle}>
-                Antes de arrancar…
+                {t("onboarding.s0Title")}
               </div>
               <div style={{ ...subtitleStyle, fontSize: 13, color: "rgba(244,243,238,.6)", marginTop: 8, marginBottom: 24 }}>
-                Contanos si eres hombre o mujer (lo usamos para calcular tu metabolismo) y, si querés, subí una foto de perfil.
+                {t("onboarding.s0Subtitle")}
               </div>
               <div style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
                 <div
@@ -322,7 +323,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
                   <div style={{ width: "100%", height: "100%", borderRadius: "50%", overflow: "hidden", background: "#1b1e21", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     {photo ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={photo} alt="Tu foto" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <img src={photo} alt={t("perfil.yourPhoto")} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                     ) : (
                       <Icon name="user" size={36} />
                     )}
@@ -357,12 +358,12 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
                   />
                 </div>
               </div>
-              <div style={{ ...labelStyle, marginBottom: 8, textAlign: "center" }}>SEXO</div>
+              <div style={{ ...labelStyle, marginBottom: 8, textAlign: "center" }}>{t("onboarding.sex")}</div>
               <div style={{ display: "flex", gap: 8 }}>
                 {(
                   [
-                    { value: "M", label: "Hombre" },
-                    { value: "F", label: "Mujer" },
+                    { value: "M", label: t("ajustes.male") },
+                    { value: "F", label: t("ajustes.female") },
                   ] as const
                 ).map((s) => (
                   <Pressable
@@ -391,18 +392,17 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
             <motion.div key="s1" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
               <MascotIllustration art="saludo-guapo" height={158} style={{ marginBottom: 12 }} />
               <div className="font-sora" style={heroTitleStyle}>
-                {sex === "F" ? "¡Qué guapa eres!" : "¡Qué guapo eres!"}
+                {sex === "F" ? t("onboarding.s1TitleF") : t("onboarding.s1TitleM")}
               </div>
               <div style={{ ...subtitleStyle, fontSize: 13, color: "rgba(244,243,238,.6)", marginTop: 8, marginBottom: 0 }}>
-                Si te lo propones, vas a estar {sex === "F" ? "así de guapa" : "así de guapo"} y con buena salud. Ahora
-                sí — ¿cómo te gusta que te digamos?
+                {sex === "F" ? t("onboarding.s1SubtitleF") : t("onboarding.s1SubtitleM")}
               </div>
               <div style={{ marginTop: 32 }}>
-                <div style={{ ...labelStyle, textAlign: "center" }}>¿CÓMO TE GUSTA QUE TE DIGAN?</div>
+                <div style={{ ...labelStyle, textAlign: "center" }}>{t("onboarding.nameLabel")}</div>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Tu nombre o apodo"
+                  placeholder={t("onboarding.namePlaceholder")}
                   autoFocus
                   style={{ ...fieldStyle, fontSize: 16 }}
                   onKeyDown={(e) => e.key === "Enter" && canContinueName && next()}
@@ -414,13 +414,13 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
           {step === 2 && (
             <motion.div key="s2" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
               <div className="font-sora" style={titleStyle}>
-                {displayName ? `¿Qué te trae por acá, ${displayName}?` : "¿Qué te trae por acá?"}
+                {displayName ? t("onboarding.s2TitleNamed", { name: displayName }) : t("onboarding.s2Title")}
               </div>
               <div style={subtitleStyle}>
-                No hay respuesta incorrecta — esto solo nos ayuda a hablarte como corresponde, en vez de sonar igual con todo el mundo.
+                {t("onboarding.s2Subtitle")}
               </div>
               <PresetChips
-                options={MOTIVATION_PRESETS}
+                options={motivationPresets(t)}
                 selected={goalMotivation}
                 onSelect={setGoalMotivation}
                 renderIcon={(opt) => <div style={{ fontSize: 18, flex: "none" }}>{opt.emoji}</div>}
@@ -435,22 +435,22 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
             <motion.div key="s3" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
               <MascotIllustration art="numeros" height={150} style={{ marginBottom: 8 }} />
               <div className="font-sora" style={titleStyle}>
-                Ahora hablemos de números
+                {t("onboarding.s3Title")}
               </div>
               <div style={subtitleStyle}>
-                Con esto calculamos tu metabolismo basal (BMR), como haría un nutricionista — nada de fórmulas genéricas.
+                {t("onboarding.s3Subtitle")}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
-                  <div style={labelStyle}>EDAD</div>
+                  <div style={labelStyle}>{t("ajustes.age")}</div>
                   <input type="number" inputMode="numeric" value={age} onChange={(e) => setAge(e.target.value)} placeholder="25" style={fieldStyle} autoFocus />
                 </div>
                 <div>
-                  <div style={labelStyle}>ALTURA (cm)</div>
+                  <div style={labelStyle}>{t("ajustes.height")}</div>
                   <input type="number" inputMode="numeric" value={height} onChange={(e) => setHeight(e.target.value)} placeholder="170" style={fieldStyle} />
                 </div>
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <div style={labelStyle}>PESO ACTUAL (lb)</div>
+                  <div style={labelStyle}>{t("ajustes.currentWeight")}</div>
                   <input type="number" inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="180" style={fieldStyle} />
                 </div>
               </div>
@@ -461,20 +461,20 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
             <motion.div key="s4" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
               <MascotIllustration art="meta-peso" height={172} style={{ marginBottom: 8 }} />
               <div className="font-sora" style={titleStyle}>
-                ¿Cuál es tu meta de peso?
+                {t("onboarding.s4Title")}
               </div>
               <div style={subtitleStyle}>
-                Sin extremos — vamos a lo que de verdad podés sostener. Si es menor a tu peso actual calculamos un déficit saludable; si es igual o mayor, mantenimiento.
+                {t("onboarding.s4Subtitle")}
               </div>
-              <div style={{ ...labelStyle, textAlign: "center" }}>PESO META (lb)</div>
+              <div style={{ ...labelStyle, textAlign: "center" }}>{t("onboarding.goalWeightLabel")}</div>
               <input type="number" inputMode="decimal" value={weightGoal} onChange={(e) => setWeightGoal(e.target.value)} placeholder="165" style={{ ...fieldStyle, fontSize: 18, textAlign: "center" }} autoFocus />
               {Number(weightGoal) > 0 && Number(weight) > 0 && (
                 <div style={{ marginTop: 10, fontSize: 12, color: "rgba(244,243,238,.5)", textAlign: "center" }}>
                   {Number(weightGoal) < Number(weight)
-                    ? `Meta de bajar ${r1(Number(weight) - Number(weightGoal))} lb.`
+                    ? t("onboarding.goalLose", { lb: r1(Number(weight) - Number(weightGoal)) })
                     : Number(weightGoal) > Number(weight)
-                    ? `Meta de subir ${r1(Number(weightGoal) - Number(weight))} lb.`
-                    : "Meta de mantenerte en tu peso actual."}
+                    ? t("onboarding.goalGain", { lb: r1(Number(weightGoal) - Number(weight)) })
+                    : t("onboarding.goalMaintain")}
                 </div>
               )}
             </motion.div>
@@ -484,13 +484,13 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
             <motion.div key="s5" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
               <MascotIllustration art="actividad" height={150} style={{ marginBottom: 8 }} />
               <div className="font-sora" style={titleStyle}>
-                Tu nivel de actividad diaria
+                {t("onboarding.s5Title")}
               </div>
               <div style={subtitleStyle}>
-                No es solo ejercicio: es qué tanto te mueves en un día normal. Esto ajusta tu gasto calórico total (TDEE) sobre tu metabolismo basal.
+                {t("onboarding.s5Subtitle")}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {ACTIVITY_OPTIONS.map((opt) => {
+                {getActivityOptions(t).map((opt) => {
                   const active = activityLevel === opt.value;
                   return (
                     <Pressable
@@ -533,17 +533,17 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
           {step === 6 && (
             <motion.div key="s6" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
               <div className="font-sora" style={titleStyle}>
-                ¿Qué plan de ejercicio quieres seguir?
+                {t("onboarding.s6Title")}
               </div>
               <div style={subtitleStyle}>
-                No tiene que ser gimnasio — cuéntanos qué vas a hacer tú. Toca una opción para empezar y edítala como quieras; también puedes registrar cualquier otra cosa que hagas desde el chat con el Coach o subiendo la captura de tu reloj.
+                {t("onboarding.s6Subtitle")}
               </div>
-              <PresetChips options={EXERCISE_PRESETS} selected={exercisePlan} onSelect={setExercisePlan} renderIcon={(opt) => iconFor(opt.icon, 22)} />
-              <div style={{ ...labelStyle, textAlign: "center" }}>EN TUS PALABRAS (OPCIONAL)</div>
+              <PresetChips options={exercisePresets(t)} selected={exercisePlan} onSelect={setExercisePlan} renderIcon={(opt) => iconFor(opt.icon, 22)} />
+              <div style={{ ...labelStyle, textAlign: "center" }}>{t("onboarding.ownWordsLabel")}</div>
               <textarea
                 value={exercisePlan}
                 onChange={(e) => setExercisePlan(e.target.value)}
-                placeholder="Ej. camino 1 hora todos los días…"
+                placeholder={t("onboarding.exercisePlaceholder")}
                 rows={3}
                 style={{ ...fieldStyle, resize: "none", fontFamily: "inherit" }}
               />
@@ -554,19 +554,19 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
             <motion.div key="s7" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
               <MascotIllustration art="bascula" height={165} style={{ marginBottom: 8 }} />
               <div className="font-sora" style={titleStyle}>
-                ¿Tienes báscula inteligente?
+                {t("onboarding.s7Title")}
               </div>
               <div style={subtitleStyle}>
-                Es opcional, pero <b style={{ color: "#c7f27a" }}>muy recomendado</b>: con una captura de tu báscula (Zepp Life, Renpho, etc.) leemos tu metabolismo basal real en vez de estimarlo, y tus metas quedan más precisas.
+                {t("onboarding.s7SubtitlePre")}<b style={{ color: "#c7f27a" }}>{t("onboarding.s7SubtitleBold")}</b>{t("onboarding.s7SubtitlePost")}
               </div>
               <UploadCard
-                title="Báscula inteligente"
-                subtitle="peso · grasa · metabolismo basal"
+                title={t("onboarding.scaleCardTitle")}
+                subtitle={t("onboarding.scaleCardSubtitle")}
                 icon="/icons/glyphs/smart-scale.png"
-                lastUpdated={scaleResult ? { timestamp: "lista", label: "Leída" } : undefined}
+                lastUpdated={scaleResult ? { timestamp: t("onboarding.scaleReadyTimestamp"), label: t("onboarding.scaleReadyLabel") } : undefined}
                 isUpdated={!!scaleResult}
                 busy={scaleBusy}
-                busyMessages={["Leyendo tu captura…", "Extrayendo peso, IMC y BMR…", "Casi listo…"]}
+                busyMessages={[t("onboarding.scaleBusy1"), t("onboarding.scaleBusy2"), t("onboarding.scaleBusy3")]}
                 onImage={readScale}
               />
               {scaleError && (
@@ -576,7 +576,10 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
               )}
               {scaleResult && (
                 <div style={{ marginTop: 12, fontSize: 12.5, color: "#c7f27a", fontWeight: 700 }}>
-                  ✓ Peso {Math.round(scaleResult.peso_lb)} lb{scaleResult.bmr ? ` · BMR ${Math.round(scaleResult.bmr)} kcal` : ""} detectados
+                  {t("onboarding.scaleDetected", {
+                    lb: Math.round(scaleResult.peso_lb),
+                    bmr: scaleResult.bmr ? t("onboarding.scaleDetectedBmr", { bmr: Math.round(scaleResult.bmr) }) : "",
+                  })}
                 </div>
               )}
             </motion.div>
@@ -585,11 +588,13 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
           {step === 8 && (
             <motion.div key="s8" initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.25 }} style={stepStyle}>
               <div className="font-sora" style={titleStyle}>
-                {displayName ? `Listo, ${displayName} — estas son tus metas` : "Tus metas diarias"}
+                {displayName ? t("onboarding.s8TitleNamed", { name: displayName }) : t("onboarding.s8Title")}
               </div>
               <div style={{ ...subtitleStyle, marginBottom: 12 }}>
-                Calculadas con tu {scaleResult?.bmr ? "báscula" : "metabolismo basal estimado"} y nivel de actividad
-                {goalMotivation ? " — pensando en tu meta de arriba. " : ". "}Podrás ajustarlas cuando quieras en Perfil.
+                {t("onboarding.s8SubtitleTemplate", {
+                  source: scaleResult?.bmr ? t("onboarding.s8SubtitleScale") : t("onboarding.s8SubtitleEstimated"),
+                  goalNote: goalMotivation ? t("onboarding.s8SubtitleGoalNote") : t("onboarding.s8SubtitleNoGoalNote"),
+                })}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                 <div style={{ background: "#1b1e21", borderRadius: 18, padding: 12, textAlign: "center" }}>
@@ -602,17 +607,15 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
                 </div>
               </div>
               <div style={{ fontSize: 11, color: "rgba(244,243,238,.4)", marginBottom: 10, lineHeight: 1.4, textAlign: "center" }}>
-                {wantsToLose
-                  ? "Tu meta = TDEE − 450 kcal, el déficit diario que se considera seguro (~1 lb cada 8 días)."
-                  : "Tu meta = tu gasto total (TDEE), para mantener tu peso actual."}
+                {wantsToLose ? t("onboarding.explainDeficit") : t("onboarding.explainMaintain")}
               </div>
               <div style={{ background: "#1b1e21", borderRadius: 20, padding: 16 }}>
                 {[
-                  { label: "Calorías", value: `${goals.metaKcal.toLocaleString()} kcal`, color: "#c7f27a" },
-                  { label: "Proteína mínima", value: `${goals.metaProtein}g`, color: "oklch(72% 0.15 250)" },
-                  { label: "Carbohidratos máximo", value: `${goals.metaCarbs}g`, color: "oklch(78% 0.15 85)" },
-                  { label: "Grasas máximo", value: `${goals.metaFat}g`, color: "oklch(72% 0.15 40)" },
-                  { label: "Agua", value: `${goals.metaWater.toLocaleString()} ml`, color: "oklch(70% 0.13 220)" },
+                  { label: t("onboarding.rowCalories"), value: `${goals.metaKcal.toLocaleString()} kcal`, color: "#c7f27a" },
+                  { label: t("onboarding.rowProteinMin"), value: `${goals.metaProtein}g`, color: "oklch(72% 0.15 250)" },
+                  { label: t("onboarding.rowCarbsMax"), value: `${goals.metaCarbs}g`, color: "oklch(78% 0.15 85)" },
+                  { label: t("onboarding.rowFatMax"), value: `${goals.metaFat}g`, color: "oklch(72% 0.15 40)" },
+                  { label: t("onboarding.rowWater"), value: `${goals.metaWater.toLocaleString()} ml`, color: "oklch(70% 0.13 220)" },
                 ].map((row, i, arr) => (
                   <div
                     key={row.label}
@@ -676,7 +679,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
               color: "rgba(244,243,238,.6)",
             }}
           >
-            Omitir por ahora
+            {t("onboarding.skipForNow")}
           </Pressable>
         )}
         <Pressable
@@ -706,7 +709,7 @@ export default function OnboardingWizard({ onFinished }: { onFinished?: () => vo
             boxShadow: "0 0 20px rgba(199,242,122,.4)",
           }}
         >
-          {saving ? "Guardando…" : step === TOTAL_STEPS - 1 ? "Empezar" : "Continuar"}
+          {saving ? t("onboarding.saving") : step === TOTAL_STEPS - 1 ? t("onboarding.start") : t("onboarding.continue")}
         </Pressable>
       </div>
     </div>
