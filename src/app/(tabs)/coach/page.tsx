@@ -106,11 +106,12 @@ function CopyButton({
   color: string;
 }) {
   const copied = copiedIdx === index;
+  const { t } = useApp();
   return (
     <div style={{ position: "relative" }}>
       <motion.button
         type="button"
-        aria-label="Copiar mensaje"
+        aria-label={t("coach.copyMessage")}
         whileTap={{ scale: 0.9 }}
         onClick={() => onCopy(text, index)}
         style={{
@@ -152,7 +153,7 @@ function CopyButton({
               boxShadow: "0 0 10px rgba(199,242,122,.5)",
             }}
           >
-            ¡Copiado!
+            {t("coach.copied")}
           </motion.div>
         )}
       </AnimatePresence>
@@ -201,15 +202,17 @@ function statInfo(
     : { value: `${Math.max(0, meta - actual)}${unit}`, label: normalLabel, color, glow };
 }
 
-const QUICK_PROMPTS = [
-  { text: "Calcula mi meta ideal", send: "Calcula mi meta diaria de calorías ideal según mi peso, altura, edad y sexo, con un déficit saludable, explícame el cálculo y actualízala" },
-  { text: "Registré ejercicio", send: "Acabo de hacer ejercicio, ¿cómo lo registro para que sume a mi presupuesto?" },
-  { text: "Registrar sin foto", send: "Agrega a mi almuerzo: pollo con arroz y ensalada" },
-  { text: "¿Qué ceno hoy?", send: "¿Qué me recomiendas cenar hoy?" },
-  { text: "Revisa un menú", send: "Voy a un restaurante, ¿qué me recomiendas pedir según mis macros de hoy?" },
-  { text: "Sigo con hambre", send: "Llegué a mi meta de proteína pero sigo con hambre, ¿qué como?" },
-  { text: "¿Esto o aquello?", send: "¿Me recomiendas esto o aquello?" },
-];
+function quickPrompts(t: (key: string) => string): { text: string; send: string }[] {
+  return [
+    { text: t("coach.quickCalcGoal"), send: t("coach.quickCalcGoalSend") },
+    { text: t("coach.quickLoggedExercise"), send: t("coach.quickLoggedExerciseSend") },
+    { text: t("coach.quickLogNoPhoto"), send: t("coach.quickLogNoPhotoSend") },
+    { text: t("coach.quickWhatToEat"), send: t("coach.quickWhatToEatSend") },
+    { text: t("coach.quickCheckMenu"), send: t("coach.quickCheckMenuSend") },
+    { text: t("coach.quickStillHungry"), send: t("coach.quickStillHungrySend") },
+    { text: t("coach.quickThisOrThat"), send: t("coach.quickThisOrThatSend") },
+  ];
+}
 
 export default function Coach() {
   const app = useApp();
@@ -296,9 +299,9 @@ export default function Coach() {
         const ok = document.execCommand("copy");
         document.body.removeChild(ta);
         if (ok) markCopied();
-        else showToast("No se pudo copiar");
+        else showToast(t("coach.copyFailed"));
       } catch {
-        showToast("No se pudo copiar");
+        showToast(t("coach.copyFailed"));
       }
     };
     if (navigator.clipboard?.writeText) {
@@ -320,7 +323,7 @@ export default function Coach() {
     };
     const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
     if (!Ctor) {
-      showToast("Tu navegador no soporta dictado por voz");
+      showToast(t("coach.voiceNotSupported"));
       return;
     }
     const rec = new Ctor();
@@ -549,7 +552,7 @@ export default function Coach() {
 
       {/* Chips rápidos */}
       <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "6px 20px 8px", flex: "none" }}>
-        {QUICK_PROMPTS.map((p) => (
+        {quickPrompts(t).map((p) => (
           <Pressable
             key={p.text}
             onClick={() => send(p.send)}
@@ -589,7 +592,7 @@ export default function Coach() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={pendingPhoto}
-            alt="foto pendiente"
+            alt={t("coach.pendingPhotoAlt")}
             style={{ width: 52, height: 52, borderRadius: 12, objectFit: "cover", flex: "none" }}
           />
           <div style={{ flex: 1, fontSize: 11.5, color: "rgba(244,243,238,.6)", fontWeight: 600, lineHeight: 1.4 }}>
