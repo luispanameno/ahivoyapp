@@ -119,16 +119,20 @@ function Shell({ children }: { children: React.ReactNode }) {
           boxSizing: "border-box",
         }}
       >
-        {/* Transición entre pantallas: desvanecimiento rápido, sin textos de
-            carga. La salida es más corta que la entrada — así se siente ágil
-            en vez de lenta. Con "reducir movimiento" el cambio es directo. */}
+        {/* Transición entre pantallas: crossfade parejo (misma duración y
+            curva de entrada y salida), sin desplazamiento vertical — el
+            salto en Y + duraciones distintas entre entrada/salida se sentía
+            "brusco" al cambiar entre pestañas de alturas muy distintas
+            (ej. Hoy, larga, a Historial, corta). Un fundido simétrico con
+            solo un toque de escala se lee más premium y menos como un salto.
+            Con "reducir movimiento" el cambio es directo, sin animar. */}
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.div
             key={pathname}
-            initial={reduce ? false : { opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduce ? { opacity: 1 } : { opacity: 0, transition: { duration: 0.1, ease: "easeIn" } }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            initial={reduce ? false : { opacity: 0, scale: 0.99 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={reduce ? { opacity: 1 } : { opacity: 0, scale: 0.99 }}
+            transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
           >
             {children}
           </motion.div>

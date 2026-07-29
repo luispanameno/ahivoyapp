@@ -7,6 +7,9 @@ import { useState } from "react";
 import Pressable from "@/components/Pressable";
 import { useApp } from "@/lib/store";
 import { MEAL_TIME_LABEL } from "@/lib/i18n";
+import { MealTime } from "@/lib/types";
+
+const MEAL_TIMES: MealTime[] = ["Desayuno", "Almuerzo", "Cena", "Snack"];
 
 const fieldStyle: React.CSSProperties = {
   width: "100%",
@@ -28,6 +31,7 @@ export default function EditarComida() {
 
   const meal = meals.find((m) => m.id === params.id);
   const [desc, setDesc] = useState(meal?.desc ?? "");
+  const [time, setTime] = useState<MealTime>(meal?.time ?? "Snack");
   const [kcal, setKcal] = useState(String(meal?.kcal ?? 0));
   const [p, setP] = useState(String(meal?.p ?? 0));
   const [c, setC] = useState(String(meal?.c ?? 0));
@@ -45,7 +49,7 @@ export default function EditarComida() {
   }
 
   const save = async () => {
-    await updateMeal({ ...meal, desc, kcal: Number(kcal) || 0, p: Number(p) || 0, c: Number(c) || 0, f: Number(f) || 0 });
+    await updateMeal({ ...meal, desc, time, kcal: Number(kcal) || 0, p: Number(p) || 0, c: Number(c) || 0, f: Number(f) || 0 });
     showToast(t("comida.toastUpdated"));
     router.push("/historial");
   };
@@ -59,7 +63,29 @@ export default function EditarComida() {
   return (
     <div style={{ minHeight: "100dvh", boxSizing: "border-box", padding: "24px 20px", display: "flex", flexDirection: "column" }}>
       <div className="font-sora" style={{ fontSize: 18, fontWeight: 700 }}>{t("comida.editTitle")}</div>
-      <div style={{ fontSize: 12, color: "rgba(244,243,238,.5)", marginTop: 2 }}>{MEAL_TIME_LABEL[lang][meal.time]}</div>
+
+      <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+        {MEAL_TIMES.map((mt) => (
+          <div
+            key={mt}
+            onClick={() => setTime(mt)}
+            style={{
+              flex: 1,
+              textAlign: "center",
+              padding: "9px 0",
+              borderRadius: 100,
+              fontSize: 11.5,
+              fontWeight: 700,
+              cursor: "pointer",
+              background: mt === time ? "#c7f27a" : "#1b1e21",
+              color: mt === time ? "#10240a" : "rgba(244,243,238,.6)",
+              boxShadow: mt === time ? "0 0 14px rgba(199,242,122,.55)" : "none",
+            }}
+          >
+            {MEAL_TIME_LABEL[lang][mt]}
+          </div>
+        ))}
+      </div>
 
       {meal.photo && (
         // eslint-disable-next-line @next/next/no-img-element
