@@ -14,7 +14,7 @@ const DAYS: RoutineDay[] = ["Push", "Pull", "Legs"];
 
 export default function Entrenamiento() {
   const router = useRouter();
-  const { routine, workout, setWorkout, showToast, t } = useApp();
+  const { routine, workout, setWorkout, showToast, t, lang } = useApp();
 
   const [day, setDay] = useState<RoutineDay>(workout?.day ?? "Push");
   const [notes, setNotes] = useState(workout?.notes ?? "");
@@ -32,7 +32,7 @@ export default function Entrenamiento() {
     setBusy(true);
     setError(null);
     try {
-      const res = await analyze<{ nombre: string; kcal: number }>({ mode: "workout", image: shot });
+      const res = await analyze<{ nombre: string; kcal: number }>({ mode: "workout", image: shot, lang });
       await setWorkout({ day, done: true, kcal: Math.round(res.kcal) || 300, name: res.nombre || t("sync.defaultWorkoutName"), notes });
       showToast(t("entrenamiento.toastRead", { kcal: Math.round(res.kcal) }));
     } catch (e) {

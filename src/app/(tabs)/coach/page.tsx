@@ -37,11 +37,14 @@ function CoachMarkdown({ text, tight = false }: { text: string; tight?: boolean 
   );
 }
 
-// Separa el bloque del Tablero Nutricional del resto del mensaje
+// Separa el bloque del Tablero Nutricional del resto del mensaje. Se detecta
+// por el emoji 📱 (no por el texto del título): en inglés la IA traduce
+// "TABLERO NUTRICIONAL" a "NUTRITION DASHBOARD", así que buscar la frase en
+// español dejaría de funcionar para esos usuarios.
 function splitTablero(text: string): { board: string | null; rest: string } {
-  if (!text.includes("TABLERO NUTRICIONAL")) return { board: null, rest: text };
+  if (!text.includes("📱")) return { board: null, rest: text };
   const lines = text.split("\n");
-  const start = lines.findIndex((l) => l.includes("TABLERO NUTRICIONAL"));
+  const start = lines.findIndex((l) => l.includes("📱"));
   if (start === -1) return { board: null, rest: text };
   let end = start;
   for (let i = start + 1; i < lines.length; i++) {
@@ -472,7 +475,7 @@ export default function Coach() {
       >
         {chatMessages.map((m, i) => {
           // Tableros y alertas entran con un "pop" más notorio
-          const destacado = m.role === "coach" && (m.text.includes("TABLERO NUTRICIONAL") || m.text.includes("🚨"));
+          const destacado = m.role === "coach" && (m.text.includes("📱") || m.text.includes("🚨"));
           const { board, rest } = m.role === "coach" ? splitTablero(m.text) : { board: null, rest: m.text };
           const bubbleColor = m.role === "user" ? "#10240a" : "#f4f3ee";
           return (

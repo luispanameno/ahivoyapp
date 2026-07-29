@@ -122,6 +122,15 @@ Responde SOLO con JSON válido:
  "kcal": number (calorías quemadas en la sesión)}`,
 };
 
+// Agrega la instrucción de idioma de salida SOLO a los modos con campos de
+// texto libre visibles para el usuario (descripcion/pregunta en food,
+// nombre en workout) — scale/activity/sleep solo devuelven números y
+// lecturas OCR, no hace falta.
+function withLangDirective(prompt: string, idioma: "es" | "en"): string {
+  if (idioma !== "en") return prompt;
+  return `${prompt}\n\nIDIOMA DE RESPUESTA: escribe TODOS los campos de texto libre (descripcion, pregunta, nombre) en INGLÉS, sin excepción — nunca en español.`;
+}
+
 // Esquemas de respuesta: con responseSchema el API restringe la generación
 // a JSON bien formado (evita respuestas cortadas o con texto extra).
 const NUM = { type: Type.NUMBER } as const;
@@ -551,7 +560,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Solicitud demasiado grande" }, { status: 413 });
   }
 
-  let body: { mode?: Mode; image?: string; text?: string; context?: unknown };
+  let body: { mode?: Mode; image?: string; text?: string; context?: unknown; lang?: "es" | "en" };
   try {
     body = await req.json();
   } catch {
@@ -559,6 +568,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { mode, image, text, context } = body;
+  const idioma: "es" | "en" = body.lang === "en" ? "en" : "es";
   const MODES: Mode[] = ["food", "scale", "activity", "sleep", "workout", "coach"];
   if (!mode || !MODES.includes(mode)) {
     return NextResponse.json({ error: "Modo inválido" }, { status: 400 });
@@ -592,7 +602,12 @@ export async function POST(req: NextRequest) {
     parts.push({ text: "Analiza la imagen." });
   }
 
-  const systemInstruction = mode === "coach" ? buildCoachPrompt(context) : PROMPTS[mode];
+  const systemInstruction =
+    mode === "coach"
+      ? buildCoachPrompt(context)
+      : mode === "food" || mode === "workout"
+      ? withLangDirective(PROMPTS[mode], idioma)
+      : PROMPTS[mode];
 
   // Cadena de modelos: si uno agota su cuota gratuita (429), no está
   // disponible (404) o se cuelga (timeout), se intenta el siguiente.

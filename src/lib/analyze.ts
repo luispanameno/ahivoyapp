@@ -92,6 +92,9 @@ export async function analyze<T = unknown>(payload: {
   image?: string; // data URL
   text?: string;
   context?: unknown;
+  // Idioma en que la IA debe responder los campos de texto libre (reply,
+  // descripcion, pregunta, nombre). Por defecto español si se omite.
+  lang?: "es" | "en";
 }): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
 

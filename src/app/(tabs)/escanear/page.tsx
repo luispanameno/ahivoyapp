@@ -43,6 +43,7 @@ export default function Escanear() {
         mode: "food",
         image: dataUrl,
         text: textoContexto || undefined,
+        lang,
       });
       setResult(res);
       if (res.pregunta && !textoContexto) {
