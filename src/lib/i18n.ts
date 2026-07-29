@@ -752,6 +752,12 @@ export const I18N: Record<Lang, Dict> = {
     "routine.romanianDeadlift": "Peso muerto rumano",
     "routine.legPress": "Prensa",
     "routine.calfRaise": "Elevación de talones",
+
+    // Pantalla de error genérica (error.tsx / global-error.tsx)
+    "errorPage.title": "Algo salió mal",
+    "errorPage.body": "Tuvimos un problema inesperado. Intenta de nuevo — si sigue pasando, cierra y abre la app.",
+    "errorPage.retry": "Intentar de nuevo",
+    "errorPage.goHome": "Ir a Hoy",
   },
   en: {
     "tabbar.hoy": "Today",
@@ -1465,6 +1471,11 @@ export const I18N: Record<Lang, Dict> = {
     "routine.romanianDeadlift": "Romanian deadlift",
     "routine.legPress": "Leg press",
     "routine.calfRaise": "Calf raise",
+
+    "errorPage.title": "Something went wrong",
+    "errorPage.body": "We hit an unexpected problem. Try again — if it keeps happening, close and reopen the app.",
+    "errorPage.retry": "Try again",
+    "errorPage.goHome": "Go to Today",
   },
 };
 
