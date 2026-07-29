@@ -62,7 +62,7 @@ const PROMPTS: Record<Exclude<Mode, "coach">, string> = {
 
 METODOLOGÍA OBLIGATORIA (razónala en este orden antes de responder):
 1. Identifica CADA alimento/ingrediente visible por separado (ej. "pechuga de pollo a la plancha", "arroz blanco", "frijoles", "aguacate", "aceite visible", "queso").
-2. Para cada uno, estima el peso/porción con referencias visuales reales: diámetro típico de plato (~25-28cm), grosor y área de la proteína, cucharadas de arroz/frijoles, tamaño de una palma o un puño para carnes/porciones. No inventes un peso al azar — razónalo contra esas referencias.
+2. Para cada uno, estima el peso/porción con referencias visuales reales: diámetro típico de plato (~25-28cm), grosor y área de la proteína, cucharadas de arroz/frijoles, tamaño de una palma o un puño para carnes/porciones. Si en la foto aparecen cubiertos, un vaso, una taza u otro objeto de tamaño conocido, úsalo como escala para afinar el cálculo (ej. un tenedor mide ~18-20cm, eso te dice el tamaño real del plato y de la comida junto a él). No inventes un peso al azar — razónalo contra esas referencias.
 3. Asigna los macros de cada alimento según su composición REAL, no por costumbre ni redondeo automático:
    - Carnes, aves y pescados SIN empanizar y SIN salsa/glaseado dulce (a la plancha, asados, horneados, hervidos): carbohidratos ≈ 0g. Solo proteína y grasa (la grasa varía mucho: pechuga sin piel es baja en grasa, muslo/piel/costilla/carnes grasas es alta).
    - Huevos: ~6g proteína y ~5g grasa por unidad, carbos ≈ 0g.
