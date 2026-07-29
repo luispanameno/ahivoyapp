@@ -738,6 +738,20 @@ export const I18N: Record<Lang, Dict> = {
     "store.chatCleared": "Chat limpiado",
     "store.greetingInitial": "¡Hola{{name}}! 👋 Soy tu Coach IA. Conozco tus macros, tu meta y tu rutina de hoy. Pregúntame qué comer, pídeme que revise el menú de un restaurante o cuéntame cómo te sientes.",
     "store.greetingAfterClear": "¡Hola{{name}}! 👋 Chat limpio. ¿En qué te ayudo?",
+
+    // Rutina por defecto (ejercicios semilla de un usuario nuevo)
+    "routine.benchPress": "Press banca",
+    "routine.overheadPress": "Press militar",
+    "routine.dips": "Fondos en paralelas",
+    "routine.tricepsExt": "Extensión de tríceps",
+    "routine.pullUps": "Dominadas",
+    "routine.barbellRow": "Remo con barra",
+    "routine.bicepCurl": "Curl de bíceps",
+    "routine.facePulls": "Face pulls",
+    "routine.squat": "Sentadilla",
+    "routine.romanianDeadlift": "Peso muerto rumano",
+    "routine.legPress": "Prensa",
+    "routine.calfRaise": "Elevación de talones",
   },
   en: {
     "tabbar.hoy": "Today",
@@ -1438,6 +1452,19 @@ export const I18N: Record<Lang, Dict> = {
     "store.chatCleared": "Chat cleared",
     "store.greetingInitial": "Hi{{name}}! 👋 I'm your AI Coach. I know your macros, your goal, and today's routine. Ask me what to eat, have me check a restaurant menu, or tell me how you're feeling.",
     "store.greetingAfterClear": "Hi{{name}}! 👋 Chat cleared. How can I help?",
+
+    "routine.benchPress": "Bench press",
+    "routine.overheadPress": "Overhead press",
+    "routine.dips": "Parallel bar dips",
+    "routine.tricepsExt": "Triceps extension",
+    "routine.pullUps": "Pull-ups",
+    "routine.barbellRow": "Barbell row",
+    "routine.bicepCurl": "Bicep curl",
+    "routine.facePulls": "Face pulls",
+    "routine.squat": "Squat",
+    "routine.romanianDeadlift": "Romanian deadlift",
+    "routine.legPress": "Leg press",
+    "routine.calfRaise": "Calf raise",
   },
 };
 

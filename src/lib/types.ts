@@ -1,3 +1,5 @@
+import { Lang, translate } from "./i18n";
+
 export type MealTime = "Desayuno" | "Almuerzo" | "Cena" | "Snack";
 export type RoutineDay = "Push" | "Pull" | "Legs";
 
@@ -175,26 +177,37 @@ export const DEFAULT_PROFILE: Profile = {
   language: "es",
 };
 
-export const DEFAULT_ROUTINE: Routine = {
-  Push: [
-    { name: "Press banca", sets: "4x8" },
-    { name: "Press militar", sets: "3x10" },
-    { name: "Fondos en paralelas", sets: "3x12" },
-    { name: "Extensión de tríceps", sets: "3x15" },
-  ],
-  Pull: [
-    { name: "Dominadas", sets: "4x6" },
-    { name: "Remo con barra", sets: "4x8" },
-    { name: "Curl de bíceps", sets: "3x12" },
-    { name: "Face pulls", sets: "3x15" },
-  ],
-  Legs: [
-    { name: "Sentadilla", sets: "4x8" },
-    { name: "Peso muerto rumano", sets: "3x10" },
-    { name: "Prensa", sets: "3x12" },
-    { name: "Elevación de talones", sets: "4x15" },
-  ],
-};
+// Rutina semilla para un usuario nuevo (sin rutina propia guardada aún).
+// Es función de `lang` para que los nombres de ejercicio salgan en el
+// idioma elegido en Ajustes en vez de quedar fijos en español.
+export function defaultRoutine(lang: Lang): Routine {
+  const t = (key: string) => translate(lang, key);
+  return {
+    Push: [
+      { name: t("routine.benchPress"), sets: "4x8" },
+      { name: t("routine.overheadPress"), sets: "3x10" },
+      { name: t("routine.dips"), sets: "3x12" },
+      { name: t("routine.tricepsExt"), sets: "3x15" },
+    ],
+    Pull: [
+      { name: t("routine.pullUps"), sets: "4x6" },
+      { name: t("routine.barbellRow"), sets: "4x8" },
+      { name: t("routine.bicepCurl"), sets: "3x12" },
+      { name: t("routine.facePulls"), sets: "3x15" },
+    ],
+    Legs: [
+      { name: t("routine.squat"), sets: "4x8" },
+      { name: t("routine.romanianDeadlift"), sets: "3x10" },
+      { name: t("routine.legPress"), sets: "3x12" },
+      { name: t("routine.calfRaise"), sets: "4x15" },
+    ],
+  };
+}
+
+// Compatibilidad: versión fija en español, para los pocos lugares donde
+// todavía no se conoce el idioma del usuario (ver defaultRoutine arriba
+// para la versión correcta según Ajustes).
+export const DEFAULT_ROUTINE: Routine = defaultRoutine("es");
 
 export function todayISO(): string {
   const d = new Date();

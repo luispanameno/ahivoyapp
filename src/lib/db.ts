@@ -10,7 +10,7 @@ import {
   AdminUserRow,
   BodyComp,
   DEFAULT_PROFILE,
-  DEFAULT_ROUTINE,
+  defaultRoutine,
   Drink,
   Meal,
   MeasurementEntry,
@@ -199,7 +199,7 @@ export async function loadAll(date: string): Promise<AllData> {
       }
     : null;
 
-  const routine: Routine = { ...DEFAULT_ROUTINE };
+  const routine: Routine = { ...defaultRoutine(profile.language ?? "es") };
   for (const r of routineQ.data ?? []) {
     if (r.dia === "Push" || r.dia === "Pull" || r.dia === "Legs") {
       routine[r.dia as keyof Routine] = r.ejercicios;
@@ -237,15 +237,16 @@ export async function loadAll(date: string): Promise<AllData> {
 function loadLocal(date: string): AllData {
   const meals = lsGet<Meal[]>("meals", []).filter((m) => m.date === date);
   const drinks = lsGet<Drink[]>("drinks", []).filter((d) => d.date === date);
+  const profile = lsGet<Profile>("profile", DEFAULT_PROFILE);
   return {
-    profile: lsGet<Profile>("profile", DEFAULT_PROFILE),
+    profile,
     meals,
     drinks,
     activity: lsGet<Record<string, Activity>>("activity", {})[date] ?? null,
     workout: lsGet<Record<string, WorkoutState>>("workout", {})[date] ?? null,
     sleep: lsGet<Record<string, SleepState>>("sleep", {})[date] ?? null,
     bodyComp: lsGet<BodyComp | null>("bodyComp", null),
-    routine: lsGet<Routine>("routine", DEFAULT_ROUTINE),
+    routine: lsGet<Routine>("routine", defaultRoutine(profile.language ?? "es")),
     weights: lsGet<WeightEntry[]>("weights", []),
     measurements: lsGet<MeasurementEntry[]>("measurements", []),
   };
