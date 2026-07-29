@@ -25,38 +25,24 @@ export type MascotState =
   | "LlenoDeComida"
   | "Celebrando";
 
-const DORMIDO = [
-  "Zzz… despiértame con un vaso de agua.",
-  "Sigo aquí, esperando tu primer registro.",
-  "Modo siesta activado. Tú dirás.",
-  "Todavía no he visto nada hoy. ¿Desayunaste?",
-  "Me quedé dormido esperándote.",
-  "Soñando con pupusas… digo, con ensalada.",
-  "Despiértame cuando comas algo.",
-  "Aquí acostado, sin nada que anotar.",
-];
+type T = (key: string, vars?: Record<string, string | number>) => string;
 
-const FELIZ = [
-  "¡Metas del día completas! Te luciste.",
-  "Día redondo. Así se hace.",
-  "Todo en verde. Duerme tranquilo.",
-  "Cumpliste todo. Yo aquí aplaudiendo.",
-  "Perfecto. Mañana repetimos, ¿va?",
-  "Nada que corregir hoy. Raro y hermoso.",
-  "Tu yo de enero estaría orgulloso.",
-  // Frases de celebración (estado Celebrando)
-  "¡Meta cumplida, crack! 🎉",
-  "Hoy sí que la rompiste.",
-  "¡Así se hace! La tortuga está orgullosa.",
-  "Victoria total. A dormir como campeón.",
-];
+function dormido(t: T): string[] {
+  return [1, 2, 3, 4, 5, 6, 7, 8].map((n) => t(`mascot.dormido${n}`));
+}
 
-const ANIMO = [
-  "Vas bien, no aflojes.",
-  "Un día a la vez. Aquí ando.",
-  "Nada de rendirse a media tarde.",
-  "Lento pero sin parar, así se gana.",
-];
+function feliz(t: T): string[] {
+  return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((n) => t(`mascot.feliz${n}`));
+}
+
+function animo(t: T): string[] {
+  return [1, 2, 3, 4].map((n) => t(`mascot.animo${n}`));
+}
+
+// Palabra "vaso(s)"/"glass(es)" según cantidad, en el idioma activo.
+function glassWord(t: T, vasos: number): string {
+  return vasos === 1 ? t("mascot.glassSingular") : t("mascot.glassPlural");
+}
 
 function pick(list: string[], i: number): string {
   return list[i % list.length];
@@ -64,10 +50,10 @@ function pick(list: string[], i: number): string {
 
 // Deriva el estado y TODAS las frases que aplican ahora mismo.
 export function useCoachMood(): { mood: CoachMood; messages: string[] } {
-  const { profile, water, kcalEaten, proteinG, carbsG, fatG, kcalBudget, kcalRemaining } = useApp();
+  const { profile, water, kcalEaten, proteinG, carbsG, fatG, kcalBudget, kcalRemaining, t } = useApp();
 
   if (kcalEaten === 0 && water === 0) {
-    return { mood: "sleeping", messages: DORMIDO };
+    return { mood: "sleeping", messages: dormido(t) };
   }
 
   const msgs: string[] = [];
@@ -76,23 +62,23 @@ export function useCoachMood(): { mood: CoachMood; messages: string[] } {
   if (kcalEaten > kcalBudget) {
     const sobra = kcalEaten - kcalBudget;
     msgs.push(
-      `Te pasaste ${sobra} kcal. Una caminata de 30 min quema ~150.`,
-      "Ya cruzaste tu meta. Cena ligerito y listo.",
-      "Nada de dramas: mañana es otro día."
+      t("mascot.overKcal1", { kcal: sobra }),
+      t("mascot.overKcal2"),
+      t("mascot.overKcal3")
     );
   }
   if (carbsG > profile.metaCarbs) {
     msgs.push(
-      `Carbos ${carbsG}/${profile.metaCarbs}g. Ojo con el arroz y el pan.`,
-      "Carbos al tope. Que la cena sea proteína y verduras.",
-      "El pan dulce no era necesario, ¿verdad?"
+      t("mascot.overCarbs1", { actual: carbsG, meta: profile.metaCarbs }),
+      t("mascot.overCarbs2"),
+      t("mascot.overCarbs3")
     );
   }
   if (fatG > profile.metaFat) {
     msgs.push(
-      `Grasas ${fatG}/${profile.metaFat}g. Mejor a la plancha que frito.`,
-      "Grasas al tope. Baja el aceite en la próxima.",
-      "La fritura es rica, pero pesa. Literal."
+      t("mascot.overFat1", { actual: fatG, meta: profile.metaFat }),
+      t("mascot.overFat2"),
+      t("mascot.overFat3")
     );
   }
 
@@ -101,10 +87,10 @@ export function useCoachMood(): { mood: CoachMood; messages: string[] } {
     const faltan = profile.metaWater - water;
     const vasos = Math.max(1, Math.round(faltan / 250));
     msgs.push(
-      `Agua ${water}/${profile.metaWater}ml. Te faltan ~${vasos} vaso${vasos === 1 ? "" : "s"}.`,
-      "¿Ya tomaste agua? El vaso no se llena solo.",
-      "El agua no engorda y quita el hambre falsa.",
-      "Tomá agua ahorita, no cuando ya tengas sed."
+      t("mascot.needWater1", { actual: water, meta: profile.metaWater, vasos, glassWord: glassWord(t, vasos) }),
+      t("mascot.needWater2"),
+      t("mascot.needWater3"),
+      t("mascot.needWater4")
     );
   }
 
@@ -112,22 +98,22 @@ export function useCoachMood(): { mood: CoachMood; messages: string[] } {
   const faltaProt = Math.max(0, profile.metaProtein - proteinG);
   if (faltaProt > 0) {
     msgs.push(
-      `Te faltan ${faltaProt}g de proteína. Un huevo ~6g, pollo ~30g.`,
-      `Proteína ${proteinG}/${profile.metaProtein}g. Un puño de pollo lo arregla.`,
-      "La proteína es la que te deja lleno. No la dejes de último."
+      t("mascot.needProtein1", { g: faltaProt }),
+      t("mascot.needProtein2", { actual: proteinG, meta: profile.metaProtein }),
+      t("mascot.needProtein3")
     );
   }
 
   if (kcalRemaining > 0) {
-    msgs.push(`Te quedan ${kcalRemaining} kcal libres hoy.`);
+    msgs.push(t("mascot.kcalLeft", { kcal: kcalRemaining }));
   }
 
   // Todo cumplido → feliz.
   const todoOk =
     proteinG >= profile.metaProtein && water >= profile.metaWater && kcalEaten <= kcalBudget;
-  if (todoOk) return { mood: "happy", messages: FELIZ };
+  if (todoOk) return { mood: "happy", messages: feliz(t) };
 
-  return { mood: "alert", messages: msgs.length ? msgs : ANIMO };
+  return { mood: "alert", messages: msgs.length ? msgs : animo(t) };
 }
 
 // ---------------------------------------------------------------------------
@@ -328,7 +314,8 @@ function guardarUltimaFirma(sig: string) {
 function phrasesForState(
   state: MascotState,
   d: { water: number; metaWater: number; kcalEaten: number; metaKcal: number; burned: number; duermePorInactividad: boolean },
-  fallback: string[]
+  fallback: string[],
+  t: T
 ): string[] {
   const vasos = Math.max(1, Math.round((d.metaWater - d.water) / 250));
   switch (state) {
@@ -337,83 +324,60 @@ function phrasesForState(
       // noche toca desear buenas noches; de día, hacer notar que lleva rato
       // sin registros para que la persona sepa cómo despertarla.
       return d.duermePorInactividad
-        ? [
-            "Zzz… me dormí esperando. Sube algo y despierto.",
-            "No has anotado comida, agua ni rutina. Aquí sigo, roncando.",
-            "Llevas un rato sin registrar nada. ¡Despiértame con un vaso de agua!",
-            "Zzz… en cuanto subas algo, vuelvo a la acción.",
-            "Me agarró la siesta. Registra algo y me levanto.",
-          ]
-        : [
-            "Zzz… mañana seguimos.",
-            "Descansar también es progreso.",
-            "Dormir bien baja el antojo del día siguiente.",
-            "A esta hora ya no contamos calorías, contamos ovejas.",
-            "Buenas noches. Apaga el teléfono, va.",
-          ];
+        ? [1, 2, 3, 4, 5].map((n) => t(`mascot.sleepInactivity${n}`))
+        : [1, 2, 3, 4, 5].map((n) => t(`mascot.sleepNight${n}`));
     case "Despertando":
-      return [
-        "¡Buenos días! ¿Arrancamos con un vaso de agua?",
-        "Ya desperté. ¿Qué desayunamos?",
-        "Día nuevo, cuenta nueva. Vamos.",
-      ];
+      return [1, 2, 3].map((n) => t(`mascot.wake${n}`));
     case "Aburrida":
-      return [
-        "Aquí esperando… ¿ya comiste algo?",
-        "No he anotado nada hoy. ¿Empezamos?",
-        "Me aburro. Registrame algo, ¿va?",
-        "Sin datos no puedo ayudarte. Tírame uno.",
-      ];
+      return [1, 2, 3, 4].map((n) => t(`mascot.bored${n}`));
     case "TomandoAgua":
       return [
-        `Glup glup. Te faltan ~${vasos} vaso${vasos === 1 ? "" : "s"}.`,
-        `Agua ${d.water}/${d.metaWater} ml. Acompáñame.`,
-        "El agua primero, lo demás después.",
-        "Tomá agua ahorita, no cuando ya tengas sed.",
+        t("mascot.drink1", { vasos, glassWord: glassWord(t, vasos) }),
+        t("mascot.drink2", { actual: d.water, meta: d.metaWater }),
+        t("mascot.drink3"),
+        t("mascot.drink4"),
       ];
     case "Ejercicio":
       return [
-        "¡Vamos! Que el sillón no quema nada.",
-        "20 minutos caminando ya cuentan. Arranca.",
-        d.burned > 0 ? `Llevas ${d.burned} kcal quemadas. Súmale más.` : "Muévete un ratito, aunque sea poquito.",
-        "Sudar hoy es sentirte bien mañana.",
+        t("mascot.exercise1"),
+        t("mascot.exercise2"),
+        d.burned > 0 ? t("mascot.exercise3burned", { kcal: d.burned }) : t("mascot.exercise3noBurned"),
+        t("mascot.exercise4"),
       ];
     case "LlenoDeComida":
       return [
-        "Uf, quedé llena. Vamos suave con la próxima.",
-        `Vas ${d.kcalEaten}/${d.metaKcal} kcal. Agua y a caminar.`,
-        "Nada de culpas — solo ajustamos la cena.",
-        "Comimos bastante. Mañana lo compensamos.",
+        t("mascot.full1"),
+        t("mascot.full2", { actual: d.kcalEaten, meta: d.metaKcal }),
+        t("mascot.full3"),
+        t("mascot.full4"),
       ];
     case "Celebrando":
-      return [
-        "¡Meta cumplida, crack! 🎉",
-        "Hoy sí que la rompiste.",
-        "¡Así se hace! Estoy orgullosa.",
-        "Día redondo. A dormir como campeón.",
-      ];
+      return [1, 2, 3, 4].map((n) => t(`mascot.celebrate${n}`));
     default:
       // Respirando: se queda el sistema de frases con datos y tips de siempre.
       return fallback;
   }
 }
 
-const STATE_LABEL: Record<MascotState, string> = {
-  Respirando: "Tu coach está tranquilo",
-  Aburrida: "Tu coach está aburrida esperándote",
-  Durmiendo: "Tu coach está durmiendo",
-  Despertando: "Tu coach está despertando",
-  TomandoAgua: "Tu coach te recuerda tomar agua",
-  Ejercicio: "Tu coach te recuerda el ejercicio",
-  LlenoDeComida: "Tu coach quedó lleno de comida",
-  Celebrando: "¡Tu coach está celebrando!",
-};
+function stateLabel(state: MascotState, t: T): string {
+  const MAP: Record<MascotState, string> = {
+    Respirando: t("mascot.stateBreathing"),
+    Aburrida: t("mascot.stateBored"),
+    Durmiendo: t("mascot.stateSleeping"),
+    Despertando: t("mascot.stateWaking"),
+    TomandoAgua: t("mascot.stateDrinkingWater"),
+    Ejercicio: t("mascot.stateExercise"),
+    LlenoDeComida: t("mascot.stateFull"),
+    Celebrando: t("mascot.stateCelebrating"),
+  };
+  return MAP[state];
+}
 
 // El ánimo (mood) ya no llega por prop: el estado del video lo comunica y se
 // calcula aquí adentro con los mismos datos del día.
 export default function CoachAvatar({ messages }: { messages: string[] }) {
   const reduce = useReducedMotion();
-  const { profile, water, kcalEaten, proteinG, kcalBudget, burnedKcal, workout } = useApp();
+  const { profile, water, kcalEaten, proteinG, kcalBudget, burnedKcal, workout, t } = useApp();
   const [i, setI] = useState(0);
   // La frase se decide DESPUÉS de saber el estado (más abajo): así lo que
   // dice va a juego con lo que la tortuga está haciendo en pantalla.
@@ -428,14 +392,14 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
   useEffect(() => {
     if (messages.length < 2) return;
     if (bubbleVisible) {
-      const t = setTimeout(() => setBubbleVisible(false), PHRASE_HOLD_MS);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setBubbleVisible(false), PHRASE_HOLD_MS);
+      return () => clearTimeout(timer);
     }
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       setI((n) => n + 1);
       setBubbleVisible(true);
     }, PHRASE_GAP_MS);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [bubbleVisible, cycleNonce, messages.length]);
 
   // Al tocar: siguiente frase de una vez y se reinicia el ciclo.
@@ -484,8 +448,8 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
     if (ev) {
       setLastAction(ev);
       // Al expirar la ventana, un re-render re-evalúa el estado ambiental.
-      const t = setTimeout(() => setLastAction(undefined), TRANSIENT_MS[ev.type] + 100);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setLastAction(undefined), TRANSIENT_MS[ev.type] + 100);
+      return () => clearTimeout(timer);
     }
   }, [water, kcalEaten, proteinG, workout?.done, kcalBudget, profile.metaWater, profile.metaProtein, profile.metaKcal]);
 
@@ -494,8 +458,8 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
   // puede repetir renders) y además no volvería a evaluarse solo.
   const [ahora, setAhora] = useState(() => Date.now());
   useEffect(() => {
-    const t = setInterval(() => setAhora(Date.now()), 60_000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setAhora(Date.now()), 60_000);
+    return () => clearInterval(timer);
   }, []);
 
   // ---- Inactividad: ¿cuánto hace que no se registra nada? ----
@@ -521,12 +485,12 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
     // El setState va dentro de un callback (no directo en el cuerpo del
     // efecto): React desaconseja llamarlo síncrono ahí porque encadena
     // renders. El retraso de 0ms es imperceptible.
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       const ahora = Date.now();
       guardarUltimoRegistro(ahora);
       setUltimoRegistro(ahora);
     }, 0);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [datosFirma]);
 
   // ---- Pulsos de recordatorio ----
@@ -554,7 +518,7 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
   });
   useEffect(() => {
     let hide: ReturnType<typeof setTimeout> | null = null;
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       const reminder = pendingReminder(dataRef.current);
       if (reminder) {
         setPulse(reminder);
@@ -562,7 +526,7 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
       }
     }, PULSE_EVERY_MS);
     return () => {
-      clearInterval(t);
+      clearInterval(timer);
       if (hide) clearTimeout(hide);
     };
   }, []);
@@ -625,8 +589,8 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
     prevSleepRef.current = isSleeping;
     if (wasSleeping && !isSleeping) {
       setWaking(true);
-      const t = setTimeout(() => setWaking(false), WAKE_MS);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setWaking(false), WAKE_MS);
+      return () => clearTimeout(timer);
     }
   }, [baseState]);
 
@@ -654,7 +618,8 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
       // De noche no: solo cuando se durmió por llevar rato sin registros.
       duermePorInactividad: data.minutosInactiva >= SLEEP_AFTER_MIN && data.hour >= 6 && data.hour < 23,
     },
-    messages
+    messages,
+    t
   );
   const message = pick(phrases, i);
 
@@ -708,7 +673,7 @@ export default function CoachAvatar({ messages }: { messages: string[] }) {
           onTap();
         }
       }}
-      aria-label={`${STATE_LABEL[state]}: ${message}. Toca para ver otra animación y otro consejo.`}
+      aria-label={`${stateLabel(state, t)}: ${message}. ${t("mascot.tapHint")}`}
       whileTap={reduce ? undefined : { scale: 0.97 }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
       className="relative w-full aspect-[1536/1024] overflow-hidden cursor-pointer"
