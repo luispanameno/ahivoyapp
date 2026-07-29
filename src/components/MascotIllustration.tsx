@@ -11,6 +11,7 @@
 // ni a los botones. Con "reducir movimiento" activado se queda quieta.
 
 import { motion, useReducedMotion } from "motion/react";
+import { useApp } from "@/lib/store";
 
 export type MascotArt =
   | "bienvenida"
@@ -25,16 +26,16 @@ export type MascotArt =
 
 // Texto alternativo real: la ilustración acompaña al contenido, así que
 // describe lo que se ve en vez de dejar un alt vacío.
-const ALT: Record<MascotArt, string> = {
-  bienvenida: "Tortuga de AHIVOYAPP saludando",
-  "saludo-guapo": "Tortuga con lentes de sol y chaqueta",
-  motivo: "Tortuga descansando en una hamaca con un coco",
-  numeros: "Tortuga midiendo su estatura",
-  "meta-peso": "Tortuga marcando músculo",
-  actividad: "Tortuga levantando mancuernas",
-  bascula: "Tortuga parada sobre una báscula inteligente",
-  "historial-vacia": "Tortuga con una libreta, lista para anotar",
-  "en-revision": "Tortuga sentada sobre un reloj de arena, esperando",
+const ALT_KEY: Record<MascotArt, string> = {
+  bienvenida: "mascotAlt.bienvenida",
+  "saludo-guapo": "mascotAlt.saludoGuapo",
+  motivo: "mascotAlt.motivo",
+  numeros: "mascotAlt.numeros",
+  "meta-peso": "mascotAlt.metaPeso",
+  actividad: "mascotAlt.actividad",
+  bascula: "mascotAlt.bascula",
+  "historial-vacia": "mascotAlt.historialVacia",
+  "en-revision": "mascotAlt.enRevision",
 };
 
 export default function MascotIllustration({
@@ -50,6 +51,7 @@ export default function MascotIllustration({
   style?: React.CSSProperties;
 }) {
   const reduce = useReducedMotion();
+  const { t } = useApp();
 
   return (
     <div
@@ -85,7 +87,7 @@ export default function MascotIllustration({
 
       <motion.img
         src={`/mascota/paginas/${art}.png`}
-        alt={ALT[art]}
+        alt={t(ALT_KEY[art])}
         animate={reduce ? undefined : { y: [0, -5, 0] }}
         transition={{ duration: 4.2, repeat: Infinity, ease: "easeInOut" }}
         style={{

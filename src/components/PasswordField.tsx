@@ -4,6 +4,7 @@
 // entre /login y /reset-password para no duplicar el ícono ni el estilo.
 
 import { useState } from "react";
+import { readLocalLang, translate } from "@/lib/i18n";
 
 export const authInputStyle: React.CSSProperties = {
   width: "100%",
@@ -46,6 +47,9 @@ export default function PasswordField({
   onEnter?: () => void;
 }) {
   const [visible, setVisible] = useState(false);
+  // Estas pantallas viven FUERA del AppProvider (aún no hay sesión), así que
+  // no hay useApp()/t() disponible — se lee el idioma guardado localmente.
+  const [lang] = useState(() => readLocalLang());
   return (
     <div style={{ position: "relative" }}>
       <input
@@ -59,7 +63,7 @@ export default function PasswordField({
       />
       <div
         onClick={() => setVisible((v) => !v)}
-        aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
+        aria-label={translate(lang, visible ? "pwField.hide" : "pwField.show")}
         style={{
           position: "absolute",
           right: 14,

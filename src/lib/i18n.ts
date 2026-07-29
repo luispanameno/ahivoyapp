@@ -714,6 +714,21 @@ export const I18N: Record<Lang, Dict> = {
     "onboarding.saving": "Guardando…",
     "onboarding.start": "Empezar",
     "onboarding.continue": "Continuar",
+
+    // MascotIllustration (alt text)
+    "mascotAlt.bienvenida": "Tortuga de AHIVOYAPP saludando",
+    "mascotAlt.saludoGuapo": "Tortuga con lentes de sol y chaqueta",
+    "mascotAlt.motivo": "Tortuga descansando en una hamaca con un coco",
+    "mascotAlt.numeros": "Tortuga midiendo su estatura",
+    "mascotAlt.metaPeso": "Tortuga marcando músculo",
+    "mascotAlt.actividad": "Tortuga levantando mancuernas",
+    "mascotAlt.bascula": "Tortuga parada sobre una báscula inteligente",
+    "mascotAlt.historialVacia": "Tortuga con una libreta, lista para anotar",
+    "mascotAlt.enRevision": "Tortuga sentada sobre un reloj de arena, esperando",
+
+    // PasswordField
+    "pwField.hide": "Ocultar contraseña",
+    "pwField.show": "Mostrar contraseña",
   },
   en: {
     "tabbar.hoy": "Today",
@@ -1393,6 +1408,19 @@ export const I18N: Record<Lang, Dict> = {
     "onboarding.saving": "Saving…",
     "onboarding.start": "Get started",
     "onboarding.continue": "Continue",
+
+    "mascotAlt.bienvenida": "AHIVOYAPP turtle waving",
+    "mascotAlt.saludoGuapo": "Turtle wearing sunglasses and a jacket",
+    "mascotAlt.motivo": "Turtle resting in a hammock with a coconut",
+    "mascotAlt.numeros": "Turtle measuring its height",
+    "mascotAlt.metaPeso": "Turtle flexing its muscle",
+    "mascotAlt.actividad": "Turtle lifting dumbbells",
+    "mascotAlt.bascula": "Turtle standing on a smart scale",
+    "mascotAlt.historialVacia": "Turtle with a notebook, ready to jot things down",
+    "mascotAlt.enRevision": "Turtle sitting on an hourglass, waiting",
+
+    "pwField.hide": "Hide password",
+    "pwField.show": "Show password",
   },
 };
 
