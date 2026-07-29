@@ -7,6 +7,8 @@
 //
 // El brillo se apaga solo con "reducir movimiento" (ver globals.css).
 
+import { useApp } from "@/lib/store";
+
 export function SkeletonBox({
   height,
   width = "100%",
@@ -28,11 +30,12 @@ export function SkeletonBox({
 
 // Esqueleto de la pantalla principal: encabezado, mascota, macros y tarjetas.
 export default function HomeSkeleton() {
+  const { t } = useApp();
   return (
     <div
       aria-busy="true"
       aria-live="polite"
-      aria-label="Cargando tus datos"
+      aria-label={t("skeleton.loadingData")}
       style={{
         minHeight: "100dvh",
         boxSizing: "border-box",

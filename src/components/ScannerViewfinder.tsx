@@ -11,11 +11,14 @@
 // quien activa esa preferencia.
 
 import { useReducedMotion } from "motion/react";
+import { useApp } from "@/lib/store";
 
 const NEON = "#c7f27a";
 
-export default function ScannerViewfinder({ label = "Alinea tu comida en el marco" }: { label?: string }) {
+export default function ScannerViewfinder({ label }: { label?: string }) {
   const reduce = useReducedMotion();
+  const { t } = useApp();
+  const shownLabel = label ?? t("scanner.defaultLabel");
 
   return (
     <div
@@ -142,7 +145,7 @@ export default function ScannerViewfinder({ label = "Alinea tu comida en el marc
               stroke={NEON} strokeWidth="2" strokeLinecap="round" />
             <circle cx="12" cy="12" r="3" stroke={NEON} strokeWidth="2" />
           </svg>
-          {label}
+          {shownLabel}
         </div>
       </div>
     </div>

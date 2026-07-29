@@ -6,6 +6,7 @@
 // "subir captura" o "ingresar a mano" sin cambiar de pantalla.
 
 import { AnimatePresence, motion, useReducedMotion, PanInfo } from "motion/react";
+import { useApp } from "@/lib/store";
 
 export default function BottomSheet({
   open,
@@ -21,6 +22,7 @@ export default function BottomSheet({
   children: React.ReactNode;
 }) {
   const reduce = useReducedMotion();
+  const { t } = useApp();
 
   const onDragEnd = (_: unknown, info: PanInfo) => {
     if (info.offset.y > 90 || info.velocity.y > 600) onClose();
@@ -80,7 +82,7 @@ export default function BottomSheet({
                 whileTap={reduce ? undefined : { scale: 0.9 }}
                 onClick={onClose}
                 role="button"
-                aria-label="Cerrar"
+                aria-label={t("common.close")}
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {

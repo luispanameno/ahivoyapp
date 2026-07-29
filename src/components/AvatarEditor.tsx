@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
 import { fileToDataURL } from "@/lib/analyze";
+import { useApp } from "@/lib/store";
 
 const VIEW = 280; // lado del recuadro de edición en px
 const OUT = 256; // lado de la imagen final guardada
@@ -25,6 +26,7 @@ export default function AvatarEditor({
   const imgRef = useRef<HTMLImageElement | null>(null);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
   const pickRef = useRef<HTMLInputElement>(null);
+  const { t } = useApp();
 
   useEffect(() => {
     const img = new Image();
@@ -95,10 +97,10 @@ export default function AvatarEditor({
       }}
     >
       <div className="font-sora" style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>
-        Ajusta tu foto
+        {t("avatarEditor.title")}
       </div>
       <div style={{ fontSize: 11.5, color: "rgba(244,243,238,.5)", marginBottom: 16 }}>
-        Arrastra para centrar · desliza para acercar
+        {t("avatarEditor.hint")}
       </div>
 
       <div
@@ -124,7 +126,7 @@ export default function AvatarEditor({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={imgSrc}
-            alt="Ajustar foto"
+            alt={t("avatarEditor.adjustPhoto")}
             draggable={false}
             style={{
               position: "absolute",
@@ -170,7 +172,7 @@ export default function AvatarEditor({
             color: "rgba(244,243,238,.7)",
           }}
         >
-          Cancelar
+          {t("avatarEditor.cancel")}
         </div>
         <div
           onClick={save}
@@ -187,7 +189,7 @@ export default function AvatarEditor({
             boxShadow: "0 0 16px rgba(199,242,122,.45)",
           }}
         >
-          Guardar
+          {t("avatarEditor.save")}
         </div>
       </div>
 
@@ -195,7 +197,7 @@ export default function AvatarEditor({
         onClick={() => pickRef.current?.click()}
         style={{ marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "rgba(244,243,238,.55)", cursor: "pointer" }}
       >
-        <Icon name="gallery" size={15} /> Elegir otra foto
+        <Icon name="gallery" size={15} /> {t("avatarEditor.chooseAnother")}
       </div>
       <input
         ref={pickRef}

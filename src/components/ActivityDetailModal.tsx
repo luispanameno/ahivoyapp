@@ -7,6 +7,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Activity, Exercise, WorkoutState } from "@/lib/types";
+import { useApp } from "@/lib/store";
 
 function Metric({ label, value, color }: { label: string; value: string; color: string }) {
   return (
@@ -33,6 +34,7 @@ export default function ActivityDetailModal({
   burnedKcal: number;
 }) {
   const reduce = useReducedMotion();
+  const { t } = useApp();
 
   return (
     <AnimatePresence>
@@ -77,16 +79,16 @@ export default function ActivityDetailModal({
           >
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
               <div>
-                <div className="font-sora" style={{ fontSize: 17, fontWeight: 800 }}>Actividad de hoy</div>
+                <div className="font-sora" style={{ fontSize: 17, fontWeight: 800 }}>{t("activityModal.title")}</div>
                 <div style={{ fontSize: 11.5, color: "rgba(244,243,238,.5)", marginTop: 2 }}>
-                  {workout?.done ? `${workout.day} completada` : "Aún sin rutina marcada"}
+                  {workout?.done ? t("activityModal.routineDone", { day: workout.day }) : t("activityModal.noRoutine")}
                 </div>
               </div>
               <motion.div
                 whileTap={reduce ? undefined : { scale: 0.9 }}
                 onClick={onClose}
                 role="button"
-                aria-label="Cerrar"
+                aria-label={t("activityModal.close")}
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
@@ -116,22 +118,20 @@ export default function ActivityDetailModal({
             {/* Grid de métricas: pasos y sus kcal primero, y las kcal de la
                 rutina SEPARADAS (no mezcladas) — son dos fuentes distintas. */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <Metric label="Pasos" value={(activity?.steps ?? 0).toLocaleString()} color="#7ed957" />
-              <Metric label="Kcal por pasos (reloj)" value={String(activity?.activityKcal ?? 0)} color="#a56bff" />
-              <Metric label="Kcal de tu rutina" value={String(workout?.done ? workout.kcal : 0)} color="oklch(72% 0.18 25)" />
-              <Metric label="Minutos activos" value={String(activity?.activeMin ?? 0)} color="oklch(72% 0.14 220)" />
-              <Metric label="Kcal totales (reloj)" value={(activity?.totalKcal ?? 0).toLocaleString()} color="#f4f3ee" />
-              <Metric label="Distancia" value={`${activity?.distance ?? 0} km`} color="oklch(70% 0.13 220)" />
+              <Metric label={t("activityModal.steps")} value={(activity?.steps ?? 0).toLocaleString()} color="#7ed957" />
+              <Metric label={t("activityModal.kcalSteps")} value={String(activity?.activityKcal ?? 0)} color="#a56bff" />
+              <Metric label={t("activityModal.kcalRoutine")} value={String(workout?.done ? workout.kcal : 0)} color="oklch(72% 0.18 25)" />
+              <Metric label={t("activityModal.activeMin")} value={String(activity?.activeMin ?? 0)} color="oklch(72% 0.14 220)" />
+              <Metric label={t("activityModal.totalKcal")} value={(activity?.totalKcal ?? 0).toLocaleString()} color="#f4f3ee" />
+              <Metric label={t("activityModal.distance")} value={`${activity?.distance ?? 0} km`} color="oklch(70% 0.13 220)" />
             </div>
             <div style={{ fontSize: 10.5, color: "rgba(244,243,238,.4)", marginTop: 10, lineHeight: 1.4 }}>
-              De estas dos fuentes, se suma a tu meta del día la que sea mayor:{" "}
-              <span style={{ color: "#c7f27a", fontWeight: 700 }}>{burnedKcal} kcal</span> (para no contar la misma
-              rutina dos veces si el reloj ya la incluyó).
+              {t("activityModal.sourcesNote", { kcal: burnedKcal })}
             </div>
 
             {/* Línea de tiempo vertical de los ejercicios de la rutina */}
             <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em", margin: "20px 0 4px" }}>
-              EJERCICIOS DE HOY
+              {t("activityModal.exercisesToday")}
             </div>
             {workout?.done && exercises.length > 0 ? (
               <div style={{ marginTop: 8 }}>
@@ -168,8 +168,8 @@ export default function ActivityDetailModal({
             ) : (
               <div style={{ fontSize: 12, color: "rgba(244,243,238,.45)", lineHeight: 1.5, padding: "8px 0 4px" }}>
                 {workout?.done
-                  ? "Rutina marcada como hecha, pero sin ejercicios cargados."
-                  : "Marca tu rutina como hecha en Entrenamiento para ver aquí el detalle."}
+                  ? t("activityModal.routineNoExercises")
+                  : t("activityModal.markRoutineHint")}
               </div>
             )}
           </motion.div>

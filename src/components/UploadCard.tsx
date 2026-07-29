@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import Pressable from "./Pressable";
-
-const DEFAULT_BUSY_MESSAGES = ["Leyendo tu captura…", "Recopilando todos tus datos…", "Casi listo…"];
+import { useApp } from "@/lib/store";
 
 interface UploadCardProps {
   title: string;
@@ -26,10 +25,12 @@ export default function UploadCard({
   onImage,
   isUpdated = false,
   busy = false,
-  busyMessages = DEFAULT_BUSY_MESSAGES,
+  busyMessages,
 }: UploadCardProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [msgIdx, setMsgIdx] = useState(0);
+  const { t } = useApp();
+  const messages = busyMessages ?? [t("uploadCard.busy1"), t("uploadCard.busy2"), t("uploadCard.busy3")];
 
   // Mientras se analiza, vamos rotando el mensaje cada ~2.2s para que se
   // sienta que algo avanza (el análisis de báscula/reloj puede tardar).
@@ -39,13 +40,13 @@ export default function UploadCard({
     // el cuerpo del efecto) y luego avanza cada ~2.2s.
     const resetTimer = setTimeout(() => setMsgIdx(0), 0);
     const interval = setInterval(() => {
-      setMsgIdx((i) => Math.min(i + 1, busyMessages.length - 1));
+      setMsgIdx((i) => Math.min(i + 1, messages.length - 1));
     }, 2200);
     return () => {
       clearTimeout(resetTimer);
       clearInterval(interval);
     };
-  }, [busy, busyMessages.length]);
+  }, [busy, messages.length]);
 
   const handleFile = async (file: File | undefined | null) => {
     if (!file) return;
@@ -117,7 +118,7 @@ export default function UploadCard({
                   transition={{ duration: 0.25 }}
                   style={{ fontSize: 12, color: "#c7f27a", fontWeight: 600 }}
                 >
-                  {busyMessages[msgIdx]}
+                  {messages[msgIdx]}
                 </motion.div>
               </AnimatePresence>
             ) : (
@@ -148,7 +149,7 @@ export default function UploadCard({
                   color: "rgba(244, 243, 238, 0.5)",
                 }}
               >
-                Última actualización:{" "}
+                {t("uploadCard.lastUpdated")}{" "}
                 <span style={{ color: "#c7f27a", fontWeight: 700 }}>
                   {lastUpdated.timestamp}
                 </span>

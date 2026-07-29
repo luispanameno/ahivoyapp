@@ -4,6 +4,7 @@
 // fondo con fade y tarjeta con spring; botón X para cerrar.
 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useApp } from "@/lib/store";
 
 export default function InfoModal({
   open,
@@ -17,6 +18,7 @@ export default function InfoModal({
   children: React.ReactNode;
 }) {
   const reduce = useReducedMotion();
+  const { t } = useApp();
   return (
     <AnimatePresence>
       {open && (
@@ -61,7 +63,7 @@ export default function InfoModal({
                 whileTap={reduce ? undefined : { scale: 0.9 }}
                 onClick={onClose}
                 role="button"
-                aria-label="Cerrar"
+                aria-label={t("common.close")}
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {

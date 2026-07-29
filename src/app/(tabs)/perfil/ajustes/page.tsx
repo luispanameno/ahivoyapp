@@ -49,7 +49,7 @@ export default function PerfilAjustes() {
     const weightGoal = Number(draft.weightGoal) || profile.weightGoal;
     await saveProfile({ ...profile, age, height, weightGoal });
     if (weight !== profile.weight && weight > 0) await app.setWeight(weight);
-    showToast("Datos guardados ✓");
+    showToast(t("ajustes.toastDataSaved"));
   };
 
   // Los campos de metas son "no controlados" (defaultValue): al recalcularlos
@@ -70,7 +70,7 @@ export default function PerfilAjustes() {
     if (field === "metaKcal" && n > 0) {
       saveProfile({ ...profile, metaKcal: n, ...macrosForKcal(n, profile.weightGoal) });
       setMetasVersion((v) => v + 1);
-      showToast("Metas ajustadas a tus nuevas calorías");
+      showToast(t("ajustes.toastGoalsAdjusted"));
       return;
     }
     setField(field, n);
@@ -118,7 +118,7 @@ export default function PerfilAjustes() {
 
       {/* Datos personales */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 22, marginBottom: 8 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em" }}>DATOS PERSONALES</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(244,243,238,.4)", letterSpacing: ".04em" }}>{t("ajustes.personalData")}</div>
         <Pressable
           onClick={saveDatos}
           tapScale={0.9}
@@ -133,33 +133,33 @@ export default function PerfilAjustes() {
             boxShadow: dirty ? "0 0 12px rgba(199,242,122,.5)" : "none",
           }}
         >
-          Guardar
+          {t("ajustes.save")}
         </Pressable>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div style={cardStyle}>
-          <div style={labelStyle}>EDAD</div>
+          <div style={labelStyle}>{t("ajustes.age")}</div>
           <input type="number" inputMode="numeric" value={draft.age} onChange={(e) => setDraft({ ...draft, age: e.target.value })} style={numInput} />
         </div>
         <div style={cardStyle}>
-          <div style={labelStyle}>ALTURA (cm)</div>
+          <div style={labelStyle}>{t("ajustes.height")}</div>
           <input type="number" inputMode="numeric" value={draft.height} onChange={(e) => setDraft({ ...draft, height: e.target.value })} style={numInput} />
         </div>
         <div style={cardStyle}>
-          <div style={labelStyle}>PESO ACTUAL (lb)</div>
+          <div style={labelStyle}>{t("ajustes.currentWeight")}</div>
           <input type="number" inputMode="decimal" value={draft.weight} onChange={(e) => setDraft({ ...draft, weight: e.target.value })} style={numInput} />
         </div>
         <div style={cardStyle}>
-          <div style={labelStyle}>PESO META (lb)</div>
+          <div style={labelStyle}>{t("ajustes.goalWeight")}</div>
           <input type="number" inputMode="decimal" value={draft.weightGoal} onChange={(e) => setDraft({ ...draft, weightGoal: e.target.value })} style={numInput} />
         </div>
         <div style={{ ...cardStyle, gridColumn: "1 / -1" }}>
-          <div style={labelStyle}>SEXO (para calcular tu metabolismo)</div>
+          <div style={labelStyle}>{t("ajustes.sex")}</div>
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
             {(
               [
-                { value: "M", label: "Hombre" },
-                { value: "F", label: "Mujer" },
+                { value: "M", label: t("ajustes.male") },
+                { value: "F", label: t("ajustes.female") },
               ] as const
             ).map((s) => (
               <Pressable
@@ -188,7 +188,7 @@ export default function PerfilAjustes() {
       </div>
 
       {/* Nivel de actividad diaria (para el TDEE) */}
-      <div style={sectionTitle}>NIVEL DE ACTIVIDAD DIARIA</div>
+      <div style={sectionTitle}>{t("ajustes.activityLevelTitle")}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {getActivityOptions(t).map((opt) => {
           const active = profile.activityLevel === opt.value;
@@ -231,15 +231,15 @@ export default function PerfilAjustes() {
       </div>
 
       {/* Metas diarias */}
-      <div style={sectionTitle}>METAS DIARIAS (EDITABLES)</div>
+      <div style={sectionTitle}>{t("ajustes.dailyGoalsTitle")}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {(
           [
-            { label: "Calorías", field: "metaKcal", suffix: " kcal" },
-            { label: "Proteína mínima", field: "metaProtein", suffix: "g" },
-            { label: "Carbs máximo", field: "metaCarbs", suffix: "g" },
-            { label: "Grasas máximo", field: "metaFat", suffix: "g" },
-            { label: "Agua", field: "metaWater", suffix: " ml" },
+            { label: t("ajustes.goalCalories"), field: "metaKcal", suffix: " kcal" },
+            { label: t("ajustes.goalProteinMin"), field: "metaProtein", suffix: "g" },
+            { label: t("ajustes.goalCarbsMax"), field: "metaCarbs", suffix: "g" },
+            { label: t("ajustes.goalFatMax"), field: "metaFat", suffix: "g" },
+            { label: t("ajustes.goalWater"), field: "metaWater", suffix: " ml" },
           ] as const
         ).map((m) => (
           <div
@@ -272,7 +272,7 @@ export default function PerfilAjustes() {
           </div>
         ))}
         <div style={{ display: "flex", justifyContent: "space-between", background: "#1b1e21", borderRadius: 18, padding: "12px 14px" }}>
-          <span style={{ fontSize: 13, color: "rgba(244,243,238,.6)" }}>Sueño</span>
+          <span style={{ fontSize: 13, color: "rgba(244,243,238,.6)" }}>{t("ajustes.sleep")}</span>
           <span style={{ fontSize: 13, fontWeight: 700 }}>7–8 h</span>
         </div>
         {/* Antes había un botón "Recalcular con mis datos" — se quitó: un
@@ -289,8 +289,7 @@ export default function PerfilAjustes() {
             lineHeight: 1.5,
           }}
         >
-          Estos datos están calculados según tu edad, altura, peso, meta de peso y nivel de actividad — y con tu báscula
-          inteligente, si la has subido. Puedes editarlos arriba cuando quieras; no se recalculan solos.
+          {t("ajustes.goalsExplanation")}
         </div>
       </div>
 
@@ -311,9 +310,9 @@ export default function PerfilAjustes() {
           }}
         >
           <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 800, color: "#c7f27a" }}>
-            <Icon name="premium" size={18} /> Control de acceso
+            <Icon name="premium" size={18} /> {t("ajustes.accessControl")}
           </span>
-          <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)" }}>Aprobar usuarios ›</span>
+          <span style={{ fontSize: 11, color: "rgba(244,243,238,.4)" }}>{t("ajustes.approveUsers")}</span>
         </Pressable>
       )}
 
@@ -333,7 +332,7 @@ export default function PerfilAjustes() {
             border: "1px solid oklch(72% 0.18 25 / 0.4)",
           }}
         >
-          Cerrar sesión
+          {t("shell.signOut")}
         </Pressable>
       )}
 

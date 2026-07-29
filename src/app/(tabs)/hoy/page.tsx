@@ -10,33 +10,21 @@ import Icon from "@/components/Icon";
 import CoachAvatar, { useCoachMood } from "@/components/CoachAvatar";
 import ActivityDetailModal from "@/components/ActivityDetailModal";
 import { useApp } from "@/lib/store";
-
-const DIAS = ["DOMINGO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES", "SÁBADO"];
-const MESES = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+import { MONTHS_SHORT, WEEKDAYS_LONG } from "@/lib/i18n";
 
 // Rojo de alerta cuando el usuario se pasó de la meta (mismo tono en toda la app).
 const OVER_COLOR = "oklch(65% 0.19 25)";
 const OVER_GLOW = "oklch(65% 0.19 25 / 0.6)";
 
 // Frases del header: una al azar cada vez que se carga la pantalla.
-const HERO_PHRASES = [
-  "Dile no a esa Coca-Cola heladita.",
-  "El café es delicioso sin pan dulce.",
-  "Esa pupusa extra no cuenta como cardio.",
-  "Suda ahora, sonríe después.",
-  "Un día a la vez. ¡Tú puedes!",
-  "El agua es tu mejor amiga hoy.",
-  "Menos excusas, más sudor.",
-  "Tu única competencia eres tú de ayer.",
-  "Cero carbohidratos tristes, pura disciplina.",
-  "Hoy no, refrigerador. Hoy no.",
-  "Menos plato, más músculo.",
-  "El sofá no quema calorías, amigo.",
-  "Agua sí, gaseosa no. Fácil.",
-  "Camina como si llegaras tarde al gym.",
-  "Tu abdomen vota por la ensalada hoy.",
-  "Respira hondo y síguele.",
-];
+function heroPhrases(t: (key: string) => string): string[] {
+  return [
+    t("hoy.hero1"), t("hoy.hero2"), t("hoy.hero3"), t("hoy.hero4"),
+    t("hoy.hero5"), t("hoy.hero6"), t("hoy.hero7"), t("hoy.hero8"),
+    t("hoy.hero9"), t("hoy.hero10"), t("hoy.hero11"), t("hoy.hero12"),
+    t("hoy.hero13"), t("hoy.hero14"), t("hoy.hero15"), t("hoy.hero16"),
+  ];
+}
 
 // Ícono minimalista de calendario (SVG, no emoji) para abrir el resumen diario.
 function CalendarIcon() {
@@ -70,6 +58,7 @@ function MacroRing({
   glow: string;
   showRemaining: boolean;
 }) {
+  const { t } = useApp();
   const exceeded = meta > 0 && actual > meta;
   const ringColor = exceeded ? OVER_COLOR : color;
   const ringGlow = exceeded ? OVER_GLOW : glow;
@@ -79,7 +68,7 @@ function MacroRing({
   const sub = meta ? `/${meta}${unit}` : "";
   // Cuando se excede, la parte "faltan/libres" pasa a mostrar cuánto se pasó.
   const centerAlt = exceeded ? `+${actual - meta}${unit}` : `${Math.max(0, meta - actual)}${unit}`;
-  const subAlt = exceeded ? "te has pasado" : unit ? "faltan" : "libres";
+  const subAlt = exceeded ? t("hoy.overExceeded") : unit ? t("hoy.overRemaining") : t("hoy.overFree");
 
   const displayCenter = showRemaining ? centerAlt : center;
   const displaySub = showRemaining ? subAlt : sub;
@@ -164,47 +153,50 @@ export default function Hoy() {
   const { messages: coachMessages } = useCoachMood();
 
   const now = new Date();
-  const todayLabel = `${DIAS[now.getDay()]}, ${now.getDate()} ${MESES[now.getMonth()]}`;
+  const todayLabel = `${WEEKDAYS_LONG[app.lang][now.getDay()].toUpperCase()}, ${now.getDate()} ${MONTHS_SHORT[app.lang][now.getMonth()].toUpperCase()}`;
   // Una frase al azar cada vez que se monta la pantalla (no en cada render).
-  const [heroMessage] = useState(() => HERO_PHRASES[Math.floor(Math.random() * HERO_PHRASES.length)]);
+  const [heroMessage] = useState(() => {
+    const phrases = heroPhrases(t);
+    return phrases[Math.floor(Math.random() * phrases.length)];
+  });
 
   const healthSyncLabel = activity
-    ? `${activity.steps.toLocaleString()} pasos · ${activity.activityKcal} kcal activas`
+    ? `${activity.steps.toLocaleString()} ${t("hoy.steps").toLowerCase()} · ${activity.activityKcal} ${t("hoy.activityCalories").toLowerCase()}`
     : t("hoy.syncPrompt");
 
   const sleepMins = sleep?.minutes ?? 0;
   const sleepOk = sleepMins >= 420 && sleepMins <= 510;
   const sleepLabel = sleep
     ? `${Math.floor(sleepMins / 60)}h ${String(sleepMins % 60).padStart(2, "0")}m`
-    : "sin registro";
+    : t("hoy.noSleepRecord");
 
   // Resumen dinámico de la tarjeta de actividad: distingue rutina de pesas
   // marcada como hecha de solo actividad general del reloj (caminata, etc.)
   const activitySummary = workout?.done
-    ? `Rutina hecha · ${workout.day}`
+    ? t("hoy.routineDoneSummary", { day: workout.day })
     : (activity?.steps ?? 0) > 3000
-    ? "Solo caminata"
+    ? t("hoy.walkOnly")
     : activity
-    ? "Actividad ligera"
-    : "Sin registrar aún";
+    ? t("hoy.lightActivity")
+    : t("hoy.notLoggedYet");
 
   let limitAlertText: string | null = null;
   if (kcalEaten > kcalBudget)
-    limitAlertText = `Superaste tu meta de ${kcalBudget.toLocaleString()} kcal (incluye lo quemado). Considera una cena ligera.`;
+    limitAlertText = t("hoy.overKcalGoal", { kcal: kcalBudget.toLocaleString() });
   else if (carbsG > profile.metaCarbs)
-    limitAlertText = `Superaste el límite de ${profile.metaCarbs}g de carbohidratos hoy.`;
+    limitAlertText = t("hoy.overCarbsLimit", { g: profile.metaCarbs });
   else if (fatG > profile.metaFat)
-    limitAlertText = `Superaste el límite de ${profile.metaFat}g de grasas hoy.`;
+    limitAlertText = t("hoy.overFatLimit", { g: profile.metaFat });
 
   const protLeft = Math.max(0, profile.metaProtein - proteinG);
   const menuSuggestion =
     protLeft > 0
-      ? `Asesor de menús: te faltan ${protLeft}g de proteína y tienes ${kcalRemaining} kcal. Ideal: pescado o pollo a la plancha con verduras.`
-      : `¡Proteína completa! Con ${kcalRemaining} kcal restantes, una cena ligera de verduras cierra perfecto el día.`;
+      ? t("hoy.menuAdvisorNeedsProtein", { g: protLeft, kcal: kcalRemaining })
+      : t("hoy.menuAdvisorComplete", { kcal: kcalRemaining });
 
   const waterExceeded = profile.metaWater > 0 && water > profile.metaWater;
   const waterAltValue = waterExceeded ? `+${water - profile.metaWater}ml` : `${Math.max(0, profile.metaWater - water)}ml`;
-  const waterAltLabel = waterExceeded ? "de más" : "faltan";
+  const waterAltLabel = waterExceeded ? t("hoy.waterOver") : t("hoy.waterRemaining");
 
   const steps = activity?.steps ?? 0;
   const activeMin = activity?.activeMin ?? 0;
@@ -224,7 +216,7 @@ export default function Hoy() {
   const removeWaterNow = () => {
     const ml = Number(waterStep) || 0;
     const removeMl = Math.min(ml, water);
-    if (removeMl > 0) app.addWater(-removeMl, "Ajuste");
+    if (removeMl > 0) app.addWater(-removeMl, t("hoy.adjustment"));
   };
 
   return (
@@ -262,7 +254,7 @@ export default function Hoy() {
         <div style={{ display: "flex", alignItems: "center", gap: 10, flex: "none" }}>
           <Pressable
             onClick={() => router.push("/resumen-dia")}
-            ariaLabel="Ver resumen diario"
+            ariaLabel={t("hoy.viewSummaryAria")}
             style={{
               width: 44,
               height: 44,
@@ -279,7 +271,7 @@ export default function Hoy() {
           </Pressable>
           <Pressable
             onClick={() => router.push("/perfil")}
-            ariaLabel="Ir a tu perfil"
+            ariaLabel={t("hoy.goToProfileAria")}
             style={{
               width: 44,
               height: 44,
@@ -307,7 +299,7 @@ export default function Hoy() {
             >
               {profile.photo ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={profile.photo} alt="Perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <img src={profile.photo} alt={t("hoy.profileAlt")} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
                 <Icon name="user" size={20} />
               )}
@@ -443,7 +435,7 @@ export default function Hoy() {
             <Pressable
               onClick={removeWaterNow}
               tapScale={0.9}
-              ariaLabel="Quitar agua"
+              ariaLabel={t("hoy.removeWaterAria")}
               style={{
                 width: 44,
                 height: 44,
@@ -464,7 +456,7 @@ export default function Hoy() {
             <Pressable
               onClick={addWaterNow}
               tapScale={0.9}
-              ariaLabel="Agregar agua"
+              ariaLabel={t("hoy.addWaterAria")}
               style={{
                 width: 44,
                 height: 44,
@@ -600,7 +592,7 @@ export default function Hoy() {
           transition={{ type: "spring", stiffness: 400, damping: 25 }}
           role="button"
           tabIndex={0}
-          aria-label="Ver detalle de actividad"
+          aria-label={t("hoy.viewActivityDetailAria")}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
