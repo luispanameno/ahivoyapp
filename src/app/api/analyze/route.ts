@@ -569,26 +569,29 @@ export async function POST(req: NextRequest) {
 
   const { mode, image, text, context } = body;
   const idioma: "es" | "en" = body.lang === "en" ? "en" : "es";
+  // Mensajes de error que sí llegan a la pantalla del usuario (los de antes
+  // de parsear el body no pueden saber su idioma todavía).
+  const err = (es: string, en: string) => (idioma === "en" ? en : es);
   const MODES: Mode[] = ["food", "scale", "activity", "sleep", "workout", "coach"];
   if (!mode || !MODES.includes(mode)) {
-    return NextResponse.json({ error: "Modo inválido" }, { status: 400 });
+    return NextResponse.json({ error: err("Modo inválido", "Invalid mode") }, { status: 400 });
   }
   if (mode !== "coach" && !image && !text)
-    return NextResponse.json({ error: "Falta imagen o texto" }, { status: 400 });
+    return NextResponse.json({ error: err("Falta imagen o texto", "Missing image or text") }, { status: 400 });
 
   // 4) Límites de tamaño de imagen y texto.
   if (typeof image === "string" && image.length > MAX_IMAGE_CHARS) {
-    return NextResponse.json({ error: "Imagen demasiado grande (máx ~7 MB)" }, { status: 413 });
+    return NextResponse.json({ error: err("Imagen demasiado grande (máx ~7 MB)", "Image too large (max ~7 MB)") }, { status: 413 });
   }
   if (typeof text === "string" && text.length > MAX_TEXT_CHARS) {
-    return NextResponse.json({ error: "Texto demasiado largo" }, { status: 413 });
+    return NextResponse.json({ error: err("Texto demasiado largo", "Text too long") }, { status: 413 });
   }
 
   const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
 
   if (image) {
     const parsed = parseDataUrl(image);
-    if (!parsed) return NextResponse.json({ error: "Imagen inválida" }, { status: 400 });
+    if (!parsed) return NextResponse.json({ error: err("Imagen inválida", "Invalid image") }, { status: 400 });
     parts.push({ inlineData: parsed });
   }
 
@@ -687,7 +690,7 @@ export async function POST(req: NextRequest) {
     const msg = e instanceof Error ? e.message : "Error llamando a Gemini";
     if (msg.includes("RESOURCE_EXHAUSTED") || msg.includes("429")) {
       return NextResponse.json(
-        { error: "La IA alcanzó su límite gratuito por ahora. Espera un momento e intenta de nuevo." },
+        { error: err("La IA alcanzó su límite gratuito por ahora. Espera un momento e intenta de nuevo.", "The AI hit its free limit for now. Wait a moment and try again.") },
         { status: 429 }
       );
     }

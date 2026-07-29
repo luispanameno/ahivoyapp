@@ -325,7 +325,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const firstName = profile.name ? profile.name.split(" ")[0] : "";
     const greeting: ChatMessage = {
       role: "coach",
-      text: `¡Hola${firstName ? " " + firstName : ""}! 👋 Soy tu Coach IA. Conozco tus macros, tu meta y tu rutina de hoy. Pregúntame qué comer, pídeme que revise el menú de un restaurante o cuéntame cómo te sientes.`,
+      text: t("store.greetingInitial", { name: firstName ? " " + firstName : "" }),
     };
     const uid = userIdRef.current;
     const messages = loadChat(uid, greeting);
@@ -344,11 +344,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ...messages,
         {
           role: "coach",
-          text: "Se me cortó la respuesta a tu foto y no la tengo guardada. ¿Me la envías de nuevo? 🙏",
+          text: t("store.photoResponseLost"),
         },
       ]);
     }
-  }, [ready, profile.name]);
+  }, [ready, profile.name, t]);
 
   useEffect(() => {
     if (chatMessages.length > 1) saveChat(userIdRef.current, chatMessages);
@@ -699,7 +699,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           // una acción fallida no debe romper el chat
         }
       }
-      if (actions.length) showToast("Coach actualizó tus datos ✓");
+      if (actions.length) showToast(t("store.coachUpdatedData"));
     },
     [
       date,
@@ -721,6 +721,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setBodyComp,
       addMeasurement,
       showToast,
+      t,
     ]
   );
 
@@ -864,8 +865,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             role: "coach",
             text:
               e instanceof Error && e.message.includes("GEMINI")
-                ? "Aún no tengo conectada la IA (falta la GEMINI_API_KEY en el servidor). Pídele a Luis que la configure 😉"
-                : "Ups, no pude responder ahora. Intenta de nuevo en un momento.",
+                ? t("store.aiNotConnected")
+                : t("store.replyFailed"),
           },
         ]);
       } finally {
@@ -873,7 +874,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setChatTyping(false);
       }
     },
-    [profile, derived, workout, sleep, routine, meals, chatMessages, date, bodyComp, weights, measurements, lang, applyChatActions]
+    [profile, derived, workout, sleep, routine, meals, chatMessages, date, bodyComp, weights, measurements, lang, applyChatActions, t]
   );
 
   // Reenvía sola la pregunta que quedó a medias por una recarga.
@@ -889,7 +890,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const firstName = profile.name ? profile.name.split(" ")[0] : "";
     const greeting: ChatMessage = {
       role: "coach",
-      text: `¡Hola${firstName ? " " + firstName : ""}! 👋 Chat limpio. ¿En qué te ayudo?`,
+      text: t("store.greetingAfterClear", { name: firstName ? " " + firstName : "" }),
     };
     setChatMessages([greeting]);
     try {
@@ -898,8 +899,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // sin acceso a storage: no pasa nada
     }
     clearPendingMarker(userIdRef.current);
-    showToast("Chat limpiado");
-  }, [profile.name, showToast]);
+    showToast(t("store.chatCleared"));
+  }, [profile.name, showToast, t]);
 
   const value: AppState = {
     ready,

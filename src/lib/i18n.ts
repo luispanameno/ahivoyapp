@@ -729,6 +729,15 @@ export const I18N: Record<Lang, Dict> = {
     // PasswordField
     "pwField.hide": "Ocultar contraseña",
     "pwField.show": "Mostrar contraseña",
+
+    // store.tsx (mensajes del chat / toasts)
+    "store.photoResponseLost": "Se me cortó la respuesta a tu foto y no la tengo guardada. ¿Me la envías de nuevo? 🙏",
+    "store.coachUpdatedData": "Coach actualizó tus datos ✓",
+    "store.aiNotConnected": "Aún no tengo conectada la IA (falta la GEMINI_API_KEY en el servidor). Pídele a Luis que la configure 😉",
+    "store.replyFailed": "Ups, no pude responder ahora. Intenta de nuevo en un momento.",
+    "store.chatCleared": "Chat limpiado",
+    "store.greetingInitial": "¡Hola{{name}}! 👋 Soy tu Coach IA. Conozco tus macros, tu meta y tu rutina de hoy. Pregúntame qué comer, pídeme que revise el menú de un restaurante o cuéntame cómo te sientes.",
+    "store.greetingAfterClear": "¡Hola{{name}}! 👋 Chat limpio. ¿En qué te ayudo?",
   },
   en: {
     "tabbar.hoy": "Today",
@@ -1421,6 +1430,14 @@ export const I18N: Record<Lang, Dict> = {
 
     "pwField.hide": "Hide password",
     "pwField.show": "Show password",
+
+    "store.photoResponseLost": "My reply to your photo got cut off and I didn't save it. Can you send it again? 🙏",
+    "store.coachUpdatedData": "Coach updated your data ✓",
+    "store.aiNotConnected": "The AI isn't connected yet (missing GEMINI_API_KEY on the server). Ask Luis to set it up 😉",
+    "store.replyFailed": "Oops, I couldn't reply right now. Try again in a moment.",
+    "store.chatCleared": "Chat cleared",
+    "store.greetingInitial": "Hi{{name}}! 👋 I'm your AI Coach. I know your macros, your goal, and today's routine. Ask me what to eat, have me check a restaurant menu, or tell me how you're feeling.",
+    "store.greetingAfterClear": "Hi{{name}}! 👋 Chat cleared. How can I help?",
   },
 };
 
