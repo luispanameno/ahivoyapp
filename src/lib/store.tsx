@@ -393,12 +393,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         id: crypto.randomUUID(),
         date,
         ml,
-        label: label || (ml < 0 ? "Ajuste" : "Agua"),
+        label: label || (ml < 0 ? t("hoy.adjustment") : t("resumen.water")),
       };
       setDrinks((prev) => [...prev, entry]);
       await db.addDrink(entry);
     },
-    [date]
+    [date, t]
   );
 
   const updateDrink = useCallback(async (d: Drink) => {
@@ -636,12 +636,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           } else {
             // ---- Acciones sobre OTRO día (directo a la base de datos) ----
             if (a.type === "add_water" && a.ml) {
-              await db.addDrink({ id: crypto.randomUUID(), date: fecha, ml: a.ml, label: "Agua" });
+              await db.addDrink({ id: crypto.randomUUID(), date: fecha, ml: a.ml, label: t("resumen.water") });
             } else if (a.type === "remove_water" && a.ml) {
               const actual = (await db.drinksFor(fecha)).reduce((s, d) => s + d.ml, 0);
               const removeMl = Math.min(a.ml, actual);
               if (removeMl > 0) {
-                await db.addDrink({ id: crypto.randomUUID(), date: fecha, ml: -removeMl, label: "Ajuste" });
+                await db.addDrink({ id: crypto.randomUUID(), date: fecha, ml: -removeMl, label: t("hoy.adjustment") });
               }
             } else if (a.type === "log_meal" && a.desc) {
               await db.addMeal({
