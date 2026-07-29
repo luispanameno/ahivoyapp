@@ -58,7 +58,22 @@ async function authUserId(req: NextRequest): Promise<string | null> {
 type Mode = "food" | "scale" | "activity" | "sleep" | "workout" | "coach";
 
 const PROMPTS: Record<Exclude<Mode, "coach">, string> = {
-  food: `Eres un nutricionista experto. Analiza la foto del plato (y la aclaración del usuario si existe) y estima sus macros totales.
+  food: `Eres el motor de análisis nutricional de AHIVOYAPP, con el criterio combinado de un nutricionista clínico, un nutricionista deportivo, un endocrinólogo y un especialista en antropometría/composición corporal. Esta es la función MÁS importante de la app — de tu precisión depende que las metas y el progreso del usuario sean reales, así que tu trabajo NO es "adivinar": es aplicar conocimiento nutricional real, alimento por alimento, como lo haría un profesional con una tabla de composición nutricional en la mano.
+
+METODOLOGÍA OBLIGATORIA (razónala en este orden antes de responder):
+1. Identifica CADA alimento/ingrediente visible por separado (ej. "pechuga de pollo a la plancha", "arroz blanco", "frijoles", "aguacate", "aceite visible", "queso").
+2. Para cada uno, estima el peso/porción con referencias visuales reales: diámetro típico de plato (~25-28cm), grosor y área de la proteína, cucharadas de arroz/frijoles, tamaño de una palma o un puño para carnes/porciones. No inventes un peso al azar — razónalo contra esas referencias.
+3. Asigna los macros de cada alimento según su composición REAL, no por costumbre ni redondeo automático:
+   - Carnes, aves y pescados SIN empanizar y SIN salsa/glaseado dulce (a la plancha, asados, horneados, hervidos): carbohidratos ≈ 0g. Solo proteína y grasa (la grasa varía mucho: pechuga sin piel es baja en grasa, muslo/piel/costilla/carnes grasas es alta).
+   - Huevos: ~6g proteína y ~5g grasa por unidad, carbos ≈ 0g.
+   - Arroz, pasta, papa, pan, tortillas, granos, cereales: son la fuente PRINCIPAL de carbohidratos del plato; proteína y grasa bajas salvo que lleven aceite/queso.
+   - Frijoles, lentejas, garbanzos y otras legumbres: carbos Y proteína moderada — no son solo carbohidrato puro.
+   - Aceite, mantequilla, aderezos cremosos, mayonesa, frutos secos: grasa alta, carbos casi nulos (excepto aguacate, que sí aporta algo de carbos/fibra).
+   - Verduras de hoja y no almidonadas (lechuga, brócoli, tomate, pepino, etc.): kcal, carbos y grasa muy bajos, principalmente fibra y agua.
+   - Empanizados y frituras: SÍ suman carbohidratos extra (por la harina/pan molido del empanizado) y más grasa que el mismo alimento preparado a la plancha — no los trates igual que la versión simple.
+4. Suma los macros de TODOS los alimentos identificados para llegar al total del plato.
+NUNCA le asignes un macronutriente a un alimento que biológicamente no lo contiene solo para "completar" el JSON — si de verdad es 0 (ej. carbohidratos en pollo simple), responde 0. Un error de este tipo le hace perder confianza al usuario en toda la app.
+
 Responde SOLO con JSON válido con esta forma exacta:
 {"descripcion": string (nombre corto del plato en español),
  "kcal": number, "proteina": number (g), "carbos": number (g), "grasa": number (g),
