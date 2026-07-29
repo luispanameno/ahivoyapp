@@ -390,10 +390,10 @@ export default function Hoy() {
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.35 }}
                 className="font-sora"
-                style={{ fontSize: 19, fontWeight: 800, color: showRemaining && waterExceeded ? OVER_COLOR : undefined }}
+                style={{ fontSize: 19, fontWeight: 800, color: waterExceeded ? OVER_COLOR : undefined }}
               >
                 {showRemaining ? waterAltValue : `${water}ml`}
-                <span style={{ fontSize: 12, fontWeight: 600, color: showRemaining && waterExceeded ? OVER_COLOR : "rgba(244,243,238,.4)" }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: waterExceeded ? OVER_COLOR : "rgba(244,243,238,.4)" }}>
                   {" "}
                   {showRemaining ? waterAltLabel : `/ ${profile.metaWater}ml`}
                 </span>
@@ -405,8 +405,8 @@ export default function Hoy() {
                   width: `${Math.min(100, Math.round((water / profile.metaWater) * 100))}%`,
                   height: "100%",
                   borderRadius: 100,
-                  background: "oklch(70% 0.13 220)",
-                  boxShadow: "0 0 10px oklch(70% 0.13 220 / 0.8)",
+                  background: waterExceeded ? OVER_COLOR : "oklch(70% 0.13 220)",
+                  boxShadow: waterExceeded ? `0 0 10px ${OVER_GLOW}` : "0 0 10px oklch(70% 0.13 220 / 0.8)",
                 }}
               />
             </div>
