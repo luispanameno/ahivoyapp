@@ -335,20 +335,15 @@ export default function Coach() {
     rec.interimResults = true;
     dictationBaseRef.current = input.trim();
     rec.onresult = (e) => {
-      // Junta solo lo YA CONFIRMADO (isFinal) de cada resultado — eso no
-      // vuelve a cambiar — y usa nada más el ÚLTIMO resultado en curso
-      // como vista previa de lo que se está diciendo ahora mismo. Antes se
-      // concatenaban TODOS los resultados en cada evento, incluyendo
-      // versiones viejas a medio reconocer que el motor (sobre todo en
-      // Android) va dejando atrás sin reemplazarlas — eso hacía que una
-      // palabra o frase se repitiera varias veces en el texto final.
-      let finalText = "";
-      for (let i = 0; i < e.results.length; i++) {
-        if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
-      }
+      // Sumar varios resultados de e.results NO funciona en todos los
+      // navegadores: en varios (sobre todo Android), cada resultado nuevo
+      // no trae una palabra nueva para agregar — trae la frase COMPLETA
+      // reconocida hasta ese instante, cada vez un poco más larga. Sumarlos
+      // entre sí (aunque sea filtrando por isFinal) repetía la frase una y
+      // otra vez. El último resultado SOLO es siempre la versión más
+      // completa y actualizada — nunca hay que sumarle nada más.
       const last = e.results[e.results.length - 1];
-      const interimText = last && !last.isFinal ? last[0].transcript : "";
-      const txt = `${finalText} ${interimText}`.trim();
+      const txt = last ? last[0].transcript.trim() : "";
       const base = dictationBaseRef.current;
       setInput((base ? base + " " : "") + txt);
     };
