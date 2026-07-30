@@ -576,9 +576,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 kcal: a.kcal ?? 300,
                 name: a.nombre ?? "Entrenamiento",
                 notes: workout?.notes ?? "",
+                // Se suma a lo que ya hubiera hoy: si reportás varias
+                // sesiones en el día, "Tiempo de actividad" las acumula
+                // todas en vez de quedarse solo con la última.
+                minutes: (workout?.minutes ?? 0) + Math.round(a.minutos ?? 0),
               });
             else if (a.type === "delete_workout")
-              await setWorkout({ day: workout?.day ?? "Push", done: false, kcal: 0, name: "", notes: workout?.notes ?? "" });
+              await setWorkout({ day: workout?.day ?? "Push", done: false, kcal: 0, name: "", notes: workout?.notes ?? "", minutes: 0 });
             else if (a.type === "set_activity")
               await setActivity({
                 steps: Math.round(a.pasos ?? 0),
@@ -679,9 +683,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
                 kcal: a.kcal ?? 300,
                 name: a.nombre ?? "Entrenamiento",
                 notes: "",
+                minutes: Math.round(a.minutos ?? 0),
               });
             } else if (a.type === "delete_workout") {
-              await db.setWorkout(fecha, { day: (workout?.day ?? "Push") as RoutineDay, done: false, kcal: 0, name: "", notes: "" });
+              await db.setWorkout(fecha, { day: (workout?.day ?? "Push") as RoutineDay, done: false, kcal: 0, name: "", notes: "", minutes: 0 });
             } else if (a.type === "set_activity") {
               await db.setActivity(fecha, {
                 steps: Math.round(a.pasos ?? 0),

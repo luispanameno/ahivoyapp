@@ -92,6 +92,10 @@ export interface WorkoutState {
   kcal: number;
   name: string;
   notes: string;
+  // Minutos reportados al chat (se van sumando si reportás varias sesiones
+  // el mismo día) — alimentan "Tiempo de actividad" en Hoy junto con lo del
+  // reloj. Opcional: el reloj y las capturas de entrenamiento no lo traen.
+  minutes?: number;
 }
 
 export interface SleepPhases {

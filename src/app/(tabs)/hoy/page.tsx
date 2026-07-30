@@ -199,7 +199,10 @@ export default function Hoy() {
   const waterAltLabel = waterExceeded ? t("hoy.waterOver") : t("hoy.waterRemaining");
 
   const steps = activity?.steps ?? 0;
-  const activeMin = activity?.activeMin ?? 0;
+  // Suma el tiempo del reloj con el de las sesiones que reportaste al chat
+  // (ej. "hice 13 minutos de ejercicio") — antes ese tiempo se registraba
+  // en las kcal quemadas pero nunca llegaba a esta rueda.
+  const activeMin = (activity?.activeMin ?? 0) + (workout?.done ? workout.minutes ?? 0 : 0);
   // Las calorías del anillo salen de burnedKcal (el mayor entre reloj y
   // rutina), no solo del reloj: al subir SOLO la rutina, el anillo se
   // quedaba en cero aunque el centro de la rueda ya mostrara las kcal.

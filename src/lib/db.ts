@@ -176,7 +176,7 @@ export async function loadAll(date: string): Promise<AllData> {
 
   const w = workoutQ.data;
   const workout: WorkoutState | null = w
-    ? { day: w.dia, done: w.completado, kcal: w.kcal_quemadas, name: w.nombre ?? "", notes: w.notas ?? "" }
+    ? { day: w.dia, done: w.completado, kcal: w.kcal_quemadas, name: w.nombre ?? "", notes: w.notas ?? "", minutes: w.minutos ?? 0 }
     : null;
 
   const s = sleepQ.data;
@@ -308,7 +308,7 @@ export async function workoutFor(date: string): Promise<WorkoutState | null> {
   const uid = await userId();
   if (sb && uid) {
     const { data: w } = await sb.from("workouts").select("*").eq("user_id", uid).eq("fecha", date).maybeSingle();
-    return w ? { day: w.dia, done: w.completado, kcal: w.kcal_quemadas, name: w.nombre ?? "", notes: w.notas ?? "" } : null;
+    return w ? { day: w.dia, done: w.completado, kcal: w.kcal_quemadas, name: w.nombre ?? "", notes: w.notas ?? "", minutes: w.minutos ?? 0 } : null;
   }
   return lsGet<Record<string, WorkoutState>>("workout", {})[date] ?? null;
 }
@@ -510,6 +510,7 @@ export async function setWorkout(date: string, w: WorkoutState) {
         kcal_quemadas: w.kcal,
         nombre: w.name,
         notas: w.notes,
+        minutos: w.minutes ?? 0,
       },
       { onConflict: "user_id,fecha" }
     );

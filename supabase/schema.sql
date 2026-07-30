@@ -83,6 +83,9 @@ create table if not exists public.workouts (
   notas text default '',
   unique (user_id, fecha)
 );
+-- Minutos reportados al chat (se van sumando si se reportan varias
+-- sesiones el mismo día) — alimentan "Tiempo de actividad" en Hoy.
+alter table public.workouts add column if not exists minutos int default 0;
 
 create table if not exists public.activity_logs (
   id uuid primary key default gen_random_uuid(),
