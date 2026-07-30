@@ -335,10 +335,22 @@ export default function Coach() {
     rec.interimResults = true;
     dictationBaseRef.current = input.trim();
     rec.onresult = (e) => {
-      let txt = "";
-      for (let i = 0; i < e.results.length; i++) txt += e.results[i][0].transcript;
+      // Junta solo lo YA CONFIRMADO (isFinal) de cada resultado — eso no
+      // vuelve a cambiar — y usa nada más el ÚLTIMO resultado en curso
+      // como vista previa de lo que se está diciendo ahora mismo. Antes se
+      // concatenaban TODOS los resultados en cada evento, incluyendo
+      // versiones viejas a medio reconocer que el motor (sobre todo en
+      // Android) va dejando atrás sin reemplazarlas — eso hacía que una
+      // palabra o frase se repitiera varias veces en el texto final.
+      let finalText = "";
+      for (let i = 0; i < e.results.length; i++) {
+        if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
+      }
+      const last = e.results[e.results.length - 1];
+      const interimText = last && !last.isFinal ? last[0].transcript : "";
+      const txt = `${finalText} ${interimText}`.trim();
       const base = dictationBaseRef.current;
-      setInput((base ? base + " " : "") + txt.trim());
+      setInput((base ? base + " " : "") + txt);
     };
     rec.onend = () => setListening(false);
     rec.onerror = () => setListening(false);
