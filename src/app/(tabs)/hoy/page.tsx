@@ -513,10 +513,10 @@ export default function Hoy() {
               <div style={{ width: `${sleep.phases.awake}%`, background: "rgba(255,255,255,.15)" }} />
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 9.5, color: "rgba(244,243,238,.45)" }}>
-              <span>Profundo {sleep.phases.deep}%</span>
-              <span>Ligero {sleep.phases.light}%</span>
-              <span>REM {sleep.phases.rem}%</span>
-              <span>Despierto {sleep.phases.awake}%</span>
+              <span>{t("sueno.deep", { pct: sleep.phases.deep })}</span>
+              <span>{t("sueno.light", { pct: sleep.phases.light })}</span>
+              <span>{t("sueno.rem", { pct: sleep.phases.rem })}</span>
+              <span>{t("sueno.awake", { pct: sleep.phases.awake })}</span>
             </div>
           </>
         ) : (
