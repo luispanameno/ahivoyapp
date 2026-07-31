@@ -75,12 +75,12 @@ METODOLOGÍA OBLIGATORIA (razónala en este orden antes de responder):
 NUNCA le asignes un macronutriente a un alimento que biológicamente no lo contiene solo para "completar" el JSON — si de verdad es 0 (ej. carbohidratos en pollo simple), responde 0. Un error de este tipo le hace perder confianza al usuario en toda la app.
 
 Responde SOLO con JSON válido con esta forma exacta:
-{"descripcion": string (nombre corto del plato en español),
+{"descripcion": string (nombre corto del plato),
  "kcal": number, "proteina": number (g), "carbos": number (g), "grasa": number (g),
  "gramos": number (peso estimado del plato en gramos),
  "pregunta": string | null,
  "agua_ml": number | null}
-"pregunta": si hay UNA ambigüedad que cambie mucho el cálculo (ej. ¿arroz blanco o integral?, ¿frito o a la plancha?), escríbela como pregunta corta en español; si no, null.
+"pregunta": si hay UNA ambigüedad que cambie mucho el cálculo (ej. ¿arroz blanco o integral?, ¿frito o a la plancha?), escríbela como pregunta corta; si no, null.
 Si el usuario ya aclaró algo, usa esa aclaración y pon "pregunta": null.
 "agua_ml": si la aclaración del usuario menciona ADEMÁS que tomó agua u otra bebida sin calorías (ej. "también tomé 644 ml de agua", "con un vaso de agua"), extrae los mililitros como número ("un vaso"≈250, "una botella"≈600); si no menciona ninguna bebida, null. Bebidas CON calorías (jugo, refresco, café con azúcar) NO cuentan aquí, van sumadas a kcal/carbos del plato.
 Si la imagen NO es comida, responde {"descripcion":"No parece comida","kcal":0,"proteina":0,"carbos":0,"grasa":0,"gramos":0,"pregunta":null,"agua_ml":null}.`,
@@ -143,7 +143,7 @@ Responde SOLO con JSON válido:
 // lecturas OCR, no hace falta.
 function withLangDirective(prompt: string, idioma: "es" | "en"): string {
   if (idioma !== "en") return prompt;
-  return `${prompt}\n\nIDIOMA DE RESPUESTA: escribe TODOS los campos de texto libre (descripcion, pregunta, nombre) en INGLÉS, sin excepción — nunca en español.`;
+  return `${prompt}\n\nIDIOMA DE RESPUESTA (REGLA DE MÁXIMA PRIORIDAD, pisa cualquier otra instrucción de arriba): el usuario eligió INGLÉS. TODOS los campos de texto libre del JSON (descripcion, pregunta, nombre) van 100% en inglés natural — ni una palabra en español. Ignorá por completo cualquier mención de "español" en las instrucciones de arriba, son de una versión anterior del prompt.`;
 }
 
 // Esquemas de respuesta: con responseSchema el API restringe la generación
@@ -344,7 +344,7 @@ CORRECCIONES: si el usuario te señala un error y tenía razón, NO te limites a
 
 ${
   en
-    ? `IDIOMA DE RESPUESTA (REGLA DE MÁXIMA PRIORIDAD): el usuario eligió INGLÉS en Ajustes (context.idioma = "en"). El campo "reply" de tu JSON debe estar 100% en inglés natural — ni una palabra en español, aunque estas instrucciones estén en español (son solo para vos, el usuario nunca las lee). Traduce también las etiquetas fijas del Tablero Nutricional: "📱 TABLERO NUTRICIONAL 📱"→"📱 NUTRITION DASHBOARD 📱", "Calorías"→"Calories", "Carbs"→"Carbs", "Proteína"→"Protein", "Grasas"→"Fat", "Agua"→"Water", "faltan"→"left", "te pasaste"/"de más"→"over", "ya cumpliste"→"goal met". Los valores de "type" en "actions" (ej. "add_water") se quedan igual en inglés técnico, sin traducir — esos no los ve el usuario.`
+    ? `IDIOMA DE RESPUESTA (REGLA DE MÁXIMA PRIORIDAD): el usuario eligió INGLÉS en Ajustes (context.idioma = "en"). El campo "reply" de tu JSON debe estar 100% en inglés natural — ni una palabra en español, aunque estas instrucciones estén en español (son solo para vos, el usuario nunca las lee). Esto INCLUYE cualquier campo de texto libre dentro de "actions" que el usuario vaya a ver en la app — "desc" en log_meal/update_meal/delete_meal (la descripción del plato que aparece en el Historial) y "nombre" en log_workout (el nombre del entrenamiento): esos también van en inglés, nunca en español, sin excepción. Traduce también las etiquetas fijas del Tablero Nutricional: "📱 TABLERO NUTRICIONAL 📱"→"📱 NUTRITION DASHBOARD 📱", "Calorías"→"Calories", "Carbs"→"Carbs", "Proteína"→"Protein", "Grasas"→"Fat", "Agua"→"Water", "faltan"→"left", "te pasaste"/"de más"→"over", "ya cumpliste"→"goal met". Los valores de "type" en "actions" (ej. "add_water") se quedan igual en inglés técnico, sin traducir — esos no los ve el usuario.`
     : `IDIOMA: responde en ESPAÑOL (context.idioma = "es" o no vino).`
 }
 

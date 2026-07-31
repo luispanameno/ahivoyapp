@@ -41,7 +41,7 @@ export default function EditarBebida() {
   }
 
   const save = async () => {
-    await updateDrink({ ...drink, label: label.trim() || "Agua", ml: Number(ml) || 0 });
+    await updateDrink({ ...drink, label: label.trim() || t("resumen.water"), ml: Number(ml) || 0 });
     showToast(t("bebida.toastUpdated"));
     router.push("/historial");
   };

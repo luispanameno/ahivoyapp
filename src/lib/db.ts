@@ -4,6 +4,7 @@
 // si no, guarda todo en localStorage (modo local, un solo usuario).
 
 import { getSupabase } from "./supabase";
+import { translate } from "./i18n";
 import {
   AccessStatus,
   Activity,
@@ -159,7 +160,7 @@ export async function loadAll(date: string): Promise<AllData> {
     id: d.id,
     date: d.fecha,
     ml: d.ml,
-    label: d.nombre ?? "Agua",
+    label: d.nombre ?? translate(profile.language ?? "es", "resumen.water"),
   }));
 
   const a = activityQ.data;

@@ -549,7 +549,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             if (a.type === "add_water" && a.ml) await addWater(a.ml);
             else if (a.type === "remove_water" && a.ml) {
               const removeMl = Math.min(a.ml, derived.water);
-              if (removeMl > 0) await addWater(-removeMl, "Ajuste");
+              if (removeMl > 0) await addWater(-removeMl, t("hoy.adjustment"));
             } else if (a.type === "delete_meal" && a.desc) {
               const meal = matchMeal(meals, a.desc);
               if (meal) await deleteMeal(meal.id);
