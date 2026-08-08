@@ -162,16 +162,31 @@ export default function AdminPanel() {
     );
   }
 
+  // Optimista: refleja el cambio de inmediato, sin esperar la respuesta. Si
+  // la base lo rechaza se recarga la lista real — dar por aprobada a una
+  // persona que en verdad sigue pendiente es justo lo que no puede pasar en
+  // una pantalla de control de acceso.
   const setStatus = async (id: string, status: AccessStatus) => {
-    // Optimista: refleja el cambio de inmediato, sin esperar la respuesta.
     setUsers((prev) => prev?.map((u) => (u.id === id ? { ...u, status } : u)) ?? prev);
-    await db.setUserStatus(id, status);
+    try {
+      await db.setUserStatus(id, status);
+    } catch {
+      load();
+      showToast(t("store.saveFailed"));
+      return;
+    }
     showToast(status === "approved" ? t("admin.toastApproved") : t("admin.toastRejected"));
   };
 
   const removeUser = async (id: string) => {
     setUsers((prev) => prev?.filter((u) => u.id !== id) ?? prev);
-    await db.deleteUserProfile(id);
+    try {
+      await db.deleteUserProfile(id);
+    } catch {
+      load();
+      showToast(t("store.saveFailed"));
+      return;
+    }
     showToast(t("admin.toastRemoved"));
   };
 

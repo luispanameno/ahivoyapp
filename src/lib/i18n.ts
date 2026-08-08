@@ -733,6 +733,16 @@ export const I18N: Record<Lang, Dict> = {
     // store.tsx (mensajes del chat / toasts)
     "store.photoResponseLost": "Se me cortó la respuesta a tu foto y no la tengo guardada. ¿Me la envías de nuevo? 🙏",
     "store.coachUpdatedData": "Coach actualizó tus datos ✓",
+    // Aviso genérico de escritura rechazada (lo usa toda la app, no solo el
+    // Coach): el cambio ya se revirtió en pantalla, así que lo que ve el
+    // usuario vuelve a ser lo que de verdad hay guardado.
+    "store.saveFailed": "No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.",
+    "store.coachSaveFailed": "No pude guardar todo. Revisa tu conexión.",
+    "store.coachSaveFailedNote":
+      "⚠️ Ojo: no pude guardar todo en tu registro (parece un problema de conexión). Revisa el Historial y, si falta algo, pídemelo de nuevo.",
+    // Descripción de respaldo cuando la IA registra una comida pero olvida
+    // ponerle nombre — antes esa comida se descartaba sin avisar.
+    "store.mealFromCoach": "Comida registrada por el Coach",
     "store.aiNotConnected": "Aún no tengo conectada la IA (falta la GEMINI_API_KEY en el servidor). Pídele a Luis que la configure 😉",
     "store.replyFailed": "Ups, no pude responder ahora. Intenta de nuevo en un momento.",
     "store.chatCleared": "Chat limpiado",
@@ -1453,6 +1463,11 @@ export const I18N: Record<Lang, Dict> = {
 
     "store.photoResponseLost": "My reply to your photo got cut off and I didn't save it. Can you send it again? 🙏",
     "store.coachUpdatedData": "Coach updated your data ✓",
+    "store.saveFailed": "Couldn't save. Check your connection and try again.",
+    "store.coachSaveFailed": "I couldn't save everything. Check your connection.",
+    "store.coachSaveFailedNote":
+      "⚠️ Heads up: I couldn't save everything to your log (looks like a connection problem). Check History and ask me again if something's missing.",
+    "store.mealFromCoach": "Meal logged by Coach",
     "store.aiNotConnected": "The AI isn't connected yet (missing GEMINI_API_KEY on the server). Ask Luis to set it up 😉",
     "store.replyFailed": "Oops, I couldn't reply right now. Try again in a moment.",
     "store.chatCleared": "Chat cleared",

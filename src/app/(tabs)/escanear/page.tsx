@@ -86,19 +86,27 @@ export default function Escanear() {
         thumb = null; // si falla el redimensionado, guardamos sin foto
       }
     }
-    await addMeal({
-      time: mealTime,
-      desc: result.descripcion,
-      kcal: Math.round(result.kcal),
-      p: Math.round(result.proteina),
-      c: Math.round(result.carbos),
-      f: Math.round(result.grasa),
-      photo: thumb,
-    });
-    // Si en el contexto mencionaste una bebida sin calorías (ej. "también
-    // tomé 644 ml de agua"), Gemini la extrae aparte y la registramos igual.
-    if (result.agua_ml && result.agua_ml > 0) {
-      await addWater(Math.round(result.agua_ml));
+    try {
+      await addMeal({
+        time: mealTime,
+        desc: result.descripcion,
+        kcal: Math.round(result.kcal),
+        p: Math.round(result.proteina),
+        c: Math.round(result.carbos),
+        f: Math.round(result.grasa),
+        photo: thumb,
+      });
+      // Si en el contexto mencionaste una bebida sin calorías (ej. "también
+      // tomé 644 ml de agua"), Gemini la extrae aparte y la registramos igual.
+      if (result.agua_ml && result.agua_ml > 0) {
+        await addWater(Math.round(result.agua_ml));
+      }
+    } catch {
+      // La base rechazó la escritura (sin conexión, sesión caída…): el store
+      // ya deshizo el cambio en pantalla; aquí solo hay que avisar y NO
+      // navegar a "Hoy" como si se hubiera guardado.
+      showToast(t("store.saveFailed"));
+      return;
     }
     showToast(
       result.agua_ml && result.agua_ml > 0

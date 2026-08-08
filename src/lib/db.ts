@@ -45,6 +45,18 @@ function lsSet(key: string, value: unknown) {
   }
 }
 
+// Supabase NO lanza excepción cuando el servidor rechaza una escritura: la
+// devuelve en { error } y, si nadie la mira, se pierde. Como el estado local
+// se actualiza ANTES de guardar (UI optimista), el dato se quedaba en
+// pantalla como si todo hubiera ido bien y desaparecía en la siguiente
+// recarga, sin que el usuario supiera nunca que nada se guardó. Toda
+// escritura pasa por aquí para convertir ese { error } en una excepción de
+// verdad (un Error, no el objeto plano de Supabase: el código de arriba usa
+// `e instanceof Error` y necesita un stack utilizable).
+function check(what: string, res: { error: { message: string } | null }) {
+  if (res.error) throw new Error(`${what}: ${res.error.message}`);
+}
+
 async function userId(): Promise<string | null> {
   const sb = getSupabase();
   if (!sb) return null;
@@ -137,6 +149,9 @@ export async function loadAll(date: string): Promise<AllData> {
   if (!p && !profileQ.error) {
     const { data: sess } = await sb.auth.getSession();
     const u = sess.session?.user;
+    // A propósito SIN check(): es un arreglo oportunista durante la carga
+    // inicial. Si falla, el perfil se queda "pendiente" (que es el estado
+    // seguro) — lanzar aquí dejaría la app entera sin arrancar.
     await sb.from("profiles").insert({
       id: uid,
       email: u?.email ?? null,
@@ -321,27 +336,30 @@ export async function saveProfile(profile: Profile) {
   const sb = getSupabase();
   const uid = await userId();
   if (sb && uid) {
-    await sb.from("profiles").upsert({
-      id: uid,
-      nombre: profile.name,
-      foto: profile.photo,
-      sexo: profile.sex,
-      nivel_actividad: profile.activityLevel,
-      edad: profile.age,
-      altura: profile.height,
-      peso: profile.weight,
-      meta_peso: profile.weightGoal,
-      meta_kcal: profile.metaKcal,
-      meta_proteina: profile.metaProtein,
-      meta_carbos: profile.metaCarbs,
-      meta_grasa: profile.metaFat,
-      meta_agua: profile.metaWater,
-      onboarded: profile.onboarded,
-      plan_ejercicio: profile.exercisePlan,
-      motivo: profile.goalMotivation,
-      cultura_alimentaria: profile.foodCulture,
-      idioma: profile.language,
-    });
+    check(
+      "No se pudo guardar el perfil",
+      await sb.from("profiles").upsert({
+        id: uid,
+        nombre: profile.name,
+        foto: profile.photo,
+        sexo: profile.sex,
+        nivel_actividad: profile.activityLevel,
+        edad: profile.age,
+        altura: profile.height,
+        peso: profile.weight,
+        meta_peso: profile.weightGoal,
+        meta_kcal: profile.metaKcal,
+        meta_proteina: profile.metaProtein,
+        meta_carbos: profile.metaCarbs,
+        meta_grasa: profile.metaFat,
+        meta_agua: profile.metaWater,
+        onboarded: profile.onboarded,
+        plan_ejercicio: profile.exercisePlan,
+        motivo: profile.goalMotivation,
+        cultura_alimentaria: profile.foodCulture,
+        idioma: profile.language,
+      })
+    );
   } else {
     lsSet("profile", profile);
   }
@@ -368,7 +386,7 @@ export async function listUsersForAdmin(): Promise<AdminUserRow[]> {
 export async function setUserStatus(userId: string, status: AccessStatus) {
   const sb = getSupabase();
   if (!sb) return;
-  await sb.from("profiles").update({ status }).eq("id", userId);
+  check("No se pudo cambiar el estado de la cuenta", await sb.from("profiles").update({ status }).eq("id", userId));
 }
 
 // Quita a alguien de la lista del panel. OJO: borra su fila de "profiles",
@@ -378,25 +396,30 @@ export async function setUserStatus(userId: string, status: AccessStatus) {
 export async function deleteUserProfile(userId: string) {
   const sb = getSupabase();
   if (!sb) return;
-  await sb.from("profiles").delete().eq("id", userId);
+  check("No se pudo quitar la cuenta del panel", await sb.from("profiles").delete().eq("id", userId));
 }
 
 export async function addMeal(meal: Meal) {
   const sb = getSupabase();
   const uid = await userId();
   if (sb && uid) {
-    await sb.from("meals").insert({
-      id: meal.id,
-      user_id: uid,
-      fecha: meal.date,
-      tiempo: meal.time,
-      descripcion: meal.desc,
-      kcal: meal.kcal,
-      proteina: meal.p,
-      carbos: meal.c,
-      grasa: meal.f,
-      foto_url: meal.photo ?? null,
-    });
+    // Ej. típico de rechazo: el CHECK de "tiempo" solo acepta los 4 valores
+    // en español y la IA a veces manda el tiempo traducido.
+    check(
+      "No se pudo guardar la comida",
+      await sb.from("meals").insert({
+        id: meal.id,
+        user_id: uid,
+        fecha: meal.date,
+        tiempo: meal.time,
+        descripcion: meal.desc,
+        kcal: meal.kcal,
+        proteina: meal.p,
+        carbos: meal.c,
+        grasa: meal.f,
+        foto_url: meal.photo ?? null,
+      })
+    );
   } else {
     const all = lsGet<Meal[]>("meals", []);
     lsSet("meals", [...all, meal]);
@@ -407,18 +430,21 @@ export async function updateMeal(meal: Meal) {
   const sb = getSupabase();
   const uid = await userId();
   if (sb && uid) {
-    await sb
-      .from("meals")
-      .update({
-        tiempo: meal.time,
-        descripcion: meal.desc,
-        kcal: meal.kcal,
-        proteina: meal.p,
-        carbos: meal.c,
-        grasa: meal.f,
-      })
-      .eq("id", meal.id)
-      .eq("user_id", uid);
+    check(
+      "No se pudo actualizar la comida",
+      await sb
+        .from("meals")
+        .update({
+          tiempo: meal.time,
+          descripcion: meal.desc,
+          kcal: meal.kcal,
+          proteina: meal.p,
+          carbos: meal.c,
+          grasa: meal.f,
+        })
+        .eq("id", meal.id)
+        .eq("user_id", uid)
+    );
   } else {
     const all = lsGet<Meal[]>("meals", []);
     lsSet("meals", all.map((m) => (m.id === meal.id ? meal : m)));
@@ -429,7 +455,7 @@ export async function deleteMeal(id: string) {
   const sb = getSupabase();
   const uid = await userId();
   if (sb && uid) {
-    await sb.from("meals").delete().eq("id", id).eq("user_id", uid);
+    check("No se pudo borrar la comida", await sb.from("meals").delete().eq("id", id).eq("user_id", uid));
   } else {
     const all = lsGet<Meal[]>("meals", []);
     lsSet("meals", all.filter((m) => m.id !== id));
@@ -440,13 +466,16 @@ export async function addDrink(d: Drink) {
   const sb = getSupabase();
   const uid = await userId();
   if (sb && uid) {
-    await sb.from("drinks").insert({
-      id: d.id,
-      user_id: uid,
-      fecha: d.date,
-      ml: d.ml,
-      nombre: d.label,
-    });
+    check(
+      "No se pudo guardar la bebida",
+      await sb.from("drinks").insert({
+        id: d.id,
+        user_id: uid,
+        fecha: d.date,
+        ml: d.ml,
+        nombre: d.label,
+      })
+    );
   } else {
     const all = lsGet<Drink[]>("drinks", []);
     lsSet("drinks", [...all, d]);
@@ -457,7 +486,10 @@ export async function updateDrink(d: Drink) {
   const sb = getSupabase();
   const uid = await userId();
   if (sb && uid) {
-    await sb.from("drinks").update({ ml: d.ml, nombre: d.label }).eq("id", d.id).eq("user_id", uid);
+    check(
+      "No se pudo actualizar la bebida",
+      await sb.from("drinks").update({ ml: d.ml, nombre: d.label }).eq("id", d.id).eq("user_id", uid)
+    );
   } else {
     const all = lsGet<Drink[]>("drinks", []);
     lsSet("drinks", all.map((x) => (x.id === d.id ? d : x)));
@@ -468,7 +500,7 @@ export async function deleteDrink(id: string) {
   const sb = getSupabase();
   const uid = await userId();
   if (sb && uid) {
-    await sb.from("drinks").delete().eq("id", id).eq("user_id", uid);
+    check("No se pudo borrar la bebida", await sb.from("drinks").delete().eq("id", id).eq("user_id", uid));
   } else {
     const all = lsGet<Drink[]>("drinks", []);
     lsSet("drinks", all.filter((d) => d.id !== id));
@@ -479,17 +511,20 @@ export async function setActivity(date: string, a: Activity) {
   const sb = getSupabase();
   const uid = await userId();
   if (sb && uid) {
-    await sb.from("activity_logs").upsert(
-      {
-        user_id: uid,
-        fecha: date,
-        pasos: a.steps,
-        min_activos: a.activeMin,
-        kcal_activas: a.activityKcal,
-        kcal_totales: a.totalKcal,
-        distancia_km: a.distance,
-      },
-      { onConflict: "user_id,fecha" }
+    check(
+      "No se pudo guardar la actividad",
+      await sb.from("activity_logs").upsert(
+        {
+          user_id: uid,
+          fecha: date,
+          pasos: a.steps,
+          min_activos: a.activeMin,
+          kcal_activas: a.activityKcal,
+          kcal_totales: a.totalKcal,
+          distancia_km: a.distance,
+        },
+        { onConflict: "user_id,fecha" }
+      )
     );
   } else {
     const all = lsGet<Record<string, Activity>>("activity", {});
@@ -502,18 +537,21 @@ export async function setWorkout(date: string, w: WorkoutState) {
   const sb = getSupabase();
   const uid = await userId();
   if (sb && uid) {
-    await sb.from("workouts").upsert(
-      {
-        user_id: uid,
-        fecha: date,
-        dia: w.day,
-        completado: w.done,
-        kcal_quemadas: w.kcal,
-        nombre: w.name,
-        notas: w.notes,
-        minutos: w.minutes ?? 0,
-      },
-      { onConflict: "user_id,fecha" }
+    check(
+      "No se pudo guardar el entrenamiento",
+      await sb.from("workouts").upsert(
+        {
+          user_id: uid,
+          fecha: date,
+          dia: w.day,
+          completado: w.done,
+          kcal_quemadas: w.kcal,
+          nombre: w.name,
+          notas: w.notes,
+          minutos: w.minutes ?? 0,
+        },
+        { onConflict: "user_id,fecha" }
+      )
     );
   } else {
     const all = lsGet<Record<string, WorkoutState>>("workout", {});
@@ -526,9 +564,12 @@ export async function setSleep(date: string, s: SleepState) {
   const sb = getSupabase();
   const uid = await userId();
   if (sb && uid) {
-    await sb.from("sleep_logs").upsert(
-      { user_id: uid, fecha: date, minutos: s.minutes, fases: s.phases },
-      { onConflict: "user_id,fecha" }
+    check(
+      "No se pudo guardar el sueño",
+      await sb.from("sleep_logs").upsert(
+        { user_id: uid, fecha: date, minutos: s.minutes, fases: s.phases },
+        { onConflict: "user_id,fecha" }
+      )
     );
   } else {
     const all = lsGet<Record<string, SleepState>>("sleep", {});
@@ -541,20 +582,23 @@ export async function addBodyComp(b: BodyComp) {
   const sb = getSupabase();
   const uid = await userId();
   if (sb && uid) {
-    await sb.from("body_composition").insert({
-      user_id: uid,
-      fecha: b.date,
-      score: b.score,
-      complexion: b.build,
-      imc: b.bmi,
-      grasa_pct: b.fatPct,
-      agua_pct: b.waterPct,
-      proteina_pct: b.proteinPct,
-      bmr: b.bmr,
-      grasa_visceral: b.visceralFat,
-      musculo_lb: b.muscle,
-      masa_osea_lb: b.boneMass,
-    });
+    check(
+      "No se pudo guardar la composición corporal",
+      await sb.from("body_composition").insert({
+        user_id: uid,
+        fecha: b.date,
+        score: b.score,
+        complexion: b.build,
+        imc: b.bmi,
+        grasa_pct: b.fatPct,
+        agua_pct: b.waterPct,
+        proteina_pct: b.proteinPct,
+        bmr: b.bmr,
+        grasa_visceral: b.visceralFat,
+        musculo_lb: b.muscle,
+        masa_osea_lb: b.boneMass,
+      })
+    );
   } else {
     lsSet("bodyComp", b);
   }
@@ -564,13 +608,16 @@ export async function saveRoutine(routine: Routine) {
   const sb = getSupabase();
   const uid = await userId();
   if (sb && uid) {
-    await sb.from("routines").upsert(
-      (["Push", "Pull", "Legs"] as const).map((dia) => ({
-        user_id: uid,
-        dia,
-        ejercicios: routine[dia],
-      })),
-      { onConflict: "user_id,dia" }
+    check(
+      "No se pudo guardar la rutina",
+      await sb.from("routines").upsert(
+        (["Push", "Pull", "Legs"] as const).map((dia) => ({
+          user_id: uid,
+          dia,
+          ejercicios: routine[dia],
+        })),
+        { onConflict: "user_id,dia" }
+      )
     );
   } else {
     lsSet("routine", routine);
@@ -581,9 +628,12 @@ export async function addWeight(entry: WeightEntry) {
   const sb = getSupabase();
   const uid = await userId();
   if (sb && uid) {
-    await sb.from("weight_logs").upsert(
-      { user_id: uid, fecha: entry.date, peso_lb: entry.lb },
-      { onConflict: "user_id,fecha" }
+    check(
+      "No se pudo guardar el peso",
+      await sb.from("weight_logs").upsert(
+        { user_id: uid, fecha: entry.date, peso_lb: entry.lb },
+        { onConflict: "user_id,fecha" }
+      )
     );
   } else {
     const all = lsGet<WeightEntry[]>("weights", []).filter((w) => w.date !== entry.date);
@@ -604,17 +654,20 @@ export async function addMeasurement(entry: MeasurementEntry) {
       .eq("user_id", uid)
       .eq("fecha", entry.date)
       .maybeSingle();
-    await sb.from("measurements_logs").upsert(
-      {
-        user_id: uid,
-        fecha: entry.date,
-        brazo_cm: entry.armCm ?? existing?.brazo_cm ?? null,
-        cintura_cm: entry.waistCm ?? existing?.cintura_cm ?? null,
-        pecho_cm: entry.chestCm ?? existing?.pecho_cm ?? null,
-        pierna_cm: entry.legCm ?? existing?.pierna_cm ?? null,
-        gluteos_cm: entry.gluteCm ?? existing?.gluteos_cm ?? null,
-      },
-      { onConflict: "user_id,fecha" }
+    check(
+      "No se pudieron guardar las medidas",
+      await sb.from("measurements_logs").upsert(
+        {
+          user_id: uid,
+          fecha: entry.date,
+          brazo_cm: entry.armCm ?? existing?.brazo_cm ?? null,
+          cintura_cm: entry.waistCm ?? existing?.cintura_cm ?? null,
+          pecho_cm: entry.chestCm ?? existing?.pecho_cm ?? null,
+          pierna_cm: entry.legCm ?? existing?.pierna_cm ?? null,
+          gluteos_cm: entry.gluteCm ?? existing?.gluteos_cm ?? null,
+        },
+        { onConflict: "user_id,fecha" }
+      )
     );
   } else {
     const all = lsGet<MeasurementEntry[]>("measurements", []);

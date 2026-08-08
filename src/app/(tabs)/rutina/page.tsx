@@ -32,7 +32,14 @@ export default function RutinaEdit() {
   };
 
   const save = async () => {
-    await saveRoutine(draft);
+    try {
+      await saveRoutine(draft);
+    } catch {
+      // El store ya revirtió la rutina en memoria: nos quedamos aquí con lo
+      // que el usuario escribió, para que pueda reintentar sin perderlo.
+      showToast(t("store.saveFailed"));
+      return;
+    }
     showToast(t("rutina.toastSaved"));
     router.push("/entrenamiento");
   };

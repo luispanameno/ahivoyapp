@@ -276,15 +276,31 @@ export default function SyncHub() {
     }
   };
 
+  // Las escrituras lanzan si la base las rechaza, y el store ya deshizo el
+  // cambio en pantalla. Sin este envoltorio la hoja se cerraba con su toast
+  // de éxito aunque no se hubiera guardado absolutamente nada.
+  const guard = async (write: () => Promise<void>): Promise<boolean> => {
+    try {
+      await write();
+      return true;
+    } catch {
+      setError(t("store.saveFailed"));
+      return false;
+    }
+  };
+
   const saveActivityManual = async () => {
-    await setActivity({
-      steps: Number(pasos) || 0,
-      activeMin: Number(minActivos) || 0,
-      activityKcal: Number(kcalActivas) || 0,
-      totalKcal: Number(kcalTotales) || Number(kcalActivas) + 1600,
-      distance: Number(distancia) || 0,
-      synced: true,
-    });
+    const ok = await guard(() =>
+      setActivity({
+        steps: Number(pasos) || 0,
+        activeMin: Number(minActivos) || 0,
+        activityKcal: Number(kcalActivas) || 0,
+        totalKcal: Number(kcalTotales) || Number(kcalActivas) + 1600,
+        distance: Number(distancia) || 0,
+        synced: true,
+      })
+    );
+    if (!ok) return;
     showToast(t("sync.toastActivitySaved"));
     closeSheet();
   };
@@ -294,7 +310,7 @@ export default function SyncHub() {
       setError(t("sync.errSleepHours"));
       return;
     }
-    await setSleep({ minutes: sleepManualMin, phases: null });
+    if (!(await guard(() => setSleep({ minutes: sleepManualMin, phases: null })))) return;
     showToast(t("sync.toastSleepSaved", { h: Math.floor(sleepManualMin / 60), m: String(sleepManualMin % 60).padStart(2, "0") }));
     closeSheet();
   };
@@ -305,22 +321,25 @@ export default function SyncHub() {
       setError(t("sync.errWeight"));
       return;
     }
-    await setBodyComp(
-      {
-        score: bodyComp?.score ?? 0,
-        build: bodyComp?.build ?? "—",
-        bmi: Number(imc) || 0,
-        fatPct: Number(grasaPct) || 0,
-        waterPct: Number(aguaPct) || 0,
-        proteinPct: Number(proteinaPct) || 0,
-        bmr: Number(bmr) || 0,
-        visceralFat: bodyComp?.visceralFat ?? 0,
-        muscle: bodyComp?.muscle ?? 0,
-        boneMass: bodyComp?.boneMass ?? 0,
-        date: new Date().toISOString().slice(0, 10),
-      },
-      lb
+    const ok = await guard(() =>
+      setBodyComp(
+        {
+          score: bodyComp?.score ?? 0,
+          build: bodyComp?.build ?? "—",
+          bmi: Number(imc) || 0,
+          fatPct: Number(grasaPct) || 0,
+          waterPct: Number(aguaPct) || 0,
+          proteinPct: Number(proteinaPct) || 0,
+          bmr: Number(bmr) || 0,
+          visceralFat: bodyComp?.visceralFat ?? 0,
+          muscle: bodyComp?.muscle ?? 0,
+          boneMass: bodyComp?.boneMass ?? 0,
+          date: new Date().toISOString().slice(0, 10),
+        },
+        lb
+      )
     );
+    if (!ok) return;
     showToast(t("sync.toastScaleSaved"));
     closeSheet();
   };
@@ -330,13 +349,16 @@ export default function SyncHub() {
       setError(t("sync.errWorkoutName"));
       return;
     }
-    await setWorkout({
-      day: routineDay,
-      done: true,
-      kcal: Number(routineKcal) || 300,
-      name: routineNombre.trim(),
-      notes: workout?.notes ?? "",
-    });
+    const ok = await guard(() =>
+      setWorkout({
+        day: routineDay,
+        done: true,
+        kcal: Number(routineKcal) || 300,
+        name: routineNombre.trim(),
+        notes: workout?.notes ?? "",
+      })
+    );
+    if (!ok) return;
     showToast(t("sync.toastRoutineSaved"));
     closeSheet();
   };
@@ -351,7 +373,10 @@ export default function SyncHub() {
       setError(t("sync.errMeasurements"));
       return;
     }
-    await addMeasurement({ armCm: brazo, waistCm: cintura, chestCm: pecho, legCm: pierna, gluteCm: gluteos });
+    const ok = await guard(() =>
+      addMeasurement({ armCm: brazo, waistCm: cintura, chestCm: pecho, legCm: pierna, gluteCm: gluteos })
+    );
+    if (!ok) return;
     setBrazoCm("");
     setCinturaCm("");
     setPechoCm("");

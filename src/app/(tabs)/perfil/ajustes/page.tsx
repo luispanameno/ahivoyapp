@@ -21,7 +21,7 @@ import {
   sectionTitle,
 } from "@/components/profileUi";
 import { useApp } from "@/lib/store";
-import { ACTIVITY_FACTORS } from "@/lib/types";
+import { ACTIVITY_FACTORS, Profile } from "@/lib/types";
 import { macrosForKcal } from "@/lib/nutrition";
 
 export default function PerfilAjustes() {
@@ -42,13 +42,34 @@ export default function PerfilAjustes() {
     Number(draft.weight) !== profile.weight ||
     Number(draft.weightGoal) !== profile.weightGoal;
 
+  // saveProfile lanza si la base rechaza la escritura (y el store ya deshizo
+  // el cambio en pantalla). Todas las escrituras de esta pantalla pasan por
+  // aquí: antes varias eran "fire and forget" y una escritura rechazada se
+  // perdía sin que el usuario se enterara.
+  const save = async (p: Profile): Promise<boolean> => {
+    try {
+      await saveProfile(p);
+      return true;
+    } catch {
+      showToast(t("store.saveFailed"));
+      return false;
+    }
+  };
+
   const saveDatos = async () => {
     const age = Number(draft.age) || profile.age;
     const height = Number(draft.height) || profile.height;
     const weight = Number(draft.weight) || profile.weight;
     const weightGoal = Number(draft.weightGoal) || profile.weightGoal;
-    await saveProfile({ ...profile, age, height, weightGoal });
-    if (weight !== profile.weight && weight > 0) await app.setWeight(weight);
+    if (!(await save({ ...profile, age, height, weightGoal }))) return;
+    if (weight !== profile.weight && weight > 0) {
+      try {
+        await app.setWeight(weight);
+      } catch {
+        showToast(t("store.saveFailed"));
+        return;
+      }
+    }
     showToast(t("ajustes.toastDataSaved"));
   };
 
@@ -58,17 +79,17 @@ export default function PerfilAjustes() {
   const [metasVersion, setMetasVersion] = useState(0);
 
   const setField = (field: keyof typeof profile, value: string | number) => {
-    saveProfile({ ...profile, [field]: value });
+    void save({ ...profile, [field]: value });
   };
 
-  const setNumField = (field: keyof typeof profile) => (e: React.ChangeEvent<HTMLInputElement>) => {
+  const setNumField = (field: keyof typeof profile) => async (e: React.ChangeEvent<HTMLInputElement>) => {
     const n = Number(e.target.value);
     if (Number.isNaN(n)) return;
     // Al cambiar las calorías a mano, los macros se reparten de nuevo sobre
     // ese total: si bajas las kcal y la grasa/carbos se quedan igual, el
     // reparto deja de cuadrar (sumarían más de lo que puedes comer).
     if (field === "metaKcal" && n > 0) {
-      saveProfile({ ...profile, metaKcal: n, ...macrosForKcal(n, profile.weightGoal) });
+      if (!(await save({ ...profile, metaKcal: n, ...macrosForKcal(n, profile.weightGoal) }))) return;
       setMetasVersion((v) => v + 1);
       showToast(t("ajustes.toastGoalsAdjusted"));
       return;
@@ -94,7 +115,7 @@ export default function PerfilAjustes() {
           ).map((opt) => (
             <Pressable
               key={opt.value}
-              onClick={() => saveProfile({ ...profile, language: opt.value })}
+              onClick={() => save({ ...profile, language: opt.value })}
               style={{
                 flex: 1,
                 minHeight: 44,
@@ -164,7 +185,7 @@ export default function PerfilAjustes() {
             ).map((s) => (
               <Pressable
                 key={s.value}
-                onClick={() => saveProfile({ ...profile, sex: s.value })}
+                onClick={() => save({ ...profile, sex: s.value })}
                 style={{
                   flex: 1,
                   minHeight: 44,
@@ -195,7 +216,7 @@ export default function PerfilAjustes() {
           return (
             <Pressable
               key={opt.value}
-              onClick={() => saveProfile({ ...profile, activityLevel: opt.value })}
+              onClick={() => save({ ...profile, activityLevel: opt.value })}
               style={{
                 display: "flex",
                 alignItems: "center",

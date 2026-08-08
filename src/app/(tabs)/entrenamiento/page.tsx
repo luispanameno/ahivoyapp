@@ -44,13 +44,27 @@ export default function Entrenamiento() {
 
   const markManual = async () => {
     const kcal = workout?.kcal || 300;
-    await setWorkout({ day, done: true, kcal, name: workout?.name || t("entrenamiento.defaultName", { day }), notes });
+    try {
+      await setWorkout({ day, done: true, kcal, name: workout?.name || t("entrenamiento.defaultName", { day }), notes });
+    } catch {
+      // El store ya revirtió el entrenamiento: avisamos en vez de dar por
+      // hecho que quedó marcado como completado.
+      setError(t("store.saveFailed"));
+      return;
+    }
     showToast(t("entrenamiento.toastManual"));
   };
 
+  // Se dispara en cada tecla: el texto local se conserva siempre (para no
+  // interrumpir la escritura) y solo se avisa si la base rechazó el guardado.
   const saveNotes = async (text: string) => {
     setNotes(text);
-    if (workout) await setWorkout({ ...workout, notes: text });
+    if (!workout) return;
+    try {
+      await setWorkout({ ...workout, notes: text });
+    } catch {
+      setError(t("store.saveFailed"));
+    }
   };
 
   return (

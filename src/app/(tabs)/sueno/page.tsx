@@ -59,6 +59,11 @@ export default function Sueno() {
     try {
       await setSleep({ minutes: manualMinutes, phases: null });
       showToast(t("sueno.toastUpdated", { h: Math.floor(manualMinutes / 60), m: String(manualMinutes % 60).padStart(2, "0") }));
+    } catch {
+      // El store ya revirtió el sueño mostrado; sin este catch la promesa
+      // quedaba rechazada y el usuario veía el dato nuevo sin saber que no
+      // se guardó.
+      setError(t("store.saveFailed"));
     } finally {
       setSavingManual(false);
     }

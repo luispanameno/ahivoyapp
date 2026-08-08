@@ -40,14 +40,27 @@ export default function EditarBebida() {
     );
   }
 
+  // Si la base rechaza la escritura, el store ya deshizo el cambio en
+  // pantalla: aquí solo hay que avisar y quedarse en la pantalla, nunca
+  // navegar como si se hubiera guardado.
   const save = async () => {
-    await updateDrink({ ...drink, label: label.trim() || t("resumen.water"), ml: Number(ml) || 0 });
+    try {
+      await updateDrink({ ...drink, label: label.trim() || t("resumen.water"), ml: Number(ml) || 0 });
+    } catch {
+      showToast(t("store.saveFailed"));
+      return;
+    }
     showToast(t("bebida.toastUpdated"));
     router.push("/historial");
   };
 
   const remove = async () => {
-    await deleteDrink(drink.id);
+    try {
+      await deleteDrink(drink.id);
+    } catch {
+      showToast(t("store.saveFailed"));
+      return;
+    }
     showToast(t("bebida.toastDeleted"));
     router.push("/historial");
   };

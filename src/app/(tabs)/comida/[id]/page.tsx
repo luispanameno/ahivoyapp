@@ -48,14 +48,27 @@ export default function EditarComida() {
     );
   }
 
+  // Si la base rechaza la escritura, el store ya deshizo el cambio en
+  // pantalla: aquí solo hay que avisar y quedarse en la pantalla, nunca
+  // navegar como si se hubiera guardado.
   const save = async () => {
-    await updateMeal({ ...meal, desc, time, kcal: Number(kcal) || 0, p: Number(p) || 0, c: Number(c) || 0, f: Number(f) || 0 });
+    try {
+      await updateMeal({ ...meal, desc, time, kcal: Number(kcal) || 0, p: Number(p) || 0, c: Number(c) || 0, f: Number(f) || 0 });
+    } catch {
+      showToast(t("store.saveFailed"));
+      return;
+    }
     showToast(t("comida.toastUpdated"));
     router.push("/historial");
   };
 
   const remove = async () => {
-    await deleteMeal(meal.id);
+    try {
+      await deleteMeal(meal.id);
+    } catch {
+      showToast(t("store.saveFailed"));
+      return;
+    }
     showToast(t("comida.toastDeleted"));
     router.push("/historial");
   };

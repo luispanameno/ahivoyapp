@@ -161,6 +161,206 @@ function matchMeal(lista: { id: string; desc: string }[], desc: string) {
   );
 }
 
+// ---- Normalización de las acciones del Coach ----
+// La IA devuelve las acciones como texto libre (en modo coach no se puede
+// usar responseSchema: hace que los modelos entren en bucles), así que a
+// veces llegan a medias: un log_meal SIN "desc", el tiempo de comida
+// traducido ("Breakfast" en vez de "Desayuno") o los números como string.
+// Cada una de esas variantes se perdía EN SILENCIO:
+//   - sin "desc", applyChatActions descartaba la acción… pero el Tablero
+//     (que se calcula aparte, ver simulateBoardTotals) SÍ contaba la comida.
+//     Resultado: el chat decía "ya lo registré" con los contadores intactos
+//     y la comida nunca aparecía en Historial.
+//   - con el tiempo traducido, la fila la rechaza el CHECK de "tiempo" en
+//     Supabase (solo acepta los 4 valores en español) y la comida se
+//     desvanecía al recargar.
+// Normalizamos UNA sola vez y de ahí salen tanto lo que se guarda como el
+// Tablero, así no pueden discrepar nunca.
+
+const MEAL_TIME_ALIASES: Record<string, MealTime> = {
+  desayuno: "Desayuno",
+  breakfast: "Desayuno",
+  almuerzo: "Almuerzo",
+  comida: "Almuerzo",
+  lunch: "Almuerzo",
+  cena: "Cena",
+  dinner: "Cena",
+  supper: "Cena",
+  snack: "Snack",
+  snacks: "Snack",
+  merienda: "Snack",
+  bocadillo: "Snack",
+};
+
+function canonicalMealTime(raw: unknown): MealTime | null {
+  if (typeof raw !== "string") return null;
+  return MEAL_TIME_ALIASES[raw.trim().toLowerCase()] ?? null;
+}
+
+// Los modelos a veces mandan "259" (texto) en vez de 259; sumarlo tal cual
+// concatenaba strings y descuadraba el Tablero.
+function num(v: unknown): number | undefined {
+  if (typeof v === "number") return Number.isFinite(v) ? v : undefined;
+  if (typeof v === "string" && v.trim()) {
+    const n = Number(v.replace(",", "."));
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
+const NUM_FIELDS = [
+  "ml", "lb", "kcal", "minutos", "p", "c", "f",
+  "peso_lb", "score", "imc", "grasa_pct", "agua_pct", "proteina_pct", "bmr",
+  "grasa_visceral", "musculo_lb", "masa_osea_lb",
+  "pasos", "min_activos", "kcal_activas", "kcal_totales", "distancia_km",
+  "brazo_cm", "cintura_cm", "pecho_cm", "pierna_cm", "gluteos_cm",
+];
+
+function normalizeActions(actions: CoachAction[] | undefined, fallbackDesc: string): CoachAction[] {
+  const out: CoachAction[] = [];
+  for (const raw of actions ?? []) {
+    if (!raw || typeof raw.type !== "string") continue;
+    const a: Record<string, unknown> = { ...raw };
+    for (const k of NUM_FIELDS) {
+      if (!(k in a)) continue;
+      const v = num(a[k]);
+      if (v === undefined) delete a[k];
+      else a[k] = v;
+    }
+    const act = a as unknown as CoachAction;
+    if (act.type === "log_meal") {
+      act.time = canonicalMealTime(act.time) ?? currentMealTime();
+      act.desc = act.desc?.trim() || fallbackDesc;
+      // Un log_meal sin nada que sumar no es un registro real: descartarlo
+      // aquí evita que el Tablero cuente una comida vacía.
+      if (!act.kcal && !act.p && !act.c && !act.f) continue;
+    }
+    out.push(act);
+  }
+  return out;
+}
+
+// ---- Tablero Nutricional determinista ----
+// El prompt del servidor le pasa a la IA los números reales, pero el bloque
+// del Tablero lo redacta ella misma en texto libre (tiene que "sumar" lo que
+// acaba de registrar en la misma respuesta) — y esa cuenta a veces no cuadra
+// con lo que de verdad queda guardado, que es justo lo que muestra Hoy. Para
+// que el chat NUNCA pueda mostrar un macro distinto al de Hoy, el bloque se
+// recalcula acá con la misma lógica que usa `derived` y se pisa el de la IA.
+interface BoardTotals {
+  kcalEaten: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  water: number;
+  metaKcal: number;
+  metaProtein: number;
+  metaCarbs: number;
+  metaFat: number;
+  metaWater: number;
+}
+
+function simulateBoardTotals(actions: CoachAction[], meals: Meal[], today: string, base: BoardTotals): BoardTotals {
+  const t = { ...base };
+  for (const a of actions) {
+    // Acciones de OTRO día no tocan el tablero de hoy.
+    if (a.fecha && /^\d{4}-\d{2}-\d{2}$/.test(a.fecha) && a.fecha !== today) continue;
+    if (a.type === "add_water" && a.ml) t.water += a.ml;
+    else if (a.type === "remove_water" && a.ml) t.water -= Math.min(a.ml, t.water);
+    else if (a.type === "log_meal") {
+      t.kcalEaten += a.kcal ?? 0;
+      t.proteinG += a.p ?? 0;
+      t.carbsG += a.c ?? 0;
+      t.fatG += a.f ?? 0;
+    } else if (a.type === "delete_meal" && a.desc) {
+      const meal = matchMeal(meals, a.desc) as Meal | undefined;
+      if (meal) {
+        t.kcalEaten -= meal.kcal;
+        t.proteinG -= meal.p;
+        t.carbsG -= meal.c;
+        t.fatG -= meal.f;
+      }
+    } else if (a.type === "update_meal" && a.desc) {
+      const meal = matchMeal(meals, a.desc) as Meal | undefined;
+      if (meal) {
+        t.kcalEaten += (a.kcal ?? meal.kcal) - meal.kcal;
+        t.proteinG += (a.p ?? meal.p) - meal.p;
+        t.carbsG += (a.c ?? meal.c) - meal.c;
+        t.fatG += (a.f ?? meal.f) - meal.f;
+      }
+    } else if (a.type === "set_meta_kcal" && a.kcal) t.metaKcal = Math.round(a.kcal);
+    else if (a.type === "set_meta_water" && a.ml) t.metaWater = Math.round(a.ml);
+    else if (a.type === "set_macros" && a.kcal) {
+      t.metaKcal = Math.round(a.kcal);
+      t.metaProtein = Math.round(a.p ?? t.metaProtein);
+      t.metaCarbs = Math.round(a.c ?? t.metaCarbs);
+      t.metaFat = Math.round(a.f ?? t.metaFat);
+    }
+  }
+  t.kcalEaten = Math.max(0, Math.round(t.kcalEaten));
+  t.proteinG = Math.max(0, Math.round(t.proteinG));
+  t.carbsG = Math.max(0, Math.round(t.carbsG));
+  t.fatG = Math.max(0, Math.round(t.fatG));
+  t.water = Math.max(0, Math.round(t.water));
+  return t;
+}
+
+// Arma el bloque del Tablero con números reales, mismo formato y mismas
+// etiquetas que el prompt le pide a la IA — la sustitución es invisible.
+function renderTablero(lang: Lang, tt: BoardTotals): string {
+  const en = lang === "en";
+  const diff = (actual: number, meta: number) => Math.abs(meta - actual);
+  const tail = (
+    actual: number,
+    meta: number,
+    overEs: string,
+    overEn: string
+  ) =>
+    actual > meta
+      ? en
+        ? `${overEn} ${diff(actual, meta)}`
+        : `${overEs} ${diff(actual, meta)}`
+      : en
+      ? `${diff(actual, meta)} left`
+      : `faltan ${diff(actual, meta)}`;
+
+  const title = en ? "📱 **NUTRITION DASHBOARD** 📱" : "📱 **TABLERO NUTRICIONAL** 📱";
+  return [
+    title,
+    `🟢 🔥 ${en ? "Calories" : "Calorías"}: ${tt.kcalEaten} / ${tt.metaKcal} kcal (${tail(tt.kcalEaten, tt.metaKcal, "ya te pasaste", "over")})`,
+    `🟡 🍞 Carbs: ${tt.carbsG} / ${tt.metaCarbs} g (${tail(tt.carbsG, tt.metaCarbs, "te pasaste", "over")})`,
+    `🔵 🍗 ${en ? "Protein" : "Proteína"}: ${tt.proteinG} / ${tt.metaProtein} g (${tail(tt.proteinG, tt.metaProtein, "superada por", "over")})`,
+    `🟠 🥑 ${en ? "Fat" : "Grasas"}: ${tt.fatG} / ${tt.metaFat} g (${tail(tt.fatG, tt.metaFat, "te pasaste", "over")})`,
+    `💧 ${en ? "Water" : "Agua"}: ${tt.water} / ${tt.metaWater} ml (${
+      tt.water > tt.metaWater
+        ? en
+          ? `goal met, +${diff(tt.water, tt.metaWater)} over`
+          : `ya cumpliste, +${diff(tt.water, tt.metaWater)} de más`
+        : en
+        ? `${diff(tt.water, tt.metaWater)} left`
+        : `faltan ${diff(tt.water, tt.metaWater)}`
+    })`,
+  ].join("\n");
+}
+
+// Detecta y reemplaza el bloque del Tablero dentro de la respuesta del Coach.
+// Misma detección que splitTablero() en coach/page.tsx: el título se ubica
+// por el emoji 📱 (no por el texto, que en inglés viene traducido).
+function replaceTablero(reply: string, board: string): string {
+  if (!reply.includes("📱")) return reply;
+  const lines = reply.split("\n");
+  const start = lines.findIndex((l) => l.includes("📱"));
+  if (start === -1) return reply;
+  let end = start;
+  for (let i = start + 1; i < lines.length; i++) {
+    const l = lines[i].trim();
+    if (l === "" && end === start) continue;
+    if (/^(🟢|🟡|🔵|🟠|💧)/.test(l)) end = i;
+    else if (l !== "") break;
+  }
+  return [...lines.slice(0, start), board, ...lines.slice(end + 1)].join("\n");
+}
+
 interface AppState {
   ready: boolean;
   userEmail: string | null;
@@ -360,29 +560,69 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     toastTimer.current = setTimeout(() => setToast(null), 2200);
   }, []);
 
-  const saveProfile = useCallback(async (p: Profile) => {
-    setProfile(p);
-    await db.saveProfile(p);
-  }, []);
+  // Todas las mutaciones son OPTIMISTAS: primero se pinta el cambio y luego
+  // se guarda. Si la base lo rechaza (sin conexión, sesión caída, un CHECK
+  // que no cuadra…) hay que DESHACER el cambio local antes de propagar el
+  // error — si no, el dato se queda en pantalla como si se hubiera guardado
+  // y desaparece en la siguiente recarga, que es justo la "pérdida
+  // silenciosa" que estamos persiguiendo. Quien llama decide qué mostrar.
+  const saveProfile = useCallback(
+    async (p: Profile) => {
+      const prev = profile;
+      setProfile(p);
+      try {
+        await db.saveProfile(p);
+      } catch (e) {
+        setProfile(prev);
+        throw e;
+      }
+    },
+    [profile]
+  );
 
   const addMeal = useCallback(
     async (m: Omit<Meal, "id" | "date">) => {
       const meal: Meal = { ...m, id: crypto.randomUUID(), date };
       setMeals((prev) => [...prev, meal]);
-      await db.addMeal(meal);
+      try {
+        await db.addMeal(meal);
+      } catch (e) {
+        // Se revierte por id, no restaurando la lista entera: así no se
+        // pierde nada que se haya agregado mientras tanto.
+        setMeals((prev) => prev.filter((x) => x.id !== meal.id));
+        throw e;
+      }
     },
     [date]
   );
 
-  const updateMeal = useCallback(async (m: Meal) => {
-    setMeals((prev) => prev.map((x) => (x.id === m.id ? m : x)));
-    await db.updateMeal(m);
-  }, []);
+  const updateMeal = useCallback(
+    async (m: Meal) => {
+      const before = meals.find((x) => x.id === m.id);
+      setMeals((prev) => prev.map((x) => (x.id === m.id ? m : x)));
+      try {
+        await db.updateMeal(m);
+      } catch (e) {
+        if (before) setMeals((prev) => prev.map((x) => (x.id === m.id ? before : x)));
+        throw e;
+      }
+    },
+    [meals]
+  );
 
-  const deleteMeal = useCallback(async (id: string) => {
-    setMeals((prev) => prev.filter((x) => x.id !== id));
-    await db.deleteMeal(id);
-  }, []);
+  const deleteMeal = useCallback(
+    async (id: string) => {
+      const before = meals.find((x) => x.id === id);
+      setMeals((prev) => prev.filter((x) => x.id !== id));
+      try {
+        await db.deleteMeal(id);
+      } catch (e) {
+        if (before) setMeals((prev) => (prev.some((x) => x.id === id) ? prev : [...prev, before]));
+        throw e;
+      }
+    },
+    [meals]
+  );
 
   // Cada llamada crea un NUEVO registro (como una comida) en vez de
   // sobreescribir un total único: así cualquier valor erróneo se puede
@@ -396,62 +636,119 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         label: label || (ml < 0 ? t("hoy.adjustment") : t("resumen.water")),
       };
       setDrinks((prev) => [...prev, entry]);
-      await db.addDrink(entry);
+      try {
+        await db.addDrink(entry);
+      } catch (e) {
+        setDrinks((prev) => prev.filter((x) => x.id !== entry.id));
+        throw e;
+      }
     },
     [date, t]
   );
 
-  const updateDrink = useCallback(async (d: Drink) => {
-    setDrinks((prev) => prev.map((x) => (x.id === d.id ? d : x)));
-    await db.updateDrink(d);
-  }, []);
+  const updateDrink = useCallback(
+    async (d: Drink) => {
+      const before = drinks.find((x) => x.id === d.id);
+      setDrinks((prev) => prev.map((x) => (x.id === d.id ? d : x)));
+      try {
+        await db.updateDrink(d);
+      } catch (e) {
+        if (before) setDrinks((prev) => prev.map((x) => (x.id === d.id ? before : x)));
+        throw e;
+      }
+    },
+    [drinks]
+  );
 
-  const deleteDrink = useCallback(async (id: string) => {
-    setDrinks((prev) => prev.filter((d) => d.id !== id));
-    await db.deleteDrink(id);
-  }, []);
+  const deleteDrink = useCallback(
+    async (id: string) => {
+      const before = drinks.find((x) => x.id === id);
+      setDrinks((prev) => prev.filter((d) => d.id !== id));
+      try {
+        await db.deleteDrink(id);
+      } catch (e) {
+        if (before) setDrinks((prev) => (prev.some((x) => x.id === id) ? prev : [...prev, before]));
+        throw e;
+      }
+    },
+    [drinks]
+  );
 
   const setActivity = useCallback(
     async (a: Activity) => {
+      const before = activity;
       setActivityState(a);
-      await db.setActivity(date, a);
+      try {
+        await db.setActivity(date, a);
+      } catch (e) {
+        setActivityState(before);
+        throw e;
+      }
     },
-    [date]
+    [date, activity]
   );
 
   const setWorkout = useCallback(
     async (w: WorkoutState) => {
+      const before = workout;
       setWorkoutState(w);
-      await db.setWorkout(date, w);
+      try {
+        await db.setWorkout(date, w);
+      } catch (e) {
+        setWorkoutState(before);
+        throw e;
+      }
     },
-    [date]
+    [date, workout]
   );
 
   const setSleep = useCallback(
     async (s: SleepState) => {
+      const before = sleep;
       setSleepState(s);
-      await db.setSleep(date, s);
+      try {
+        await db.setSleep(date, s);
+      } catch (e) {
+        setSleepState(before);
+        throw e;
+      }
     },
-    [date]
+    [date, sleep]
   );
 
   const setWeight = useCallback(
     async (lb: number) => {
+      const beforeProfile = profile;
+      const beforeWeights = weights;
       const p = { ...profile, weight: lb };
-      setProfile(p);
-      await db.saveProfile(p);
       const entry = { date, lb };
+      setProfile(p);
       setWeights((prev) => [...prev.filter((w) => w.date !== date), entry].sort((a, b) => a.date.localeCompare(b.date)));
-      await db.addWeight(entry);
+      try {
+        await db.saveProfile(p);
+        await db.addWeight(entry);
+      } catch (e) {
+        // Son dos escrituras: si la segunda falla también se revierte la
+        // primera, para no dejar el perfil y el historial descuadrados.
+        setProfile(beforeProfile);
+        setWeights(beforeWeights);
+        throw e;
+      }
     },
-    [profile, date]
+    [profile, weights, date]
   );
 
   const setWeightGoal = useCallback(
     async (lb: number) => {
+      const before = profile;
       const p = { ...profile, weightGoal: lb };
       setProfile(p);
-      await db.saveProfile(p);
+      try {
+        await db.saveProfile(p);
+      } catch (e) {
+        setProfile(before);
+        throw e;
+      }
     },
     [profile]
   );
@@ -459,6 +756,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const addMeasurement = useCallback(
     async (m: Omit<MeasurementEntry, "date">) => {
       const entry: MeasurementEntry = { date, ...m };
+      const before = measurements;
       // Se combina con lo que ya hubiera guardado hoy (igual que en db.ts):
       // así completar solo el brazo no borra la cintura anotada esta mañana.
       setMeasurements((prev) => {
@@ -473,31 +771,54 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         };
         return [...prev.filter((x) => x.date !== date), merged].sort((a, b) => a.date.localeCompare(b.date));
       });
-      await db.addMeasurement(entry);
+      try {
+        await db.addMeasurement(entry);
+      } catch (e) {
+        setMeasurements(before);
+        throw e;
+      }
     },
-    [date]
+    [date, measurements]
   );
 
   const setBodyComp = useCallback(
     async (b: BodyComp, weightLb?: number) => {
+      const beforeComp = bodyComp;
+      const beforeProfile = profile;
+      const beforeWeights = weights;
       setBodyCompState(b);
-      await db.addBodyComp(b);
-      if (weightLb && weightLb > 0) {
-        const p = { ...profile, weight: weightLb };
-        setProfile(p);
-        await db.saveProfile(p);
-        const entry = { date, lb: weightLb };
+      const p = weightLb && weightLb > 0 ? { ...profile, weight: weightLb } : null;
+      const entry = weightLb && weightLb > 0 ? { date, lb: weightLb } : null;
+      if (p) setProfile(p);
+      if (entry)
         setWeights((prev) => [...prev.filter((w) => w.date !== date), entry].sort((a, c) => a.date.localeCompare(c.date)));
-        await db.addWeight(entry);
+      try {
+        await db.addBodyComp(b);
+        if (p) await db.saveProfile(p);
+        if (entry) await db.addWeight(entry);
+      } catch (e) {
+        setBodyCompState(beforeComp);
+        setProfile(beforeProfile);
+        setWeights(beforeWeights);
+        throw e;
       }
     },
-    [profile, date]
+    [profile, weights, bodyComp, date]
   );
 
-  const saveRoutine = useCallback(async (r: Routine) => {
-    setRoutineState(r);
-    await db.saveRoutine(r);
-  }, []);
+  const saveRoutine = useCallback(
+    async (r: Routine) => {
+      const before = routine;
+      setRoutineState(r);
+      try {
+        await db.saveRoutine(r);
+      } catch (e) {
+        setRoutineState(before);
+        throw e;
+      }
+    },
+    [routine]
+  );
 
   const signOut = useCallback(async () => {
     const sb = getSupabase();
@@ -537,9 +858,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Acciones que el Coach detecta en el mensaje del usuario (agregar agua,
   // registrar comida, cambiar metas, etc.) — vive aquí para poder aplicarse
   // aunque la respuesta llegue después de que el usuario cambió de pantalla.
+  // Devuelve QUÉ acciones se aplicaron de verdad: el Tablero del chat se
+  // dibuja solo con esas, así el mensaje del Coach nunca puede afirmar que
+  // registró algo que en realidad no se guardó.
   const applyChatActions = useCallback(
-    async (actions: CoachAction[]) => {
+    async (actions: CoachAction[]): Promise<{ applied: CoachAction[]; failed: number }> => {
       const today = date;
+      const applied: CoachAction[] = [];
+      let failed = 0;
       for (const a of actions) {
         try {
           const fecha = a.fecha && /^\d{4}-\d{2}-\d{2}$/.test(a.fecha) && a.fecha !== today ? a.fecha : null;
@@ -700,11 +1026,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               await db.addWeight({ date: fecha, lb: a.lb });
             }
           }
+          applied.push(a);
         } catch {
-          // una acción fallida no debe romper el chat
+          // Una acción fallida no rompe el chat, pero tampoco se da por
+          // buena: no entra al Tablero y el usuario recibe el aviso.
+          failed += 1;
         }
       }
-      if (actions.length) showToast(t("store.coachUpdatedData"));
+      if (failed) showToast(t("store.coachSaveFailed"));
+      else if (applied.length) showToast(t("store.coachUpdatedData"));
+      return { applied, failed };
     },
     [
       date,
@@ -857,12 +1188,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           fecha_hoy: date,
           dia_semana: ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"][new Date().getDay()],
         };
-        const res = await analyze<CoachResult>({ mode: "coach", text: clean, image, context });
+        const res = await analyze<CoachResult>({ mode: "coach", text: clean, image, context, lang });
         // Ya se le ofreció el ajuste por esta lectura: no repetirlo en cada
         // mensaje siguiente del día.
         if (scaleIsFresh && scaleDate) markScaleSuggested(userIdRef.current, scaleDate);
-        setChatMessages((prev) => [...prev, { role: "coach", text: res.reply }]);
-        if (res.actions?.length) await applyChatActions(res.actions);
+        // Las acciones se aplican ANTES de publicar la respuesta, y el
+        // Tablero se calcula solo con las que de verdad se guardaron: antes
+        // el mensaje se mostraba primero y el Tablero contaba TODO lo que
+        // pidió la IA, así que una acción descartada (ej. un log_meal sin
+        // "desc") dejaba al Coach diciendo "ya lo registré" con los
+        // contadores de la app en cero.
+        const acciones = normalizeActions(res.actions, t("store.mealFromCoach"));
+        const { applied, failed } = acciones.length
+          ? await applyChatActions(acciones)
+          : { applied: [] as CoachAction[], failed: 0 };
+        const totals = simulateBoardTotals(applied, meals, date, {
+          kcalEaten: derived.kcalEaten,
+          proteinG: derived.proteinG,
+          carbsG: derived.carbsG,
+          fatG: derived.fatG,
+          water: derived.water,
+          metaKcal: profile.metaKcal,
+          metaProtein: profile.metaProtein,
+          metaCarbs: profile.metaCarbs,
+          metaFat: profile.metaFat,
+          metaWater: profile.metaWater,
+        });
+        const board = renderTablero(lang, totals);
+        let reply = replaceTablero(typeof res.reply === "string" ? res.reply : "", board);
+        // La IA se quedó sin texto (respuesta vacía) pero sí registró algo:
+        // mejor mostrar el Tablero que una burbuja en blanco.
+        if (!reply.trim()) reply = applied.length ? `${board}\n\n${t("store.coachUpdatedData")}` : t("store.replyFailed");
+        if (failed) reply += `\n\n${t("store.coachSaveFailedNote")}`;
+        setChatMessages((prev) => [...prev, { role: "coach", text: reply }]);
       } catch (e) {
         setChatMessages((prev) => [
           ...prev,

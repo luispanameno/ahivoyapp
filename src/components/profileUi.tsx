@@ -99,7 +99,14 @@ export function ProfileHeader() {
           src={editorSrc}
           onCancel={() => setEditorSrc(null)}
           onSave={async (url) => {
-            await saveProfile({ ...profile, photo: url });
+            try {
+              await saveProfile({ ...profile, photo: url });
+            } catch {
+              // El store ya revirtió la foto: dejamos el editor abierto para
+              // que se pueda reintentar sin volver a recortar la imagen.
+              showToast(t("store.saveFailed"));
+              return;
+            }
             setEditorSrc(null);
             showToast(t("perfil.photoUpdated"));
           }}
@@ -181,7 +188,12 @@ export function ProfileHeader() {
           <input
             value={profile.name}
             placeholder={t("perfil.namePlaceholder")}
-            onChange={(e) => saveProfile({ ...profile, name: e.target.value })}
+            // Se guarda en cada tecla: si la base rechaza el guardado el
+            // store revierte el nombre, así que hay que avisar en vez de
+            // dejar la promesa rechazada en silencio.
+            onChange={(e) => {
+              saveProfile({ ...profile, name: e.target.value }).catch(() => showToast(t("store.saveFailed")));
+            }}
             className="font-sora"
             style={{
               background: "transparent",

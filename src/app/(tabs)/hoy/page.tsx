@@ -211,15 +211,29 @@ export default function Hoy() {
   const activeMinDeg = Math.min(360, Math.round((activeMin / 50) * 360));
   const actKcalDeg = Math.min(360, Math.round((actKcal / 500) * 360));
 
-  const addWaterNow = () => {
+  // El vaso se pinta al instante y se guarda en segundo plano. Si la base lo
+  // rechaza, el store deshace el vaso y aquí se avisa: sin este catch el
+  // contador subía, la promesa quedaba rechazada en silencio y el agua
+  // desaparecía en la siguiente recarga.
+  const addWaterNow = async () => {
     const ml = Number(waterStep) || 0;
-    if (ml > 0) app.addWater(ml);
+    if (ml <= 0) return;
+    try {
+      await app.addWater(ml);
+    } catch {
+      app.showToast(t("store.saveFailed"));
+    }
   };
 
-  const removeWaterNow = () => {
+  const removeWaterNow = async () => {
     const ml = Number(waterStep) || 0;
     const removeMl = Math.min(ml, water);
-    if (removeMl > 0) app.addWater(-removeMl, t("hoy.adjustment"));
+    if (removeMl <= 0) return;
+    try {
+      await app.addWater(-removeMl, t("hoy.adjustment"));
+    } catch {
+      app.showToast(t("store.saveFailed"));
+    }
   };
 
   return (
